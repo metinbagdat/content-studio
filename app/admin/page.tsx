@@ -1,0 +1,175 @@
+'use client'
+
+import { useCallback, useEffect, useState } from 'react'
+
+type Source = { id: string; title: string; category: string; createdAt: string }
+type Pipeline = {
+  id: string
+  name: string
+  status: string
+  currentStep: number
+  totalSteps: number
+  source?: { id: string; title: string }
+}
+
+function adminHeaders(key: string): HeadersInit {
+  return { 'Content-Type': 'application/json', 'x-admin-key': key }
+}
+
+export default function AdminPipelinePage() {
+  const [adminKey, setAdminKey] = useState('')
+  const [sources, setSources] = useState<Source[]>([])
+  const [pipelines, setPipelines] = useState<Pipeline[]>([])
+  const [title, setTitle] = useState('')
+  const [content, setContent] = useState('')
+  const [sourceId, setSourceId] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState('')
+
+  const load = useCallback(async () => {
+    if (!adminKey) return
+    const [sRes, pRes] = await Promise.all([
+      fetch('/api/sources', { headers: adminHeaders(adminKey) }),
+      fetch('/api/pipelines', { headers: adminHeaders(adminKey) }),
+    ])
+    if (!sRes.ok || !pRes.ok) {
+      setMsg('Yetkisiz veya API hatası — ADMIN_API_KEY kontrol et')
+      return
+    }
+    const s = await sRes.json()
+    const p = await pRes.json()
+    setSources(s.sources || [])
+    setPipelines(p.pipelines || [])
+    setMsg('')
+  }, [adminKey])
+
+  useEffect(() => {
+    const saved = localStorage.getItem('cs_admin_key')
+    if (saved) setAdminKey(saved)
+  }, [])
+
+  useEffect(() => {
+    if (adminKey) {
+      localStorage.setItem('cs_admin_key', adminKey)
+      load()
+    }
+  }, [adminKey, load])
+
+  async function createSource() {
+    setBusy(true)
+    try {
+      const res = await fetch('/api/sources', {
+        method: 'POST',
+        headers: adminHeaders(adminKey),
+        body: JSON.stringify({ title, content, category: 'promo' }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'fail')
+      setTitle('')
+      setContent('')
+      setSourceId(data.source.id)
+      await load()
+      setMsg('Kaynak eklendi')
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : 'Hata')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function startPipeline() {
+    if (!sourceId) {
+      setMsg('Kaynak seç')
+      return
+    }
+    setBusy(true)
+    try {
+      const res = await fetch('/api/pipelines', {
+        method: 'POST',
+        headers: adminHeaders(adminKey),
+        body: JSON.stringify({
+          sourceId,
+          platforms: ['TWITTER', 'LINKEDIN'],
+          runSync: true,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'pipeline fail')
+      setMsg(`Pipeline ${data.pipeline?.status}: ${data.pipeline?.id}`)
+      await load()
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : 'Hata')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div>
+      <h1>Pipeline</h1>
+      <p className="lead">Makale kaynağı ekle, AI türevlerini üret (onay ayrı ekranda).</p>
+
+      <div className="keybar">
+        <div style={{ flex: 1 }}>
+          <label>Admin API key</label>
+          <input
+            value={adminKey}
+            onChange={(e) => setAdminKey(e.target.value)}
+            placeholder="ADMIN_API_KEY"
+            type="password"
+          />
+        </div>
+        <button type="button" className="secondary" onClick={load}>
+          Yenile
+        </button>
+      </div>
+      {msg ? <p className="muted">{msg}</p> : null}
+
+      <div className="grid two">
+        <section className="panel">
+          <h2>1. Kaynak makale</h2>
+          <label>Başlık</label>
+          <input value={title} onChange={(e) => setTitle(e.target.value)} />
+          <label>İçerik</label>
+          <textarea value={content} onChange={(e) => setContent(e.target.value)} />
+          <button type="button" disabled={busy || !title || !content} onClick={createSource}>
+            Kaynak kaydet
+          </button>
+        </section>
+
+        <section className="panel">
+          <h2>2. Pipeline başlat</h2>
+          <label>Kaynak</label>
+          <select value={sourceId} onChange={(e) => setSourceId(e.target.value)}>
+            <option value="">Seç…</option>
+            {sources.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.title}
+              </option>
+            ))}
+          </select>
+          <p className="muted">Platformlar: X + LinkedIn · autoPublish kapalı</p>
+          <button type="button" disabled={busy || !sourceId} onClick={startPipeline}>
+            Start Pipeline
+          </button>
+        </section>
+      </div>
+
+      <section className="panel" style={{ marginTop: '1rem' }}>
+        <h2>Aktif / son pipeline’lar</h2>
+        <ul className="list">
+          {pipelines.map((p) => (
+            <li key={p.id}>
+              <strong>{p.source?.title || p.name}</strong>{' '}
+              <span className={`badge ${p.status === 'COMPLETED' ? 'ok' : 'warn'}`}>{p.status}</span>
+              <div className="muted">
+                step {p.currentStep}/{p.totalSteps} · {p.id}
+              </div>
+            </li>
+          ))}
+          {!pipelines.length ? <li className="muted">Henüz yok</li> : null}
+        </ul>
+      </section>
+    </div>
+  )
+}

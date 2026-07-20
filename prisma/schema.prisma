@@ -1,0 +1,226 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model ContentSource {
+  id        String   @id @default(uuid())
+  title     String
+  content   String   @db.Text
+  category  String   @default("general")
+  tags      String[] @default([])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  derivedContents DerivedContent[]
+  pipelines       ContentPipeline[]
+
+  @@index([category])
+  @@index([createdAt])
+}
+
+model DerivedContent {
+  id         String        @id @default(uuid())
+  sourceId   String
+  contentType ContentType
+  title      String
+  content    String        @db.Text
+  metadata   Json?
+  status     ContentStatus @default(DRAFT)
+  approvedAt DateTime?
+  publishedAt DateTime?
+  createdAt  DateTime      @default(now())
+
+  source      ContentSource     @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  mediaFiles  MediaFile[]
+  socialPosts SocialMediaPost[]
+
+  @@index([sourceId])
+  @@index([contentType])
+  @@index([status])
+}
+
+enum ContentType {
+  VIDEO_SCRIPT
+  PODCAST_SCRIPT
+  MARCH_LYRICS
+  SONG_LYRICS
+  SOCIAL_CAPTION
+  BLOG_POST
+}
+
+enum ContentStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  REJECTED
+  PUBLISHED
+}
+
+model MediaFile {
+  id               String           @id @default(uuid())
+  derivedContentId String
+  mediaType        MediaType
+  fileUrl          String
+  thumbnailUrl     String?
+  duration         Int?
+  fileSize         Int?
+  format           String
+  processingStatus ProcessingStatus @default(PENDING)
+  createdAt        DateTime         @default(now())
+
+  derivedContent DerivedContent @relation(fields: [derivedContentId], references: [id], onDelete: Cascade)
+
+  @@index([derivedContentId])
+  @@index([mediaType])
+}
+
+enum MediaType {
+  VIDEO
+  AUDIO
+  IMAGE
+}
+
+enum ProcessingStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model ContentPipeline {
+  id          String         @id @default(uuid())
+  sourceId    String
+  name        String
+  status      PipelineStatus @default(PENDING)
+  currentStep Int            @default(0)
+  totalSteps  Int            @default(5)
+  config      Json
+  errors      String[]       @default([])
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime       @default(now())
+
+  source ContentSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@index([sourceId])
+  @@index([status])
+}
+
+enum PipelineStatus {
+  PENDING
+  RUNNING
+  PAUSED
+  COMPLETED
+  FAILED
+}
+
+model SocialMediaAccount {
+  id           String         @id @default(uuid())
+  platform     SocialPlatform
+  accountName  String
+  accountId    String
+  accessToken  String         @db.Text
+  refreshToken String?        @db.Text
+  tokenExpiry  DateTime?
+  isActive     Boolean        @default(true)
+  config       Json?
+  lastSyncAt   DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  posts SocialMediaPost[]
+
+  @@unique([platform, accountId])
+  @@index([platform])
+  @@index([isActive])
+}
+
+enum SocialPlatform {
+  TIKTOK
+  TWITTER
+  LINKEDIN
+  YOUTUBE
+  FACEBOOK
+  INSTAGRAM
+}
+
+model SocialMediaPost {
+  id               String         @id @default(uuid())
+  derivedContentId String
+  accountId        String
+  platform         SocialPlatform
+  postContent      String         @db.Text
+  mediaUrls        String[]       @default([])
+  scheduledAt      DateTime?
+  publishedAt      DateTime?
+  platformPostId   String?
+  status           PostStatus     @default(DRAFT)
+  metrics          Json?
+  error            String?
+  createdAt        DateTime       @default(now())
+
+  derivedContent DerivedContent     @relation(fields: [derivedContentId], references: [id], onDelete: Cascade)
+  account        SocialMediaAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([derivedContentId])
+  @@index([accountId])
+  @@index([status])
+  @@index([scheduledAt])
+}
+
+enum PostStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHING
+  PUBLISHED
+  FAILED
+}
+
+model QueueJob {
+  id          String    @id @default(uuid())
+  jobType     JobType
+  payload     Json
+  status      JobStatus @default(PENDING)
+  priority    Int       @default(5)
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(3)
+  scheduledAt DateTime  @default(now())
+  startedAt   DateTime?
+  completedAt DateTime?
+  failedAt    DateTime?
+  error       String?
+  result      Json?
+  createdAt   DateTime  @default(now())
+
+  @@index([status])
+  @@index([jobType])
+  @@index([scheduledAt])
+}
+
+enum JobType {
+  GENERATE_VIDEO_SCRIPT
+  GENERATE_PODCAST_SCRIPT
+  GENERATE_MARCH_LYRICS
+  GENERATE_SONG_LYRICS
+  GENERATE_SOCIAL_CAPTION
+  GENERATE_BLOG_POST
+  CREATE_VIDEO
+  CREATE_PODCAST
+  UPLOAD_TO_PLATFORM
+  PUBLISH_SOCIAL_POST
+  SYNC_ANALYTICS
+  PROCESS_PIPELINE
+}
+
+enum JobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  RETRY
+}
