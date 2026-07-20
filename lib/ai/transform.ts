@@ -1,6 +1,6 @@
 import OpenAI from 'openai'
 import { ContentType } from '@prisma/client'
-import { brandCta } from './auth'
+import { brandCta } from '../auth'
 
 export type TransformKind =
   | 'VIDEO_SCRIPT'

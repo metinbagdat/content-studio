@@ -29,8 +29,10 @@ export async function POST(req: NextRequest) {
   }
 
   const platforms = (Array.isArray(body.platforms) ? body.platforms : ['TWITTER', 'LINKEDIN'])
-    .map(String)
-    .filter((p) => Object.values(SocialPlatform).includes(p as SocialPlatform)) as SocialPlatform[]
+    .map((p: unknown) => String(p))
+    .filter((p: string) =>
+      Object.values(SocialPlatform).includes(p as SocialPlatform),
+    ) as SocialPlatform[]
 
   const pipeline = await createPipeline(sourceId, {
     platforms,
