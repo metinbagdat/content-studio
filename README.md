@@ -13,25 +13,33 @@ Private ops tool for **egitim.today** social + SEO content: source article → A
 
 ## Quick start (local)
 
-```bash
-# 1) Docker Desktop açıkken
-docker compose up -d
+**Docker Hub hesabı / repo gerekmez.** `postgres` ve `redis` imajları public Hub’dan çekilir; senin `metinbagdat` altında boş repo listesi normal.
 
-# 2) Env
-cp .env.example .env
-cp .env.example .env.local
+**Gereken:** Docker **Desktop** (WSL2 + Ubuntu). Engine açılmazsa:
 
-# 3) Install + DB
-npm install
-npx prisma migrate dev --name init
-# or: npm run db:push
-
-# 4) App + worker
-npm run dev
-npm run worker
+```powershell
+# Yönetici PowerShell
+wsl --install -d Ubuntu
+# Restart sonrası Ubuntu’yu bir kez aç, Docker Desktop’ı başlat
+docker info   # Server Version görünmeli
 ```
 
-Admin: http://localhost:3100/admin — header/key = `ADMIN_API_KEY` from `.env`.
+Sonra:
+
+```powershell
+cd C:\Users\mb\content-studio
+# .env / .env.local zaten varsa atla
+Copy-Item .env.example .env -ErrorAction SilentlyContinue
+Copy-Item .env.example .env.local -ErrorAction SilentlyContinue
+
+npm install
+.\scripts\setup-db.ps1    # compose up + prisma migrate deploy
+npm run dev               # http://localhost:3100/admin
+npm run worker            # ayrı terminal (opsiyonel; sync pipeline API’de çalışır)
+```
+
+Admin key = `.env` içindeki `ADMIN_API_KEY`.
+
 
 ## Faz 1 flow
 
