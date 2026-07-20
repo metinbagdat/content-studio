@@ -1,0 +1,39 @@
+{
+  "name": "content-studio",
+  "version": "0.1.0",
+  "private": true,
+  "description": "egitim.today content auto-production & social distribution (separate from LearnCon)",
+  "scripts": {
+    "dev": "next dev --port 3100",
+    "build": "prisma generate && next build",
+    "start": "next start --port 3100",
+    "lint": "next lint",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio",
+    "worker": "tsx workers/index.ts",
+    "postinstall": "prisma generate"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.9.0",
+    "bullmq": "^5.34.0",
+    "ioredis": "^5.6.1",
+    "next": "^15.3.3",
+    "openai": "^5.3.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "zod": "^3.25.67"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.30",
+    "@types/react": "^19.1.6",
+    "@types/react-dom": "^19.1.5",
+    "prisma": "^6.9.0",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,38 @@
+# Content Studio — local stack (Postgres + Redis)
+# Start: docker compose up -d
+# App: npm run dev (port 3100) · Worker: npm run worker
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: content
+      POSTGRES_PASSWORD: content
+      POSTGRES_DB: content_studio
+    ports:
+      - "5433:5432"
+    volumes:
+      - cs_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U content -d content_studio"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    volumes:
+      - cs_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  cs_pg_data:
+  cs_redis_data:
