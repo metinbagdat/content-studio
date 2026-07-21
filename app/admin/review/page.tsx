@@ -11,40 +11,52 @@ type Item = {
   source?: { title: string }
 }
 
-function headers(key: string): HeadersInit {
-  return { 'Content-Type': 'application/json', 'x-admin-key': key }
+function adminHeaders(key: string): HeadersInit {
+  return { 'x-admin-key': key }
 }
 
 export default function ReviewPage() {
   const [adminKey, setAdminKey] = useState('')
   const [items, setItems] = useState<Item[]>([])
   const [msg, setMsg] = useState('')
+  const [showAll, setShowAll] = useState(false)
 
   const load = useCallback(async () => {
-    if (!adminKey) return
-    const res = await fetch('/api/content?status=IN_REVIEW', { headers: headers(adminKey) })
+    if (!adminKey.trim()) {
+      setMsg('Admin API key gir — .env içindeki ADMIN_API_KEY ile aynı olmalı (varsayılan: dev-admin-change-me)')
+      setItems([])
+      return
+    }
+    const q = showAll ? '' : '?status=IN_REVIEW'
+    const res = await fetch(`/api/content${q}`, { headers: adminHeaders(adminKey), cache: 'no-store' })
     if (!res.ok) {
-      setMsg('Yetkisiz')
+      const err = await res.json().catch(() => ({}))
+      setMsg(`API hatası ${res.status}: ${err.error || 'Yetkisiz — key yanlış veya npm run dev yeniden başlat'}`)
+      setItems([])
       return
     }
     const data = await res.json()
     setItems(data.items || [])
-    setMsg('')
-  }, [adminKey])
+    setMsg(data.items?.length ? `${data.items.length} kayıt` : 'IN_REVIEW kayıt yok (Tümünü göster dene veya pipeline tekrar çalıştır)')
+  }, [adminKey, showAll])
 
   useEffect(() => {
     const saved = localStorage.getItem('cs_admin_key')
     if (saved) setAdminKey(saved)
+    else setAdminKey('dev-admin-change-me')
   }, [])
 
   useEffect(() => {
-    if (adminKey) load()
-  }, [adminKey, load])
+    if (adminKey) {
+      localStorage.setItem('cs_admin_key', adminKey)
+      load()
+    }
+  }, [adminKey, showAll, load])
 
   async function act(id: string, action: 'approve' | 'reject') {
     const res = await fetch('/api/content', {
       method: 'POST',
-      headers: headers(adminKey),
+      headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey },
       body: JSON.stringify({ id, action }),
     })
     if (!res.ok) {
@@ -70,6 +82,10 @@ export default function ReviewPage() {
         <button type="button" className="secondary" onClick={load}>
           Yenile
         </button>
+        <label className="row muted" style={{ marginBottom: 0 }}>
+          <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} />
+          Tümünü göster
+        </label>
       </div>
       {msg ? <p className="muted">{msg}</p> : null}
 
