@@ -1,10 +1,14 @@
 /**
  * Seed + full pipeline from egitim.today blog: "Zamanı Zafere..."
- * Usage: npx tsx --env-file=.env scripts/run-zaman-pipeline.ts
+ *
+ * Usage:
+ *   npx tsx --env-file=.env scripts/run-zaman-pipeline.ts
+ *   npx tsx --env-file=.env scripts/run-zaman-pipeline.ts --fresh   # eski IN_REVIEW sil, yeniden üret
  */
 
 import { prisma } from '../lib/prisma'
 import { createPipeline, processPipeline } from '../lib/pipeline'
+import { llmModeLabel } from '../lib/ai/llmClient'
 
 const TITLE = 'Zamanı Zafere Dönüştürmek: Planlama Bilinciyle Geleceği İnşa Etmek'
 
@@ -44,9 +48,13 @@ Zamanı planlamak, kendimize yaptığımız en büyük yatırımdır. Her planl�
 Kaynak: https://www.egitim.today/blog/zamani-zafere-donusturmek
 `.trim()
 
+const fresh = process.argv.includes('--fresh')
+
 async function main() {
-  const hasAi = Boolean(process.env.OPENAI_API_KEY?.trim())
-  console.log(`AI mode: ${hasAi ? 'OPENAI/Groq' : 'mock (set OPENAI_API_KEY for LLM)'}`)
+  console.log(`AI mode: ${llmModeLabel()}`)
+  if (llmModeLabel().startsWith('mock')) {
+    console.log('  Groq (önerilen): GROQ_API_KEY=gsk_...  https://console.groq.com/keys')
+  }
 
   const existing = await prisma.contentSource.findFirst({
     where: { title: TITLE },
@@ -63,7 +71,16 @@ async function main() {
       },
     }))
 
-  console.log('Source:', source.id, source.title.slice(0, 50))
+  if (fresh) {
+    const removed = await prisma.derivedContent.deleteMany({
+      where: { sourceId: source.id, status: { in: ['DRAFT', 'IN_REVIEW'] } },
+    })
+    console.log(`--fresh: ${removed.count} eski taslak silindi`)
+  }
+
+  console.log('Source:', source.id)
+
+  const batchStart = new Date()
 
   const pipeline = await createPipeline(source.id, {
     platforms: ['TWITTER', 'LINKEDIN'],
@@ -77,20 +94,24 @@ async function main() {
   await processPipeline(pipeline.id)
 
   const derived = await prisma.derivedContent.findMany({
-    where: { sourceId: source.id },
-    orderBy: { createdAt: 'asc' },
-    select: { id: true, contentType: true, title: true, status: true, content: true },
+    where: { sourceId: source.id, createdAt: { gte: batchStart } },
+    orderBy: { contentType: 'asc' },
+    select: { id: true, contentType: true, title: true, status: true, content: true, metadata: true },
   })
 
-  console.log('\n=== Derived content (IN_REVIEW) ===\n')
+  console.log(`\n=== Bu batch: ${derived.length} içerik (${derived[0]?.metadata && typeof derived[0].metadata === 'object' && (derived[0].metadata as { mock?: boolean }).mock ? 'mock' : 'LLM'}) ===\n`)
   for (const d of derived) {
     console.log(`--- ${d.contentType} ---`)
-    console.log(d.title)
-    console.log(d.content.slice(0, 500) + (d.content.length > 500 ? '…' : ''))
+    console.log(d.content.slice(0, 600) + (d.content.length > 600 ? '…' : ''))
     console.log('')
   }
 
-  console.log(`Pipeline ${pipeline.id} COMPLETED. Review: http://localhost:3100/admin/review`)
+  const total = await prisma.derivedContent.count({ where: { sourceId: source.id } })
+  if (total > derived.length) {
+    console.log(`Not: Toplam ${total} kayıt var (eski batch'ler). Temizlemek için: --fresh`)
+  }
+
+  console.log(`Pipeline ${pipeline.id} COMPLETED → http://localhost:3100/admin/review`)
 }
 
 main()

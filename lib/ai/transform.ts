@@ -1,6 +1,6 @@
-import OpenAI from 'openai'
 import { ContentType } from '@prisma/client'
 import { brandCta } from '../auth'
+import { resolveLlm } from './llmClient'
 
 export type TransformKind =
   | 'VIDEO_SCRIPT'
@@ -10,14 +10,6 @@ export type TransformKind =
   | 'MARCH_LYRICS'
   | 'SONG_LYRICS'
 
-function client(): OpenAI | null {
-  const key = process.env.OPENAI_API_KEY
-  if (!key) return null
-  return new OpenAI({
-    apiKey: key,
-    baseURL: process.env.OPENAI_BASE_URL || undefined,
-  })
-}
 
 function mockTransform(kind: TransformKind, title: string, content: string) {
   const snippet = content.slice(0, 280).replace(/\s+/g, ' ').trim()
@@ -114,10 +106,8 @@ export async function generateTransform(
   title: string,
   article: string,
 ): Promise<{ title: string; content: string; metadata: Record<string, unknown> }> {
-  const openai = client()
-  if (!openai) return mockTransform(kind, title, article)
-
-  const model = process.env.OPENAI_MODEL || 'gpt-4o-mini'
+  const { client: llm, provider, model } = resolveLlm()
+  if (!llm) return mockTransform(kind, title, article)
   const prompts: Record<TransformKind, string> = {
     SOCIAL_CAPTION: `Write a Turkish social caption for X and LinkedIn promoting egitim.today. Include CTA. Article title: ${title}\n\n${article.slice(0, 3000)}`,
     VIDEO_SCRIPT: `Create a 60s educational short-form video script (JSON: hook, scenes[], durationSec) in Turkish for egitim.today. Title: ${title}\n\n${article.slice(0, 3000)}`,
@@ -127,7 +117,7 @@ export async function generateTransform(
     SONG_LYRICS: `Write short song lyrics JSON (verse1, chorus) in Turkish inspired by: ${title}`,
   }
 
-  const res = await openai.chat.completions.create({
+  const res = await llm.chat.completions.create({
     model,
     messages: [
       {
@@ -144,7 +134,7 @@ export async function generateTransform(
   return {
     title: `${kind}: ${title}`,
     content: text + (kind === 'SOCIAL_CAPTION' ? brandCta() : ''),
-    metadata: { model, mock: false },
+    metadata: { model, provider, mock: false },
   }
 }
 
