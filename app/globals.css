@@ -193,6 +193,20 @@ button:disabled {
   color: var(--warn);
 }
 
+.badge.danger {
+  background: rgba(243, 18, 96, 0.15);
+  color: var(--danger);
+}
+
+.panel.approved {
+  border-color: rgba(62, 207, 142, 0.35);
+}
+
+.panel.rejected {
+  border-color: rgba(243, 18, 96, 0.35);
+  opacity: 0.85;
+}
+
 .muted {
   color: var(--muted);
   font-size: 0.85rem;
