@@ -56,6 +56,14 @@ Admin key = `ADMIN_API_KEY` in `.env`.
 4. Connect dry-run or OAuth accounts on `/admin/social`
 5. Publish now or schedule; calendar on `/admin/calendar`
 
+## Faz 2a — Podcast MP3
+
+1. Approve `PODCAST_SCRIPT` on `/admin/review`
+2. **Ses üret** → `/admin/media` → MP3 + in-browser player
+3. TTS: Edge (free) or `TTS_PROVIDER=openai` + real OpenAI key (not Groq)
+
+See [docs/FAZ2_MEDIA.md](docs/FAZ2_MEDIA.md) for video/song roadmap.
+
 ## OAuth
 
 Set `X_CLIENT_ID` / `X_CLIENT_SECRET` and LinkedIn equivalents for real publish. Without them, dry-run accounts publish mock platform IDs.

@@ -385,6 +385,11 @@ export default function ReviewPage() {
                       Tekrar incelemeye al
                     </button>
                   ) : null}
+                  {item.contentType === 'PODCAST_SCRIPT' ? (
+                    <a className="btn secondary" href={`/admin/media?derived=${item.id}`} style={{ textDecoration: 'none', padding: '0.55rem 0.9rem', borderRadius: 8 }}>
+                      Ses üret
+                    </a>
+                  ) : null}
                   {item.status !== 'PUBLISHED' ? (
                     <button type="button" className="danger" disabled={busyId === item.id} onClick={() => remove(item.id)}>
                       Sil

@@ -17,6 +17,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <nav>
             <a href="/admin">Pipeline</a>
             <a href="/admin/review">Onay</a>
+            <a href="/admin/media">Medya</a>
             <a href="/admin/social">Sosyal</a>
             <a href="/admin/calendar">Takvim</a>
             <a href="/docs/social-setup" className="muted">SM rehber</a>
