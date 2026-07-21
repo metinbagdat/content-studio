@@ -1,105 +1,105 @@
 # Sosyal medya hesapları — egitim.today (Content Studio)
 
-Henüz hesap yoksa sırayla aç. Content Studio’da OAuth env dolunca `/admin/social` üzerinden bağlanırsın.
+OAuth env dolunca `/admin/social` → **OAuth ile X/LinkedIn bağla**.
 
-## Öncelik sırası (Faz 1)
+## Hızlı checklist
 
-| Platform | Hesap adı önerisi | Neden önce |
-|----------|-------------------|------------|
-| **LinkedIn** | egitim.today veya LearnCon | Eğitim B2B, güven, uzun metin |
-| **X (Twitter)** | @egitimtoday | Kısa tanıtım, blog linkleri |
-| YouTube | egitim.today | Faz 2 video |
-| TikTok | egitim.today | Faz 2 kısa video |
-| Facebook | egitim.today | Faz 3 |
-| Instagram | egitim.today | Faz 3 |
+- [ ] LinkedIn şirket sayfası oluştur (egitim.today)
+- [ ] LinkedIn Developer app + Products: Share on LinkedIn
+- [ ] X @egitimtoday + Developer Portal OAuth 2.0 app
+- [ ] `.env` / `.env.local` client ID/secret + callback URL
+- [ ] `npm run dev` yeniden başlat
+- [ ] `/admin/social` → OAuth bağla → caption onayla → yayınla
 
 ---
 
-## 1. LinkedIn (Şirket sayfası + kişisel)
+## Öncelik sırası (Faz 1)
 
-1. https://www.linkedin.com/ → kayıt / giriş  
-2. **Sayfa oluştur:** Menü → **Pages** → **Create a Company Page**  
-   - İsim: **egitim.today** veya **LearnCon**  
-   - Website: https://egitim.today  
-   - Sektör: E-Learning / Education  
-3. Logo + kapak (egitim.today markası)  
-4. **Developer app (OAuth için):**  
-   - https://www.linkedin.com/developers/apps → **Create app**  
-   - App adı: `Content Studio egitim`  
-   - LinkedIn Page: az önce oluşturduğun sayfa  
-   - **Auth** → Redirect URL:  
-     `http://localhost:3100/api/social/callback/linkedin`  
-     (prod: `https://studio.egitim.today/...` veya deploy URL)  
-   - Products: **Share on LinkedIn**, **Sign In with LinkedIn**  
-   - **Client ID** + **Client Secret** → `content-studio/.env`:
-     ```env
-     LINKEDIN_CLIENT_ID="..."
-     LINKEDIN_CLIENT_SECRET="..."
-     LINKEDIN_CALLBACK_URL="http://localhost:3100/api/social/callback/linkedin"
-     ```
-5. Content Studio: `/admin/social` → OAuth URL veya dry-run test
+| Platform | Hesap | OAuth env |
+|----------|-------|-----------|
+| **LinkedIn** | egitim.today şirket sayfası | `LINKEDIN_*` + opsiyonel `LINKEDIN_ORGANIZATION_ID` |
+| **X** | @egitimtoday | `X_*` |
+
+---
+
+## 1. LinkedIn
+
+### Hesap + sayfa
+1. https://www.linkedin.com/ → giriş
+2. **Pages → Create a Company Page** — egitim.today, https://egitim.today
+
+### Developer app
+1. https://www.linkedin.com/developers/apps → **Create app**
+2. App adı: `Content Studio egitim` · bağlı LinkedIn Page seç
+3. **Auth** tab → Redirect URLs:
+   ```
+   http://localhost:3100/api/social/callback/linkedin
+   ```
+4. **Products** → **Share on LinkedIn** + **Sign In with LinkedIn using OpenID Connect**
+5. Client ID + Secret → `.env`:
+   ```env
+   LINKEDIN_CLIENT_ID="..."
+   LINKEDIN_CLIENT_SECRET="..."
+   LINKEDIN_CALLBACK_URL="http://localhost:3100/api/social/callback/linkedin"
+   ```
+
+### Şirket sayfasına post (önerilen)
+1. LinkedIn Page → **Admin tools** → sayfa URL’sindeki sayı veya About → **Page ID**
+2. `.env`:
+   ```env
+   LINKEDIN_ORGANIZATION_ID="12345678"
+   ```
+3. OAuth scope otomatik: `w_organization_social` — postlar **egitim.today** sayfasından gider
+
+Kişisel post için `LINKEDIN_ORGANIZATION_ID` boş bırak.
 
 ---
 
 ## 2. X (Twitter)
 
-1. https://x.com/i/flow/signup → **@egitimtoday** (veya müsait handle)  
-2. Profil: bio + https://egitim.today link  
-3. **Developer Portal:** https://developer.x.com/en/portal/dashboard  
-   - Proje + App oluştur  
-   - **User authentication settings** → OAuth 2.0  
-   - Callback: `http://localhost:3100/api/social/callback/twitter`  
-   - Scopes: `tweet.read`, `tweet.write`, `users.read`, `offline.access`  
+1. https://x.com → **@egitimtoday** (veya müsait handle)
+2. https://developer.x.com/en/portal/dashboard → Project + App
+3. **User authentication settings** → OAuth 2.0:
+   - Type: Web App
+   - Callback: `http://localhost:3100/api/social/callback/twitter`
+   - Scopes: `tweet.read`, `tweet.write`, `users.read`, `offline.access`
 4. `.env`:
    ```env
    X_CLIENT_ID="..."
    X_CLIENT_SECRET="..."
    X_CALLBACK_URL="http://localhost:3100/api/social/callback/twitter"
    ```
-5. Free tier API limitlerini kontrol et (aylık post kotası)
+
+Content Studio X OAuth **PKCE S256** kullanır (Twitter zorunluluğu).
 
 ---
 
-## 3. YouTube (Faz 2 — video)
+## 3. Content Studio’da bağlama
 
-1. Google hesabı → https://www.youtube.com/create_channel  
-2. Kanal adı: **egitim.today**  
-3. Google Cloud Console → OAuth + YouTube Data API v3  
-4. Content Studio Faz 2’de upload eklenecek
+1. Env kaydet → `npm run dev` restart
+2. http://localhost:3100/admin/social
+3. **OAuth ile X bağla** / **OAuth ile LinkedIn bağla**
+4. Callback sonrası yeşil **oauth** rozeti görünür
+5. Onaylı caption varsa taslaklar otomatik senkron (`sync-drafts`)
 
----
-
-## 4. TikTok (Faz 2)
-
-1. https://www.tiktok.com/signup — işletme hesabı tercih et  
-2. https://developers.tiktok.com/ → app + Content Posting API (onay süreci uzun olabilir)
+### Dry-run (hesap/API yokken)
+- **Dry-run X/LinkedIn** → mock publish (gerçek SM’de görünmez)
 
 ---
 
-## 5. Facebook / Instagram (Faz 3)
+## 4. Prod callback (ileride)
 
-1. Meta Business Suite: https://business.facebook.com/  
-2. Facebook Sayfa + Instagram profesyonel hesap bağla  
-3. Meta for Developers → app → Pages / Instagram Graph API
-
----
-
-## Content Studio’da test (hesap yokken)
-
-OAuth olmadan:
-
-1. `/admin/social` → **Dry-run X bağla** / **Dry-run LinkedIn bağla**  
-2. `/admin/review` → SOCIAL_CAPTION **Onayla**  
-3. **Şimdi yayınla** → mock platform ID (gerçek SM’de görünmez)
-
-Gerçek yayın için yukarıdaki OAuth env + hesaplar şart.
+Deploy URL’nize göre güncelle:
+```
+https://studio.egitim.today/api/social/callback/twitter
+https://studio.egitim.today/api/social/callback/linkedin
+```
+Developer portal + LinkedIn app’te aynı URL’leri ekle.
 
 ---
 
-## İçerik stratejisi (bu makale)
+## İçerik akışı
 
 Kaynak: [Zamanı Zafere Dönüştürmek](https://www.egitim.today/blog/zamani-zafere-donusturmek)
 
-Pipeline üretir: caption, video script, podcast script, blog SEO, marş, şarkı sözü → `/admin/review` onay → SM’ye schedule.
-
-CTA her postta: **https://egitim.today**
+Pipeline → `/admin/review` onay → `/admin/social` yayın · CTA: **https://egitim.today**

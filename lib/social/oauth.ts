@@ -1,26 +1,32 @@
-import { SocialPlatform } from '@prisma/client'
+import { SocialPlatform, type Prisma } from '@prisma/client'
 import { prisma } from '../prisma'
 import { encryptSecret } from '../crypto'
+import { linkedinOAuthScopes } from './config'
 
 /**
  * OAuth helpers for X + LinkedIn.
  * Without client credentials, connectAccount stores a dry-run account for local testing.
  */
 
-export function getAuthUrl(platform: 'TWITTER' | 'LINKEDIN', state: string): string {
+export function getAuthUrl(
+  platform: 'TWITTER' | 'LINKEDIN',
+  state: string,
+  codeChallenge?: string,
+): string {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3100'
   if (platform === 'TWITTER') {
     const clientId = process.env.X_CLIENT_ID
     const redirect = process.env.X_CALLBACK_URL || `${appUrl}/api/social/callback/twitter`
     if (!clientId) return `${appUrl}/admin/social?dryRun=twitter&state=${state}`
+    const challenge = codeChallenge || 'challenge'
     const params = new URLSearchParams({
       response_type: 'code',
       client_id: clientId,
       redirect_uri: redirect,
       scope: 'tweet.read tweet.write users.read offline.access',
       state,
-      code_challenge: 'challenge',
-      code_challenge_method: 'plain',
+      code_challenge: challenge,
+      code_challenge_method: codeChallenge ? 'S256' : 'plain',
     })
     return `https://twitter.com/i/oauth2/authorize?${params}`
   }
@@ -33,7 +39,7 @@ export function getAuthUrl(platform: 'TWITTER' | 'LINKEDIN', state: string): str
     client_id: clientId,
     redirect_uri: redirect,
     state,
-    scope: 'openid profile w_member_social',
+    scope: linkedinOAuthScopes(),
   })
   return `https://www.linkedin.com/oauth/v2/authorization?${params}`
 }
@@ -66,6 +72,7 @@ export async function upsertOAuthAccount(opts: {
   accessToken: string
   refreshToken?: string
   tokenExpiry?: Date
+  config?: Prisma.InputJsonValue
 }) {
   return prisma.socialMediaAccount.upsert({
     where: {
@@ -77,6 +84,7 @@ export async function upsertOAuthAccount(opts: {
       refreshToken: opts.refreshToken ? encryptSecret(opts.refreshToken) : undefined,
       tokenExpiry: opts.tokenExpiry,
       isActive: true,
+      config: opts.config,
     },
     create: {
       platform: opts.platform,
@@ -86,6 +94,14 @@ export async function upsertOAuthAccount(opts: {
       refreshToken: opts.refreshToken ? encryptSecret(opts.refreshToken) : undefined,
       tokenExpiry: opts.tokenExpiry,
       isActive: true,
+      config: opts.config,
     },
+  })
+}
+
+export async function deactivateAccount(accountId: string) {
+  return prisma.socialMediaAccount.update({
+    where: { id: accountId },
+    data: { isActive: false },
   })
 }

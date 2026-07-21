@@ -3,7 +3,9 @@ import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/auth'
 import { schedulePost, syncSocialDraftsFromApprovedCaptions } from '@/lib/pipeline'
 import { publishPost } from '@/lib/social/publish'
-import { getAuthUrl, upsertDryRunAccount } from '@/lib/social/oauth'
+import { getAuthUrl, upsertDryRunAccount, deactivateAccount } from '@/lib/social/oauth'
+import { oauthPlatformStatus } from '@/lib/social/config'
+import { generatePkce, pkceCookieName } from '@/lib/social/pkce'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,14 +22,21 @@ export async function GET(req: NextRequest) {
     }),
   ])
   return NextResponse.json({
-    accounts: accounts.map((a) => ({
-      id: a.id,
-      platform: a.platform,
-      accountName: a.accountName,
-      accountId: a.accountId,
-      isActive: a.isActive,
-      lastSyncAt: a.lastSyncAt,
-    })),
+    oauth: oauthPlatformStatus(),
+    accounts: accounts.map((a) => {
+      const cfg = a.config && typeof a.config === 'object' ? (a.config as Record<string, unknown>) : {}
+      return {
+        id: a.id,
+        platform: a.platform,
+        accountName: a.accountName,
+        accountId: a.accountId,
+        isActive: a.isActive,
+        lastSyncAt: a.lastSyncAt,
+        dryRun: Boolean(cfg.dryRun) || a.accountId.startsWith('dryrun_'),
+        oauth: Boolean(cfg.oauth),
+        tokenExpiry: a.tokenExpiry,
+      }
+    }),
     posts,
   })
 }
@@ -45,7 +54,33 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'platform TWITTER|LINKEDIN' }, { status: 400 })
     }
     const state = crypto.randomUUID()
-    return NextResponse.json({ url: getAuthUrl(platform, state), state })
+    const platformKey = platform === 'TWITTER' ? 'twitter' : 'linkedin'
+    let url: string
+    let pkceVerifier: string | undefined
+    if (platform === 'TWITTER' && process.env.X_CLIENT_ID) {
+      const pkce = generatePkce()
+      pkceVerifier = pkce.verifier
+      url = getAuthUrl(platform as 'TWITTER' | 'LINKEDIN', state, pkce.challenge)
+    } else {
+      url = getAuthUrl(platform as 'TWITTER' | 'LINKEDIN', state)
+    }
+    const response = NextResponse.json({ url, state })
+    if (pkceVerifier) {
+      response.cookies.set(pkceCookieName(platformKey), pkceVerifier, {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: `/api/social/callback/${platformKey}`,
+        maxAge: 600,
+      })
+    }
+    return response
+  }
+
+  if (action === 'disconnect') {
+    const accountId = String(body.accountId || '')
+    if (!accountId) return NextResponse.json({ error: 'accountId required' }, { status: 400 })
+    const account = await deactivateAccount(accountId)
+    return NextResponse.json({ account })
   }
 
   if (action === 'dry-run-connect') {

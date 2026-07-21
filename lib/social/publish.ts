@@ -1,5 +1,6 @@
 import { prisma } from '../prisma'
-import { decryptSecret } from '../crypto'
+import { linkedinAuthorUrn } from './config'
+import { getValidAccessToken } from './tokenRefresh'
 
 /**
  * Publish a scheduled/draft social post.
@@ -20,15 +21,13 @@ export async function publishPost(postId: string) {
 
   try {
     let platformPostId: string
+    const accessToken = await getValidAccessToken(post.account)
 
     if (post.platform === 'TWITTER') {
-      platformPostId = await publishTwitter(post.postContent, decryptSecret(post.account.accessToken))
+      platformPostId = await publishTwitter(post.postContent, accessToken)
     } else if (post.platform === 'LINKEDIN') {
-      platformPostId = await publishLinkedIn(
-        post.postContent,
-        decryptSecret(post.account.accessToken),
-        post.account.accountId,
-      )
+      const author = linkedinAuthorUrn(post.account.accountId, post.account.config)
+      platformPostId = await publishLinkedIn(post.postContent, accessToken, author)
     } else {
       throw new Error(`Platform not implemented in Faz 1: ${post.platform}`)
     }
@@ -79,11 +78,7 @@ async function publishTwitter(text: string, accessToken: string): Promise<string
   return data.data?.id || `x_${Date.now()}`
 }
 
-async function publishLinkedIn(
-  text: string,
-  accessToken: string,
-  authorUrn: string,
-): Promise<string> {
+async function publishLinkedIn(text: string, accessToken: string, authorUrn: string): Promise<string> {
   if (!accessToken || accessToken === 'dry-run' || !process.env.LINKEDIN_CLIENT_ID) {
     return `mock_li_${Date.now()}`
   }
