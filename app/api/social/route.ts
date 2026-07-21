@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/auth'
-import { schedulePost } from '@/lib/pipeline'
+import { schedulePost, syncSocialDraftsFromApprovedCaptions } from '@/lib/pipeline'
 import { publishPost } from '@/lib/social/publish'
 import { getAuthUrl, upsertDryRunAccount } from '@/lib/social/oauth'
 
@@ -57,7 +57,13 @@ export async function POST(req: NextRequest) {
       platform as 'TWITTER' | 'LINKEDIN',
       `Dry-run ${platform}`,
     )
-    return NextResponse.json({ account })
+    const sync = await syncSocialDraftsFromApprovedCaptions()
+    return NextResponse.json({ account, sync })
+  }
+
+  if (action === 'sync-drafts') {
+    const sync = await syncSocialDraftsFromApprovedCaptions()
+    return NextResponse.json(sync)
   }
 
   if (action === 'schedule') {

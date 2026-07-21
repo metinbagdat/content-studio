@@ -128,6 +128,43 @@ export async function processPipeline(pipelineId: string) {
   }
 }
 
+export async function createSocialDraftsForCaption(derivedId: string, postContent: string) {
+  const accounts = await prisma.socialMediaAccount.findMany({
+    where: { isActive: true, platform: { in: ['TWITTER', 'LINKEDIN'] } },
+  })
+  const created = []
+  for (const account of accounts) {
+    const existing = await prisma.socialMediaPost.findFirst({
+      where: { derivedContentId: derivedId, accountId: account.id },
+    })
+    if (existing) continue
+    const post = await prisma.socialMediaPost.create({
+      data: {
+        derivedContentId: derivedId,
+        accountId: account.id,
+        platform: account.platform,
+        postContent,
+        status: 'DRAFT',
+      },
+    })
+    created.push(post)
+  }
+  return created
+}
+
+/** Backfill drafts when caption was approved before accounts were connected. */
+export async function syncSocialDraftsFromApprovedCaptions() {
+  const captions = await prisma.derivedContent.findMany({
+    where: { contentType: 'SOCIAL_CAPTION', status: { in: ['APPROVED', 'PUBLISHED'] } },
+  })
+  let created = 0
+  for (const caption of captions) {
+    const posts = await createSocialDraftsForCaption(caption.id, caption.content)
+    created += posts.length
+  }
+  return { captions: captions.length, draftsCreated: created }
+}
+
 export async function setDerivedStatus(
   id: string,
   status: Extract<ContentStatus, 'APPROVED' | 'REJECTED' | 'IN_REVIEW'>,
@@ -142,21 +179,7 @@ export async function setDerivedStatus(
   })
 
   if (status === 'APPROVED' && derived.contentType === 'SOCIAL_CAPTION') {
-    // Prepare draft social posts for connected active accounts (still SCHEDULED/DRAFT — no auto publish)
-    const accounts = await prisma.socialMediaAccount.findMany({
-      where: { isActive: true, platform: { in: ['TWITTER', 'LINKEDIN'] } },
-    })
-    for (const account of accounts) {
-      await prisma.socialMediaPost.create({
-        data: {
-          derivedContentId: derived.id,
-          accountId: account.id,
-          platform: account.platform,
-          postContent: derived.content,
-          status: 'DRAFT',
-        },
-      })
-    }
+    await createSocialDraftsForCaption(derived.id, derived.content)
   }
 
   return derived

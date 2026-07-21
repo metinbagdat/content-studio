@@ -39,6 +39,21 @@ export default function SocialPage() {
     if (adminKey) load()
   }, [adminKey, load])
 
+  async function syncDrafts() {
+    const res = await fetch('/api/social', {
+      method: 'POST',
+      headers: headers(adminKey, true),
+      body: JSON.stringify({ action: 'sync-drafts' }),
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      setMsg(data.error || 'Senkron başarısız')
+      return
+    }
+    setMsg(`${data.draftsCreated} taslak oluşturuldu (${data.captions} onaylı caption)`)
+    await load()
+  }
+
   async function dryConnect(platform: 'TWITTER' | 'LINKEDIN') {
     const res = await fetch('/api/social', {
       method: 'POST',
@@ -50,7 +65,7 @@ export default function SocialPage() {
       setMsg(data.error || 'fail')
       return
     }
-    setMsg(`${platform} dry-run bağlı`)
+    setMsg(res.ok ? `${platform} dry-run bağlı · ${data.sync?.draftsCreated ?? 0} taslak` : data.error || 'fail')
     await load()
   }
 
@@ -162,6 +177,9 @@ export default function SocialPage() {
         </button>
         <button type="button" onClick={() => dryConnect('LINKEDIN')}>
           Dry-run LinkedIn bağla
+        </button>
+        <button type="button" className="secondary" onClick={syncDrafts}>
+          Taslakları senkronize et
         </button>
       </div>
 
