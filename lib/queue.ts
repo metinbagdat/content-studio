@@ -6,13 +6,22 @@ const QUEUE_SOCIAL = 'social-publishing'
 
 let connection: IORedis | null = null
 
+function redisEnabled(): boolean {
+  const url = process.env.REDIS_URL
+  return Boolean(url && url.trim().length > 0)
+}
+
 function redisUrl(): string {
-  return process.env.REDIS_URL || 'redis://localhost:6380'
+  return process.env.REDIS_URL?.trim() || 'redis://localhost:6380'
 }
 
 export function getRedis(): IORedis {
   if (!connection) {
-    connection = new IORedis(redisUrl(), { maxRetriesPerRequest: null })
+    connection = new IORedis(redisUrl(), {
+      maxRetriesPerRequest: null,
+      connectTimeout: 3000,
+      lazyConnect: true,
+    })
   }
   return connection
 }
@@ -25,33 +34,43 @@ function socialQueue() {
   return new Queue(QUEUE_SOCIAL, { connection: getRedis() })
 }
 
-/** Enqueue pipeline processing. If Redis is down, DB QueueJob still exists for poll fallback. */
+/** Enqueue pipeline processing. Skipped when REDIS_URL empty (Supabase-only mode). */
 export async function enqueuePipelineJob(pipelineId: string): Promise<void> {
+  if (!redisEnabled()) return
   try {
-    await pipelineQueue().add(
+    const q = pipelineQueue()
+    await getRedis().connect()
+    await q.add(
       'process-pipeline',
       { pipelineId },
       { attempts: 3, removeOnComplete: 100, removeOnFail: 50 } satisfies JobsOptions,
     )
   } catch (err) {
-    console.warn('[queue] Redis enqueue failed (pipeline); worker poll can pick DB job', err)
+    console.warn('[queue] Redis enqueue skipped (pipeline)', err)
   }
 }
 
 export async function enqueuePublishJob(postId: string, scheduledAt?: Date): Promise<void> {
+  if (!redisEnabled()) return
   try {
     const delay = scheduledAt ? Math.max(0, scheduledAt.getTime() - Date.now()) : 0
-    await socialQueue().add(
+    const q = socialQueue()
+    await getRedis().connect()
+    await q.add(
       'publish-post',
       { postId },
       { attempts: 3, delay, removeOnComplete: 100, removeOnFail: 50 },
     )
   } catch (err) {
-    console.warn('[queue] Redis enqueue failed (publish)', err)
+    console.warn('[queue] Redis enqueue skipped (publish)', err)
   }
 }
 
 export function startWorkers() {
+  if (!redisEnabled()) {
+    console.log('[worker] REDIS_URL empty — BullMQ disabled; DB poll only')
+    return null
+  }
   const pipelineWorker = new Worker(
     QUEUE_PIPELINE,
     async (job) => {

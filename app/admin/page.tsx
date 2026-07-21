@@ -23,6 +23,7 @@ export default function AdminPipelinePage() {
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [sourceId, setSourceId] = useState('')
+  const [includeMarchSong, setIncludeMarchSong] = useState(true)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
 
@@ -90,6 +91,7 @@ export default function AdminPipelinePage() {
         body: JSON.stringify({
           sourceId,
           platforms: ['TWITTER', 'LINKEDIN'],
+          includeMarchSong,
           runSync: true,
         }),
       })
@@ -148,7 +150,15 @@ export default function AdminPipelinePage() {
               </option>
             ))}
           </select>
-          <p className="muted">Platformlar: X + LinkedIn · autoPublish kapalı</p>
+          <p className="muted">Platformlar: X + LinkedIn · autoPublish kapalı · marş/şarkı dahil</p>
+          <label className="row" style={{ marginBottom: '0.75rem' }}>
+            <input
+              type="checkbox"
+              checked={includeMarchSong}
+              onChange={(e) => setIncludeMarchSong(e.target.checked)}
+            />
+            <span className="muted">Marş + şarkı sözü üret</span>
+          </label>
           <button type="button" disabled={busy || !sourceId} onClick={startPipeline}>
             Start Pipeline
           </button>

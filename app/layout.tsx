@@ -19,6 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <a href="/admin/review">Onay</a>
             <a href="/admin/social">Sosyal</a>
             <a href="/admin/calendar">Takvim</a>
+            <a href="/docs/social-setup" className="muted">SM rehber</a>
           </nav>
         </header>
         <main className="main">{children}</main>

@@ -212,7 +212,7 @@ button:disabled {
   display: flex;
   gap: 0.5rem;
   margin-bottom: 1rem;
-  align-items: end;
+  align-items: flex-end;
 }
 
 .keybar input {
