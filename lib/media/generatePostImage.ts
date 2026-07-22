@@ -82,6 +82,7 @@ export async function generatePostImage(derivedContentId: string) {
   const derived = await prisma.derivedContent.findUnique({
     where: { id: derivedContentId },
     include: {
+      source: true,
       mediaFiles: {
         where: { mediaType: 'IMAGE', processingStatus: 'COMPLETED' },
         orderBy: { createdAt: 'desc' },
@@ -94,6 +95,54 @@ export async function generatePostImage(derivedContentId: string) {
     throw new Error('Sadece SOCIAL_CAPTION için görsel üretilebilir')
   }
 
+  const meta =
+    derived.metadata && typeof derived.metadata === 'object'
+      ? (derived.metadata as Record<string, unknown>)
+      : {}
+
+  const partIndex = typeof meta.partIndex === 'number' ? meta.partIndex : 1
+  if (partIndex > 1 && typeof meta.seriesId === 'string') {
+    const lead = await prisma.derivedContent.findFirst({
+      where: {
+        sourceId: derived.sourceId,
+        contentType: 'SOCIAL_CAPTION',
+        metadata: { path: ['seriesId'], equals: meta.seriesId },
+        AND: { metadata: { path: ['partIndex'], equals: 1 } },
+      },
+      include: {
+        mediaFiles: {
+          where: { mediaType: 'IMAGE', processingStatus: 'COMPLETED' },
+          take: 1,
+        },
+      },
+    })
+    const leadUrl =
+      lead?.mediaFiles[0]?.fileUrl ||
+      (lead?.metadata && typeof lead.metadata === 'object'
+        ? (lead.metadata as Record<string, unknown>).imageUrl
+        : undefined)
+    if (typeof leadUrl === 'string' && leadUrl) {
+      if (lead?.mediaFiles[0]) {
+        return { media: lead.mediaFiles[0], reused: true, publicUrl: leadUrl }
+      }
+      await prisma.derivedContent.update({
+        where: { id: derivedContentId },
+        data: {
+          metadata: {
+            ...meta,
+            imageUrl: leadUrl,
+          } as Prisma.InputJsonValue,
+        },
+      })
+      return { media: null, reused: true, publicUrl: leadUrl }
+    }
+  }
+
+  const articleTitle =
+    typeof meta.articleTitle === 'string' && meta.articleTitle.trim()
+      ? meta.articleTitle.trim()
+      : derived.source.title
+
   const existing = derived.mediaFiles[0]
   if (existing) {
     return {
@@ -103,7 +152,7 @@ export async function generatePostImage(derivedContentId: string) {
     }
   }
 
-  const design = await extractPostImageDesign(derived.title, derived.content)
+  const design = await extractPostImageDesign(articleTitle, derived.content)
   const png = await designToPng(design)
 
   const media = await prisma.mediaFile.create({

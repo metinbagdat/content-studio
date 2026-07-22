@@ -1,53 +1,17 @@
 /**
- * Seed + full pipeline from egitim.today blog: "Zamanı Zafere..."
+ * Fetch blog from egitim.today + full content pipeline.
  *
  * Usage:
  *   npx tsx --env-file=.env scripts/run-zaman-pipeline.ts
- *   npx tsx --env-file=.env scripts/run-zaman-pipeline.ts --fresh   # eski IN_REVIEW sil, yeniden üret
+ *   npx tsx --env-file=.env scripts/run-zaman-pipeline.ts --fresh
  */
 
 import { prisma } from '../lib/prisma'
 import { createPipeline, processPipeline } from '../lib/pipeline'
 import { llmModeLabel } from '../lib/ai/llmClient'
+import { fetchEgitimTodayBlog } from '../lib/blog/fetchEgitimToday'
 
-const TITLE = 'Zamanı Zafere Dönüştürmek: Planlama Bilinciyle Geleceği İnşa Etmek'
-
-const CONTENT = `
-## Zamanı Zafere Dönüştürmek
-
-Zaman, durdurulamayan bir nehir gibi akıp gidiyor. İster ona sarılmaya çalışın, ister onunla savaşın; her saniye, geri dönüşü olmayan bir yolculuğa çıkarıyor bizi. Peki bu yolculukta ne yapıyoruz? Çoğu zaman, zamanın içinde sürükleniyor, onun akışına kapılıp gidiyoruz. Oysa, zamanı sadece yaşamak değil, onu inşa etmek de mümkün.
-
-Gelin, zamanı bir düşman gibi değil, bir müttefik gibi görmeyi deneyelim. Bu perspektif, sadece iş hayatında değil; ailemizde, ilişkilerimizde ve kendi iç dünyamızda nasıl bir dönüşüm yaratabileceğine odaklanıyor.
-
-## Zamanın Doğası: Durduramazsın, Ama Yönlendirebilirsin
-
-Bir saniyeyi durdurma gücümüz yok. Saatin yelkovanına ne kadar sımsıkı sarılsak da, dakikalar ilerlemeye devam eder. Zamanın akışını değiştiremesek de, içinde nereye gideceğimize karar verebiliriz.
-
-Zaman, tüketilecek bir boşluk değil; ekilecek bir tarladır. Bugün ektiğimiz düşünceler, alışkanlıklar ve eylemler, yarının hasadını belirler. Planlama, zamanı anlamlı kılmanın aracıdır.
-
-## Gelecek Endişesi mi, Planlama Bilinci mi?
-
-"Bugün, geleceğimi inşa etmek için ne yaptım?" sorusu, kaygıyı eyleme dönüştürür. Planlama bilinci, geleceği pasif beklemek değil; onu aktif olarak şekillendirmektir.
-
-## Gürültünün Kalabalığında Zamanı Duymak
-
-Gürültü yalnızca dışarıdaki ses değildir: bildirimler, e-postalar, iç sesler... Planlama, hangi saatlerde tek işe odaklanacağımıza karar verdiğimizde gürültüyü arka plana iter.
-
-## Egonun Gölgesinden Çıkmak
-
-Her yaptığımız iş, kendimize ayırdığımız zamandır. İşi kaliteli yapmak, potansiyelimize duyduğumuz saygının ifadesidir.
-
-## "Ne Öğreneceğim" Değil, "Hangi Saatte, Ne Kadar Kaliteli Var Olacağım"
-
-Öğrenmek, bilgiye değil ona verdiğimiz kaliteli zamana bağlıdır. Planlama, o "kalma" süresini belirlememize yardımcı olur.
-
-## Öz-Yatırım Bilinci
-
-Zamanı planlamak, kendimize yaptığımız en büyük yatırımdır. Her planlı an, gelecekteki pişmanlıklardan korur; çünkü o anı bilinçli yaşamışızdır.
-
-Kaynak: https://www.egitim.today/blog/zamani-zafere-donusturmek
-`.trim()
-
+const BLOG_SLUG = 'zamani-zafere-donusturmek'
 const fresh = process.argv.includes('--fresh')
 
 async function main() {
@@ -56,26 +20,45 @@ async function main() {
     console.log('  Groq (önerilen): GROQ_API_KEY=gsk_...  https://console.groq.com/keys')
   }
 
+  console.log(`Fetching https://www.egitim.today/blog/${BLOG_SLUG} ...`)
+  const blog = await fetchEgitimTodayBlog(BLOG_SLUG)
+  console.log(`Title: ${blog.title}`)
+  console.log(`Sections: ${blog.contentMarkdown.split(/\n## /).length - 1} h2 blocks`)
+
   const existing = await prisma.contentSource.findFirst({
-    where: { title: TITLE },
+    where: { tags: { has: `blog:${BLOG_SLUG}` } },
   })
 
-  const source =
-    existing ??
-    (await prisma.contentSource.create({
-      data: {
-        title: TITLE,
-        content: CONTENT,
-        category: 'motivasyon',
-        tags: ['zaman', 'planlama', 'egitim.today', 'blog'],
-      },
-    }))
+  const source = existing
+    ? await prisma.contentSource.update({
+        where: { id: existing.id },
+        data: {
+          title: blog.title,
+          content: blog.contentMarkdown,
+          tags: blog.tags,
+          category: 'motivasyon',
+        },
+      })
+    : await prisma.contentSource.create({
+        data: {
+          title: blog.title,
+          content: blog.contentMarkdown,
+          category: 'motivasyon',
+          tags: blog.tags,
+        },
+      })
 
   if (fresh) {
-    const removed = await prisma.derivedContent.deleteMany({
+    const removedDerived = await prisma.derivedContent.deleteMany({
       where: { sourceId: source.id, status: { in: ['DRAFT', 'IN_REVIEW'] } },
     })
-    console.log(`--fresh: ${removed.count} eski taslak silindi`)
+    const removedPosts = await prisma.socialMediaPost.deleteMany({
+      where: {
+        derivedContent: { sourceId: source.id },
+        status: { in: ['DRAFT', 'SCHEDULED'] },
+      },
+    })
+    console.log(`--fresh: ${removedDerived.count} taslak + ${removedPosts.count} sosyal taslak silindi`)
   }
 
   console.log('Source:', source.id)
@@ -95,23 +78,27 @@ async function main() {
 
   const derived = await prisma.derivedContent.findMany({
     where: { sourceId: source.id, createdAt: { gte: batchStart } },
-    orderBy: { contentType: 'asc' },
+    orderBy: [{ contentType: 'asc' }, { title: 'asc' }],
     select: { id: true, contentType: true, title: true, status: true, content: true, metadata: true },
   })
 
-  console.log(`\n=== Bu batch: ${derived.length} içerik (${derived[0]?.metadata && typeof derived[0].metadata === 'object' && (derived[0].metadata as { mock?: boolean }).mock ? 'mock' : 'LLM'}) ===\n`)
-  for (const d of derived) {
-    console.log(`--- ${d.contentType} ---`)
-    console.log(d.content.slice(0, 600) + (d.content.length > 600 ? '…' : ''))
-    console.log('')
+  const byType = derived.reduce<Record<string, number>>((acc, d) => {
+    acc[d.contentType] = (acc[d.contentType] || 0) + 1
+    return acc
+  }, {})
+
+  console.log('\n=== Bu batch özeti ===')
+  for (const [type, count] of Object.entries(byType).sort()) {
+    console.log(`  ${type}: ${count}`)
   }
 
-  const total = await prisma.derivedContent.count({ where: { sourceId: source.id } })
-  if (total > derived.length) {
-    console.log(`Not: Toplam ${total} kayıt var (eski batch'ler). Temizlemek için: --fresh`)
+  console.log('\n=== SOCIAL_CAPTION serisi ===')
+  for (const d of derived.filter((x) => x.contentType === 'SOCIAL_CAPTION')) {
+    const meta = d.metadata && typeof d.metadata === 'object' ? (d.metadata as Record<string, unknown>) : {}
+    console.log(`  ${meta.partIndex}/${meta.partTotal} — ${d.content.slice(0, 120).replace(/\n/g, ' ')}…`)
   }
 
-  console.log(`Pipeline ${pipeline.id} COMPLETED → http://localhost:3100/admin/review`)
+  console.log(`\nPipeline ${pipeline.id} COMPLETED → http://localhost:3100/admin/review`)
 }
 
 main()

@@ -5,7 +5,10 @@ import {
   type Prisma,
 } from '@prisma/client'
 import { prisma } from './prisma'
-import { FAZ1_KINDS, generateTransform, toContentType } from './ai/transform'
+import { FAZ1_KINDS, generateTransform, toContentType, type TransformKind } from './ai/transform'
+import { buildCaptionSeries, captionPartMetadata } from './content/captionSeries'
+import { generateAtomizationPlan, totalPlannedPieces } from './atomization/plan'
+import { buildDistributionCalendar } from './scheduling/distributionCalendar'
 import { enqueuePipelineJob, enqueuePublishJob } from './queue'
 import { ensureGeneratedPostImage, publishCaptionWithImages } from './social/publishCaption'
 
@@ -78,6 +81,28 @@ export async function processPipeline(pipelineId: string) {
   })
 
   try {
+    const atomizationPlan = await generateAtomizationPlan(
+      pipeline.source.title,
+      pipeline.source.content,
+    )
+    const distributionCalendar = buildDistributionCalendar({
+      plan: atomizationPlan,
+      sourceTitle: pipeline.source.title,
+      platforms: config.platforms,
+    })
+
+    await prisma.contentPipeline.update({
+      where: { id: pipelineId },
+      data: {
+        config: {
+          ...config,
+          atomizationPlan,
+          distributionCalendar,
+          plannedPieces: totalPlannedPieces(atomizationPlan.contentPieces),
+        } as Prisma.InputJsonValue,
+      },
+    })
+
     const kinds = [...FAZ1_KINDS]
     if (config.includeMarchSong) {
       kinds.push('MARCH_LYRICS', 'SONG_LYRICS')
@@ -90,6 +115,31 @@ export async function processPipeline(pipelineId: string) {
         where: { id: pipelineId },
         data: { currentStep: step },
       })
+
+      if (kind === 'SOCIAL_CAPTION') {
+        const parts = buildCaptionSeries(pipeline.source.title, pipeline.source.content, 4)
+        const seriesId = crypto.randomUUID()
+        for (const part of parts) {
+          await prisma.derivedContent.create({
+            data: {
+              sourceId: pipeline.sourceId,
+              contentType: 'SOCIAL_CAPTION',
+              title: part.title,
+              content: part.content,
+              metadata: captionPartMetadata(
+                part,
+                seriesId,
+                pipeline.source.title,
+                pipeline.source.tags.find((t) => t.startsWith('blog:'))
+                  ? `https://www.egitim.today/blog/${pipeline.source.tags.find((t) => t.startsWith('blog:'))!.replace('blog:', '')}`
+                  : undefined,
+              ) as Prisma.InputJsonValue,
+              status: 'IN_REVIEW',
+            },
+          })
+        }
+        continue
+      }
 
       const out = await generateTransform(kind, pipeline.source.title, pipeline.source.content)
 
@@ -131,7 +181,11 @@ export async function processPipeline(pipelineId: string) {
 
 export async function createSocialDraftsForCaption(derivedId: string, postContent: string) {
   const accounts = await prisma.socialMediaAccount.findMany({
-    where: { isActive: true, platform: { in: ['TWITTER', 'LINKEDIN'] } },
+    where: {
+      isActive: true,
+      platform: { in: ['TWITTER', 'LINKEDIN'] },
+      accountId: { not: { startsWith: 'dryrun_' } },
+    },
   })
   const mediaUrls = await ensureGeneratedPostImage(derivedId)
   const created = []
