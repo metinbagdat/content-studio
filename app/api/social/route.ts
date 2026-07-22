@@ -3,8 +3,9 @@ import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/auth'
 import { schedulePost, syncSocialDraftsFromApprovedCaptions } from '@/lib/pipeline'
 import { publishPost } from '@/lib/social/publish'
-import { publishCaptionWithImages, ensureGeneratedPostImage, syncPostImagesFromCaptions, republishPostWithImage } from '@/lib/social/publishCaption'
+import { publishCaptionWithImages, ensureGeneratedPostImage, syncPostImagesFromCaptions, updatePostOnPlatform } from '@/lib/social/publishCaption'
 import { toImagePreviewPath } from '@/lib/social/imagePreview'
+import { readPublishMetrics } from '@/lib/social/publishFingerprint'
 import { getAuthUrl, upsertDryRunAccount, deactivateAccount } from '@/lib/social/oauth'
 import { oauthPlatformStatus } from '@/lib/social/config'
 import { generatePkce, pkceCookieName } from '@/lib/social/pkce'
@@ -39,10 +40,16 @@ export async function GET(req: NextRequest) {
         tokenExpiry: a.tokenExpiry,
       }
     }),
-    posts: posts.map((p) => ({
-      ...p,
-      imagePreviewUrl: toImagePreviewPath(p.mediaUrls?.[0]),
-    })),
+    posts: posts.map((p) => {
+      const m = readPublishMetrics(p.metrics)
+      return {
+        ...p,
+        imagePreviewUrl: toImagePreviewPath(p.mediaUrls?.[0]),
+        imageAttached: m.imageAttached ?? null,
+        imageError: m.imageError || (p.status === 'FAILED' ? p.error : null),
+        publishSkippedReason: null,
+      }
+    }),
   })
 }
 
@@ -125,14 +132,20 @@ export async function POST(req: NextRequest) {
     if (!postId) return NextResponse.json({ error: 'postId required' }, { status: 400 })
     try {
       const post = await prisma.socialMediaPost.findUnique({ where: { id: postId } })
-      if (post) {
-        const mediaUrls = await ensureGeneratedPostImage(post.derivedContentId)
-        await prisma.socialMediaPost.update({
-          where: { id: postId },
-          data: { mediaUrls },
-        })
-      }
-      const result = await publishPost(postId)
+      if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
+
+      const mediaUrls = await ensureGeneratedPostImage(post.derivedContentId)
+      await prisma.socialMediaPost.update({
+        where: { id: postId },
+        data: { mediaUrls },
+      })
+
+      const replace = post.status === 'PUBLISHED' || body.replace === true
+      const result = await publishPost(postId, {
+        replace,
+        requireImage: true,
+        force: body.force === true,
+      })
       return NextResponse.json(result)
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
@@ -176,11 +189,11 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  if (action === 'republish-with-image') {
+  if (action === 'update-on-platform') {
     const postId = String(body.postId || '')
     if (!postId) return NextResponse.json({ error: 'postId required' }, { status: 400 })
     try {
-      const result = await republishPostWithImage(postId)
+      const result = await updatePostOnPlatform(postId)
       return NextResponse.json(result)
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)

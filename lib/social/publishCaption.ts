@@ -1,6 +1,7 @@
 import { prisma } from '../prisma'
 import { generatePostImage } from '../media/generatePostImage'
 import { defaultPostImageUrl } from './brandImage'
+import type { PublishResult } from './publish'
 
 function isCustomUrl(url: string): boolean {
   return url.startsWith('http://') || url.startsWith('https://')
@@ -44,27 +45,44 @@ export async function ensureGeneratedPostImage(derivedContentId: string): Promis
   }
 }
 
-/** Generate images + publish all draft/failed posts for a caption. */
-export async function publishCaptionWithImages(derivedContentId: string) {
-  const mediaUrls = await ensureGeneratedPostImage(derivedContentId)
-
+async function syncPostRowsFromCaption(derivedContentId: string, postContent: string, mediaUrls: string[]) {
   await prisma.socialMediaPost.updateMany({
-    where: {
-      derivedContentId,
-      status: { in: ['DRAFT', 'FAILED', 'SCHEDULED'] },
-    },
-    data: { mediaUrls },
+    where: { derivedContentId },
+    data: { postContent, mediaUrls },
   })
+}
+
+/** Push caption + image to all social rows; publish or replace-on-platform. */
+export async function syncCaptionToSocial(
+  derivedContentId: string,
+  opts: { publish?: boolean } = {},
+) {
+  const caption = await prisma.derivedContent.findUnique({ where: { id: derivedContentId } })
+  if (!caption || caption.contentType !== 'SOCIAL_CAPTION') {
+    throw new Error('SOCIAL_CAPTION bulunamadı')
+  }
+
+  const mediaUrls = await ensureGeneratedPostImage(derivedContentId)
+  await syncPostRowsFromCaption(derivedContentId, caption.content, mediaUrls)
+
+  if (!opts.publish) {
+    return { mediaUrls, published: 0, results: [] as Array<{ postId: string; ok: boolean }> }
+  }
 
   const posts = await prisma.socialMediaPost.findMany({
-    where: {
-      derivedContentId,
-      status: { in: ['DRAFT', 'FAILED', 'SCHEDULED'] },
-    },
+    where: { derivedContentId },
     include: { account: true },
   })
 
-  const results: Array<{ postId: string; ok: boolean; platformPostId?: string; error?: string }> = []
+  const results: Array<{
+    postId: string
+    ok: boolean
+    platformPostId?: string
+    error?: string
+    skipped?: boolean
+    replaced?: boolean
+    imageError?: string
+  }> = []
   const { publishPost } = await import('./publish')
 
   for (const post of posts) {
@@ -72,13 +90,41 @@ export async function publishCaptionWithImages(derivedContentId: string) {
       results.push({ postId: post.id, ok: false, error: 'Hesap pasif' })
       continue
     }
+    if (post.status === 'PUBLISHING') {
+      results.push({ postId: post.id, ok: false, error: 'Yayın devam ediyor' })
+      continue
+    }
+
+    const replace = post.status === 'PUBLISHED'
+    const canPublish = ['DRAFT', 'FAILED', 'SCHEDULED', 'PUBLISHED'].includes(post.status)
+    if (!canPublish) {
+      results.push({ postId: post.id, ok: false, error: `Status ${post.status} yayınlanamaz` })
+      continue
+    }
+
     try {
-      const out = await publishPost(post.id)
-      results.push({
-        postId: post.id,
-        ok: true,
-        platformPostId: String(out.platformPostId || ''),
+      const out: PublishResult = await publishPost(post.id, {
+        replace,
+        requireImage: true,
+        force: false,
       })
+      if (out.skipped) {
+        results.push({
+          postId: post.id,
+          ok: true,
+          skipped: true,
+          platformPostId: out.platformPostId || undefined,
+          imageError: out.imageError,
+        })
+      } else {
+        results.push({
+          postId: post.id,
+          ok: true,
+          platformPostId: out.platformPostId || undefined,
+          replaced: out.replaced,
+          imageError: out.imageError,
+        })
+      }
     } catch (err) {
       results.push({
         postId: post.id,
@@ -88,7 +134,34 @@ export async function publishCaptionWithImages(derivedContentId: string) {
     }
   }
 
-  return { mediaUrls, published: results.filter((r) => r.ok).length, results }
+  return {
+    mediaUrls,
+    published: results.filter((r) => r.ok && !r.skipped).length,
+    skipped: results.filter((r) => r.skipped).length,
+    results,
+  }
+}
+
+/** Generate images + publish/update all posts for a caption. */
+export async function publishCaptionWithImages(derivedContentId: string) {
+  return syncCaptionToSocial(derivedContentId, { publish: true })
+}
+
+/** When caption text changes — update platform posts (delete old + publish new). */
+export async function updatePublishedSocialPosts(derivedContentId: string, postContent: string) {
+  const mediaUrls = await ensureGeneratedPostImage(derivedContentId)
+  await syncPostRowsFromCaption(derivedContentId, postContent, mediaUrls)
+
+  const posts = await prisma.socialMediaPost.findMany({
+    where: { derivedContentId, status: 'PUBLISHED' },
+    include: { account: true },
+  })
+
+  const { publishPost } = await import('./publish')
+  for (const post of posts) {
+    if (!post.account.isActive || post.account.accountId.startsWith('dryrun_')) continue
+    await publishPost(post.id, { replace: true, requireImage: true, force: true })
+  }
 }
 
 /** Generate images for all approved captions and attach to every post row. */
@@ -112,8 +185,8 @@ export async function syncPostImagesFromCaptions() {
   return { captions: captions.length, postsUpdated, images }
 }
 
-/** Re-publish a post with freshly generated image (new LinkedIn share). */
-export async function republishPostWithImage(postId: string) {
+/** Replace platform post (delete old + publish new) — same DB row. */
+export async function updatePostOnPlatform(postId: string) {
   const post = await prisma.socialMediaPost.findUnique({
     where: { id: postId },
     include: { account: true },
@@ -124,15 +197,9 @@ export async function republishPostWithImage(postId: string) {
   const mediaUrls = await ensureGeneratedPostImage(post.derivedContentId)
   await prisma.socialMediaPost.update({
     where: { id: postId },
-    data: {
-      mediaUrls,
-      status: 'DRAFT',
-      platformPostId: null,
-      publishedAt: null,
-      error: null,
-    },
+    data: { mediaUrls },
   })
 
   const { publishPost } = await import('./publish')
-  return publishPost(postId)
+  return publishPost(postId, { replace: true, requireImage: true, force: true })
 }

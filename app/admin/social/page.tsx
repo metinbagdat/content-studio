@@ -194,18 +194,25 @@ export default function SocialPage() {
     await load()
   }
 
-  async function publishNow(postId: string) {
+  async function publishNow(postId: string, replace = false) {
     setBusyId(postId)
     const res = await fetch('/api/social', {
       method: 'POST',
       headers: headers(adminKey, true),
-      body: JSON.stringify({ action: 'publish-now', postId }),
+      body: JSON.stringify({ action: 'publish-now', postId, replace, force: replace }),
     })
     const data = await parseApiJson(res)
     setBusyId(null)
     if (res.ok) {
-      const id = data.platformPostId || data.skipped
-      setMsg(id ? `Published: ${String(data.platformPostId || 'already published')}` : 'Yayınlandı')
+      if (data.skipped) {
+        setMsg(String(data.reason || 'Değişiklik yok — çift paylaşım engellendi'))
+      } else if (data.imageError) {
+        setMsg(`Yayınlandı ama görsel hatası: ${String(data.imageError)}`)
+      } else if (data.replaced) {
+        setMsg(`Platformda güncellendi (eski silindi): ${String(data.platformPostId || 'ok')}`)
+      } else {
+        setMsg(`Yayınlandı: ${String(data.platformPostId || 'ok')}`)
+      }
     } else {
       setMsg(String(data.error || `Yayın başarısız (${res.status})`))
     }
@@ -289,21 +296,25 @@ export default function SocialPage() {
 
   const canMutate = (status: string) => ['DRAFT', 'SCHEDULED', 'FAILED'].includes(status)
 
-  async function republishWithImage(postId: string) {
-    if (!confirm('LinkedIn\'de görsel ile yeni paylaşım oluşturulur (eski post kalır). Devam?')) return
+  async function updateOnPlatform(postId: string) {
+    if (!confirm('Eski paylaşım platformdan silinir, güncel içerik+görsel ile tek post kalır. Devam?')) return
     setBusyId(postId)
     const res = await fetch('/api/social', {
       method: 'POST',
       headers: headers(adminKey, true),
-      body: JSON.stringify({ action: 'republish-with-image', postId }),
+      body: JSON.stringify({ action: 'update-on-platform', postId }),
     })
     const data = await parseApiJson(res)
     setBusyId(null)
     if (!res.ok) {
-      setMsg(String(data.error || 'Yeniden yayın başarısız'))
+      setMsg(String(data.error || 'Güncelleme başarısız'))
       return
     }
-    setMsg(`Görsel ile yayınlandı: ${String(data.platformPostId || 'ok')}`)
+    if (data.imageError) {
+      setMsg(`Güncellendi ama görsel hatası: ${String(data.imageError)}`)
+    } else {
+      setMsg(`Platformda güncellendi: ${String(data.platformPostId || 'ok')}`)
+    }
     await load()
   }
 
@@ -321,7 +332,7 @@ export default function SocialPage() {
       return
     }
     setMsg(
-      `Otomatik görsel + ${String(data.published ?? 0)} hesapta yayın (${String((data.mediaUrls as string[])?.[0] || '').slice(0, 60)}…)`,
+      `Görsel + ${String(data.published ?? 0)} yayın, ${String(data.skipped ?? 0)} atlandı (değişmedi)`,
     )
     await load()
   }
@@ -445,7 +456,7 @@ export default function SocialPage() {
                 disabled={busyId === cid}
                 onClick={() => publishCaptionAll(cid)}
               >
-                Otomatik görsel tasarla + tüm hesaplarda yayınla
+                Otomatik görsel + platformda yayınla / güncelle
               </button>
             ))}
           </div>
@@ -458,6 +469,14 @@ export default function SocialPage() {
                 <span className={`badge ${p.status === 'PUBLISHED' ? 'ok' : p.status === 'FAILED' ? 'danger' : 'warn'}`}>
                   {p.status}
                 </span>
+                {p.status === 'PUBLISHED' && p.imageAttached === true ? (
+                  <span className="badge ok">görsel OK</span>
+                ) : null}
+                {p.imageError ? (
+                  <span className="badge danger" title={String(p.imageError)}>
+                    görsel hata
+                  </span>
+                ) : null}
                 {p.scheduledAt ? (
                   <span className="muted">{new Date(p.scheduledAt).toLocaleString('tr-TR')}</span>
                 ) : null}
@@ -520,6 +539,11 @@ export default function SocialPage() {
                   )}
                 </p>
               ) : null}
+              {p.imageError ? (
+                <p className="muted" style={{ margin: '0.35rem 0 0', color: 'var(--danger)', fontSize: '0.82rem' }}>
+                  Görsel: {String(p.imageError).slice(0, 240)}
+                </p>
+              ) : null}
               {p.status === 'FAILED' && p.error ? (
                 <p className="muted" style={{ margin: '0.35rem 0 0', color: 'var(--danger)', fontSize: '0.82rem' }}>
                   {String(p.error).slice(0, 200)}
@@ -558,8 +582,8 @@ export default function SocialPage() {
                       </button>
                     ) : null}
                     {p.status === 'PUBLISHED' && p.platform === 'LINKEDIN' && p.account?.accountName && !String(p.platformPostId || '').startsWith('mock_') ? (
-                      <button type="button" className="secondary" disabled={busyId === p.id} onClick={() => republishWithImage(p.id)}>
-                        Görsel ile tekrar paylaş
+                      <button type="button" className="secondary" disabled={busyId === p.id} onClick={() => updateOnPlatform(p.id)}>
+                        Platformda güncelle (eski sil)
                       </button>
                     ) : null}
                     {canMutate(p.status) ? (

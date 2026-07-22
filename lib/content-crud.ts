@@ -85,6 +85,13 @@ export async function updateDerivedContent(id: string, input: UpdateDerivedInput
 
   if (contentChanged && existing.contentType === 'SOCIAL_CAPTION') {
     await syncSocialDraftsFromCaption(id, derived.content)
+    const published = await prisma.socialMediaPost.count({
+      where: { derivedContentId: id, status: 'PUBLISHED' },
+    })
+    if (published > 0) {
+      const { updatePublishedSocialPosts } = await import('./social/publishCaption')
+      await updatePublishedSocialPosts(id, derived.content)
+    }
   }
 
   return derived
