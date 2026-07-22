@@ -140,7 +140,7 @@ export async function createSocialDraftsForCaption(derivedId: string, postConten
       where: { derivedContentId: derivedId, accountId: account.id },
     })
     if (existing) {
-      if (mediaUrls.length && !existing.mediaUrls.length) {
+      if (mediaUrls.length) {
         await prisma.socialMediaPost.update({
           where: { id: existing.id },
           data: { mediaUrls },

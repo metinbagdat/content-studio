@@ -35,6 +35,25 @@ async function parseApiJson(res: Response): Promise<Record<string, unknown>> {
   }
 }
 
+function PostImagePreview({ src, alt }: { src: string; alt: string }) {
+  const [failed, setFailed] = useState(false)
+  if (failed) {
+    return (
+      <p className="muted" style={{ margin: '0.35rem 0 0', fontSize: '0.82rem', color: 'var(--danger)' }}>
+        Görsel yüklenemedi — &quot;Görselleri senkronize et&quot; deneyin
+      </p>
+    )
+  }
+  return (
+    <img
+      src={src}
+      alt={alt}
+      style={{ marginTop: '0.5rem', maxWidth: '320px', maxHeight: '180px', borderRadius: '8px', border: '1px solid var(--border)' }}
+      onError={() => setFailed(true)}
+    />
+  )
+}
+
 export default function SocialPage() {
   const [adminKey, setAdminKey] = useState('')
   const [oauth, setOauth] = useState<OAuthStatus | null>(null)
@@ -45,6 +64,7 @@ export default function SocialPage() {
   const [editContent, setEditContent] = useState('')
   const [editImageUrl, setEditImageUrl] = useState('')
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [imagesSynced, setImagesSynced] = useState(false)
 
   const load = useCallback(async () => {
     if (!adminKey) return
@@ -79,6 +99,21 @@ export default function SocialPage() {
     if (adminKey) load()
   }, [adminKey, load])
 
+  useEffect(() => {
+    if (!adminKey || imagesSynced) return
+    ;(async () => {
+      const res = await fetch('/api/social', {
+        method: 'POST',
+        headers: headers(adminKey, true),
+        body: JSON.stringify({ action: 'sync-images' }),
+      })
+      if (res.ok) {
+        setImagesSynced(true)
+        await load()
+      }
+    })()
+  }, [adminKey, imagesSynced, load])
+
   async function oauthConnect(platform: 'TWITTER' | 'LINKEDIN') {
     setBusyId(platform)
     const res = await fetch('/api/social', {
@@ -93,6 +128,23 @@ export default function SocialPage() {
       return
     }
     window.location.href = data.url
+  }
+
+  async function syncImages() {
+    setBusyId('sync-images')
+    const res = await fetch('/api/social', {
+      method: 'POST',
+      headers: headers(adminKey, true),
+      body: JSON.stringify({ action: 'sync-images' }),
+    })
+    const data = await parseApiJson(res)
+    setBusyId(null)
+    if (!res.ok) {
+      setMsg(String(data.error || 'Görsel senkron başarısız'))
+      return
+    }
+    setMsg(`${String(data.postsUpdated ?? 0)} posta görsel bağlandı`)
+    await load()
   }
 
   async function syncDrafts() {
@@ -237,6 +289,24 @@ export default function SocialPage() {
 
   const canMutate = (status: string) => ['DRAFT', 'SCHEDULED', 'FAILED'].includes(status)
 
+  async function republishWithImage(postId: string) {
+    if (!confirm('LinkedIn\'de görsel ile yeni paylaşım oluşturulur (eski post kalır). Devam?')) return
+    setBusyId(postId)
+    const res = await fetch('/api/social', {
+      method: 'POST',
+      headers: headers(adminKey, true),
+      body: JSON.stringify({ action: 'republish-with-image', postId }),
+    })
+    const data = await parseApiJson(res)
+    setBusyId(null)
+    if (!res.ok) {
+      setMsg(String(data.error || 'Yeniden yayın başarısız'))
+      return
+    }
+    setMsg(`Görsel ile yayınlandı: ${String(data.platformPostId || 'ok')}`)
+    await load()
+  }
+
   async function publishCaptionAll(derivedContentId: string) {
     setBusyId(derivedContentId)
     const res = await fetch('/api/social', {
@@ -336,6 +406,9 @@ export default function SocialPage() {
         <button type="button" className="secondary" onClick={syncDrafts}>
           Taslakları senkronize et
         </button>
+        <button type="button" className="secondary" disabled={busyId === 'sync-images'} onClick={syncImages}>
+          Görselleri senkronize et
+        </button>
       </div>
 
       <section className="panel">
@@ -422,20 +495,16 @@ export default function SocialPage() {
               ) : (
                 <>
                   <div className="pre">{p.postContent}</div>
-                  {Array.isArray(p.mediaUrls) && p.mediaUrls[0] ? (
+                  {p.imagePreviewUrl ? (
                     <div style={{ marginTop: '0.5rem' }}>
-                      <img
-                        src={p.mediaUrls[0]}
-                        alt="Post görseli"
-                        style={{ maxWidth: '280px', maxHeight: '160px', borderRadius: '6px' }}
-                      />
+                      <PostImagePreview src={p.imagePreviewUrl} alt="Post görseli" />
                       <p className="muted" style={{ margin: '0.25rem 0 0', fontSize: '0.78rem' }}>
-                        {p.mediaUrls[0]}
+                        {p.mediaUrls?.[0] || p.imagePreviewUrl}
                       </p>
                     </div>
                   ) : (
                     <p className="muted" style={{ margin: '0.35rem 0 0', fontSize: '0.82rem' }}>
-                      Görsel yok — yayınlarken otomatik tasarlanır
+                      Görsel henüz yok — &quot;Görselleri senkronize et&quot; veya yayınla
                     </p>
                   )}
                 </>
@@ -486,6 +555,11 @@ export default function SocialPage() {
                     {p.status === 'SCHEDULED' ? (
                       <button type="button" className="secondary" disabled={busyId === p.id} onClick={() => cancelSchedule(p.id)}>
                         Zamanlamayı iptal
+                      </button>
+                    ) : null}
+                    {p.status === 'PUBLISHED' && p.platform === 'LINKEDIN' && p.account?.accountName && !String(p.platformPostId || '').startsWith('mock_') ? (
+                      <button type="button" className="secondary" disabled={busyId === p.id} onClick={() => republishWithImage(p.id)}>
+                        Görsel ile tekrar paylaş
                       </button>
                     ) : null}
                     {canMutate(p.status) ? (

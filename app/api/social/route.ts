@@ -3,7 +3,8 @@ import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/auth'
 import { schedulePost, syncSocialDraftsFromApprovedCaptions } from '@/lib/pipeline'
 import { publishPost } from '@/lib/social/publish'
-import { publishCaptionWithImages, ensureGeneratedPostImage } from '@/lib/social/publishCaption'
+import { publishCaptionWithImages, ensureGeneratedPostImage, syncPostImagesFromCaptions, republishPostWithImage } from '@/lib/social/publishCaption'
+import { toImagePreviewPath } from '@/lib/social/imagePreview'
 import { getAuthUrl, upsertDryRunAccount, deactivateAccount } from '@/lib/social/oauth'
 import { oauthPlatformStatus } from '@/lib/social/config'
 import { generatePkce, pkceCookieName } from '@/lib/social/pkce'
@@ -38,7 +39,10 @@ export async function GET(req: NextRequest) {
         tokenExpiry: a.tokenExpiry,
       }
     }),
-    posts,
+    posts: posts.map((p) => ({
+      ...p,
+      imagePreviewUrl: toImagePreviewPath(p.mediaUrls?.[0]),
+    })),
   })
 }
 
@@ -99,7 +103,13 @@ export async function POST(req: NextRequest) {
 
   if (action === 'sync-drafts') {
     const sync = await syncSocialDraftsFromApprovedCaptions()
-    return NextResponse.json(sync)
+    const images = await syncPostImagesFromCaptions()
+    return NextResponse.json({ ...sync, ...images })
+  }
+
+  if (action === 'sync-images') {
+    const result = await syncPostImagesFromCaptions()
+    return NextResponse.json(result)
   }
 
   if (action === 'schedule') {
@@ -156,7 +166,22 @@ export async function POST(req: NextRequest) {
         where: { derivedContentId },
         data: { mediaUrls },
       })
-      return NextResponse.json({ mediaUrls })
+      return NextResponse.json({
+        mediaUrls,
+        imagePreviewUrl: toImagePreviewPath(mediaUrls[0]),
+      })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      return NextResponse.json({ error: message }, { status: 400 })
+    }
+  }
+
+  if (action === 'republish-with-image') {
+    const postId = String(body.postId || '')
+    if (!postId) return NextResponse.json({ error: 'postId required' }, { status: 400 })
+    try {
+      const result = await republishPostWithImage(postId)
+      return NextResponse.json(result)
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
       return NextResponse.json({ error: message }, { status: 400 })

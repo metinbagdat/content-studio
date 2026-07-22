@@ -90,3 +90,49 @@ export async function publishCaptionWithImages(derivedContentId: string) {
 
   return { mediaUrls, published: results.filter((r) => r.ok).length, results }
 }
+
+/** Generate images for all approved captions and attach to every post row. */
+export async function syncPostImagesFromCaptions() {
+  const captions = await prisma.derivedContent.findMany({
+    where: { contentType: 'SOCIAL_CAPTION', status: { in: ['APPROVED', 'PUBLISHED'] } },
+  })
+  let postsUpdated = 0
+  const images: Array<{ derivedContentId: string; mediaUrls: string[] }> = []
+
+  for (const caption of captions) {
+    const mediaUrls = await ensureGeneratedPostImage(caption.id)
+    images.push({ derivedContentId: caption.id, mediaUrls })
+    const result = await prisma.socialMediaPost.updateMany({
+      where: { derivedContentId: caption.id },
+      data: { mediaUrls },
+    })
+    postsUpdated += result.count
+  }
+
+  return { captions: captions.length, postsUpdated, images }
+}
+
+/** Re-publish a post with freshly generated image (new LinkedIn share). */
+export async function republishPostWithImage(postId: string) {
+  const post = await prisma.socialMediaPost.findUnique({
+    where: { id: postId },
+    include: { account: true },
+  })
+  if (!post) throw new Error('Post not found')
+  if (!post.account.isActive) throw new Error('Hesap pasif')
+
+  const mediaUrls = await ensureGeneratedPostImage(post.derivedContentId)
+  await prisma.socialMediaPost.update({
+    where: { id: postId },
+    data: {
+      mediaUrls,
+      status: 'DRAFT',
+      platformPostId: null,
+      publishedAt: null,
+      error: null,
+    },
+  })
+
+  const { publishPost } = await import('./publish')
+  return publishPost(postId)
+}
