@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
+import { socialPostPublicUrl } from '@/lib/social/postUrl'
 
 type OAuthStatus = {
   twitter: { configured: boolean; callbackUrl: string }
@@ -24,6 +25,16 @@ function headers(key: string, json = false): HeadersInit {
   return h
 }
 
+async function parseApiJson(res: Response): Promise<Record<string, unknown>> {
+  const text = await res.text()
+  if (!text.trim()) return {}
+  try {
+    return JSON.parse(text) as Record<string, unknown>
+  } catch {
+    return { error: text.slice(0, 300) || res.statusText }
+  }
+}
+
 export default function SocialPage() {
   const [adminKey, setAdminKey] = useState('')
   const [oauth, setOauth] = useState<OAuthStatus | null>(null)
@@ -32,6 +43,7 @@ export default function SocialPage() {
   const [msg, setMsg] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editContent, setEditContent] = useState('')
+  const [editImageUrl, setEditImageUrl] = useState('')
   const [busyId, setBusyId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
@@ -137,9 +149,14 @@ export default function SocialPage() {
       headers: headers(adminKey, true),
       body: JSON.stringify({ action: 'publish-now', postId }),
     })
-    const data = await res.json()
+    const data = await parseApiJson(res)
     setBusyId(null)
-    setMsg(res.ok ? `Published: ${data.platformPostId}` : data.error || 'fail')
+    if (res.ok) {
+      const id = data.platformPostId || data.skipped
+      setMsg(id ? `Published: ${String(data.platformPostId || 'already published')}` : 'Yayınlandı')
+    } else {
+      setMsg(String(data.error || `Yayın başarısız (${res.status})`))
+    }
     await load()
   }
 
@@ -156,22 +173,25 @@ export default function SocialPage() {
     await load()
   }
 
-  function startEdit(post: { id: string; postContent: string }) {
+  function startEdit(post: { id: string; postContent: string; mediaUrls?: string[] }) {
     setEditingId(post.id)
     setEditContent(post.postContent)
+    setEditImageUrl(post.mediaUrls?.[0] || '')
   }
 
   function cancelEdit() {
     setEditingId(null)
     setEditContent('')
+    setEditImageUrl('')
   }
 
   async function saveEdit(postId: string) {
     setBusyId(postId)
+    const mediaUrls = editImageUrl.trim() ? [editImageUrl.trim()] : []
     const res = await fetch(`/api/social/posts/${postId}`, {
       method: 'PATCH',
       headers: headers(adminKey, true),
-      body: JSON.stringify({ postContent: editContent }),
+      body: JSON.stringify({ postContent: editContent, mediaUrls }),
     })
     setBusyId(null)
     const data = await res.json().catch(() => ({}))
@@ -216,6 +236,34 @@ export default function SocialPage() {
   }
 
   const canMutate = (status: string) => ['DRAFT', 'SCHEDULED', 'FAILED'].includes(status)
+
+  async function publishCaptionAll(derivedContentId: string) {
+    setBusyId(derivedContentId)
+    const res = await fetch('/api/social', {
+      method: 'POST',
+      headers: headers(adminKey, true),
+      body: JSON.stringify({ action: 'publish-caption', derivedContentId }),
+    })
+    const data = await parseApiJson(res)
+    setBusyId(null)
+    if (!res.ok) {
+      setMsg(String(data.error || 'Yayın başarısız'))
+      return
+    }
+    setMsg(
+      `Otomatik görsel + ${String(data.published ?? 0)} hesapta yayın (${String((data.mediaUrls as string[])?.[0] || '').slice(0, 60)}…)`,
+    )
+    await load()
+  }
+
+  const draftCaptionIds = [
+    ...new Set(
+      posts
+        .filter((p) => canMutate(p.status))
+        .map((p) => p.derivedContentId as string)
+        .filter(Boolean),
+    ),
+  ]
 
   return (
     <div>
@@ -314,6 +362,21 @@ export default function SocialPage() {
 
       <section className="panel" style={{ marginTop: '1rem' }}>
         <h2>Post taslakları</h2>
+        {draftCaptionIds.length ? (
+          <div className="row" style={{ marginBottom: '0.75rem' }}>
+            {draftCaptionIds.map((cid) => (
+              <button
+                key={cid}
+                type="button"
+                className="ok"
+                disabled={busyId === cid}
+                onClick={() => publishCaptionAll(cid)}
+              >
+                Otomatik görsel tasarla + tüm hesaplarda yayınla
+              </button>
+            ))}
+          </div>
+        ) : null}
         <ul className="list">
           {posts.map((p) => (
             <li key={p.id}>
@@ -327,10 +390,72 @@ export default function SocialPage() {
                 ) : null}
               </div>
               {editingId === p.id ? (
-                <textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} style={{ marginTop: '0.5rem' }} />
+                <>
+                  <textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} style={{ marginTop: '0.5rem' }} />
+                  <div style={{ marginTop: '0.5rem' }}>
+                    <label className="muted" style={{ display: 'block', marginBottom: '0.25rem' }}>
+                      Görsel URL (LinkedIn paylaşımı)
+                    </label>
+                    <input
+                      type="url"
+                      value={editImageUrl}
+                      onChange={(e) => setEditImageUrl(e.target.value)}
+                      placeholder="https://www.egitim.today/opengraph-image.png"
+                      style={{ width: '100%' }}
+                    />
+                    {editImageUrl.trim() ? (
+                      <img
+                        src={editImageUrl.trim()}
+                        alt="Önizleme"
+                        style={{ marginTop: '0.5rem', maxWidth: '280px', maxHeight: '160px', borderRadius: '6px' }}
+                        onError={(e) => {
+                          ;(e.target as HTMLImageElement).style.display = 'none'
+                        }}
+                      />
+                    ) : (
+                      <p className="muted" style={{ margin: '0.35rem 0 0', fontSize: '0.82rem' }}>
+                        Boş bırakılırsa içeriğe uygun otomatik kart görseli üretilir.
+                      </p>
+                    )}
+                  </div>
+                </>
               ) : (
-                <div className="pre">{p.postContent}</div>
+                <>
+                  <div className="pre">{p.postContent}</div>
+                  {Array.isArray(p.mediaUrls) && p.mediaUrls[0] ? (
+                    <div style={{ marginTop: '0.5rem' }}>
+                      <img
+                        src={p.mediaUrls[0]}
+                        alt="Post görseli"
+                        style={{ maxWidth: '280px', maxHeight: '160px', borderRadius: '6px' }}
+                      />
+                      <p className="muted" style={{ margin: '0.25rem 0 0', fontSize: '0.78rem' }}>
+                        {p.mediaUrls[0]}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="muted" style={{ margin: '0.35rem 0 0', fontSize: '0.82rem' }}>
+                      Görsel yok — yayınlarken otomatik tasarlanır
+                    </p>
+                  )}
+                </>
               )}
+              {p.status === 'PUBLISHED' && p.platformPostId ? (
+                <p className="muted" style={{ margin: '0.35rem 0 0', fontSize: '0.82rem' }}>
+                  {socialPostPublicUrl(p.platform, p.platformPostId) ? (
+                    <a href={socialPostPublicUrl(p.platform, p.platformPostId)!} target="_blank" rel="noreferrer">
+                      LinkedIn&apos;de aç
+                    </a>
+                  ) : (
+                    <>ID: {p.platformPostId} (dry-run — gerçek link yok)</>
+                  )}
+                </p>
+              ) : null}
+              {p.status === 'FAILED' && p.error ? (
+                <p className="muted" style={{ margin: '0.35rem 0 0', color: 'var(--danger)', fontSize: '0.82rem' }}>
+                  {String(p.error).slice(0, 200)}
+                </p>
+              ) : null}
               <div className="row" style={{ marginTop: '0.5rem' }}>
                 {editingId === p.id ? (
                   <>

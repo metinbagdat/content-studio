@@ -25,6 +25,7 @@ export async function PATCH(req: NextRequest, ctx: RouteCtx) {
     const body = await req.json()
     const post = await updateSocialPost(id, {
       postContent: body.postContent,
+      mediaUrls: body.mediaUrls,
       scheduledAt: body.scheduledAt,
       cancelSchedule: body.cancelSchedule === true,
     })

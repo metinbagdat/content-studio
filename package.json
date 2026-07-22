@@ -5,6 +5,8 @@
   "description": "egitim.today content auto-production & social distribution (separate from LearnCon)",
   "scripts": {
     "dev": "next dev --port 3100",
+    "dev:clean": "powershell -ExecutionPolicy Bypass -File scripts/kill-port.ps1 && next dev --port 3100",
+    "kill-port": "powershell -ExecutionPolicy Bypass -File scripts/kill-port.ps1",
     "build": "prisma generate && next build",
     "start": "next start --port 3100",
     "lint": "next lint",

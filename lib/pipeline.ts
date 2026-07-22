@@ -7,6 +7,7 @@ import {
 import { prisma } from './prisma'
 import { FAZ1_KINDS, generateTransform, toContentType } from './ai/transform'
 import { enqueuePipelineJob, enqueuePublishJob } from './queue'
+import { ensureGeneratedPostImage, publishCaptionWithImages } from './social/publishCaption'
 
 export type PipelineConfig = {
   platforms: SocialPlatform[]
@@ -132,18 +133,28 @@ export async function createSocialDraftsForCaption(derivedId: string, postConten
   const accounts = await prisma.socialMediaAccount.findMany({
     where: { isActive: true, platform: { in: ['TWITTER', 'LINKEDIN'] } },
   })
+  const mediaUrls = await ensureGeneratedPostImage(derivedId)
   const created = []
   for (const account of accounts) {
     const existing = await prisma.socialMediaPost.findFirst({
       where: { derivedContentId: derivedId, accountId: account.id },
     })
-    if (existing) continue
+    if (existing) {
+      if (mediaUrls.length && !existing.mediaUrls.length) {
+        await prisma.socialMediaPost.update({
+          where: { id: existing.id },
+          data: { mediaUrls },
+        })
+      }
+      continue
+    }
     const post = await prisma.socialMediaPost.create({
       data: {
         derivedContentId: derivedId,
         accountId: account.id,
         platform: account.platform,
         postContent,
+        mediaUrls,
         status: 'DRAFT',
       },
     })
@@ -180,6 +191,9 @@ export async function setDerivedStatus(
 
   if (status === 'APPROVED' && derived.contentType === 'SOCIAL_CAPTION') {
     await createSocialDraftsForCaption(derived.id, derived.content)
+    if (process.env.SOCIAL_AUTO_PUBLISH === 'true') {
+      await publishCaptionWithImages(derived.id)
+    }
   }
 
   return derived

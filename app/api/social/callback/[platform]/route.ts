@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { upsertDryRunAccount, upsertOAuthAccount } from '@/lib/social/oauth'
-import { linkedinAuthorUrn } from '@/lib/social/config'
 import { pkceCookieName } from '@/lib/social/pkce'
 import { syncSocialDraftsFromApprovedCaptions } from '@/lib/pipeline'
 
@@ -105,11 +104,18 @@ export async function GET(
       })
       const me = (await meRes.json()) as { sub?: string; name?: string }
       const orgId = process.env.LINKEDIN_ORGANIZATION_ID
-      const authorUrn = orgId ? `urn:li:organization:${orgId}` : undefined
+      const useOrgPost = process.env.LINKEDIN_ORG_POST === 'true'
+      const memberSub = me.sub || ''
+      const authorUrn =
+        useOrgPost && orgId
+          ? `urn:li:organization:${orgId}`
+          : memberSub
+            ? `urn:li:person:${memberSub}`
+            : undefined
       await upsertOAuthAccount({
         platform: 'LINKEDIN',
-        accountId: orgId || me.sub || `li_${Date.now()}`,
-        accountName: orgId ? `egitim.today (org)` : me.name || 'LinkedIn',
+        accountId: memberSub || `li_${Date.now()}`,
+        accountName: me.name || 'LinkedIn',
         accessToken: tokens.access_token,
         refreshToken: tokens.refresh_token,
         tokenExpiry: tokens.expires_in
@@ -117,8 +123,9 @@ export async function GET(
           : undefined,
         config: {
           oauth: true,
-          linkedinAuthorUrn: authorUrn || linkedinAuthorUrn(me.sub || '', {}),
+          linkedinMemberSub: memberSub,
           organizationId: orgId || null,
+          linkedinAuthorUrn: authorUrn,
         },
       })
     } else {

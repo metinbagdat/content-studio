@@ -1,6 +1,8 @@
-import { prisma } from '../prisma'
+import { linkedinUploadImageFromUrl, linkedinUploadImageFromBuffer } from './linkedinMedia'
 import { linkedinAuthorUrn } from './config'
 import { getValidAccessToken } from './tokenRefresh'
+import { resolvePostMediaUrls, readPostImageBuffer } from './brandImage'
+import { prisma } from '../prisma'
 
 /**
  * Publish a scheduled/draft social post.
@@ -27,7 +29,16 @@ export async function publishPost(postId: string) {
       platformPostId = await publishTwitter(post.postContent, accessToken)
     } else if (post.platform === 'LINKEDIN') {
       const author = linkedinAuthorUrn(post.account.accountId, post.account.config)
-      platformPostId = await publishLinkedIn(post.postContent, accessToken, author)
+      const mediaUrls =
+        post.mediaUrls.length > 0 ? post.mediaUrls : await resolvePostMediaUrls(post.derivedContentId)
+      platformPostId = await publishLinkedIn(
+        post.postContent,
+        accessToken,
+        author,
+        post.account,
+        mediaUrls,
+        post.derivedContentId,
+      )
     } else {
       throw new Error(`Platform not implemented in Faz 1: ${post.platform}`)
     }
@@ -78,11 +89,66 @@ async function publishTwitter(text: string, accessToken: string): Promise<string
   return data.data?.id || `x_${Date.now()}`
 }
 
-async function publishLinkedIn(text: string, accessToken: string, authorUrn: string): Promise<string> {
-  if (!accessToken || accessToken === 'dry-run' || !process.env.LINKEDIN_CLIENT_ID) {
+async function publishLinkedIn(
+  text: string,
+  accessToken: string,
+  authorUrn: string,
+  account?: { config: unknown; accountId: string },
+  mediaUrls: string[] = [],
+  derivedContentId?: string,
+): Promise<string> {
+  if (!accessToken || accessToken === 'dry-run') {
     return `mock_li_${Date.now()}`
   }
-  const author = authorUrn.startsWith('urn:') ? authorUrn : `urn:li:person:${authorUrn}`
+  const cfg =
+    account?.config && typeof account.config === 'object'
+      ? (account.config as Record<string, unknown>)
+      : {}
+  const authorFromConfig = typeof cfg.linkedinAuthorUrn === 'string' ? cfg.linkedinAuthorUrn : authorUrn
+  const author = authorFromConfig.startsWith('urn:')
+    ? authorFromConfig
+    : `urn:li:person:${authorFromConfig}`
+
+  const imageUrl = mediaUrls.find((u) => u.startsWith('http'))
+  let shareContent: Record<string, unknown>
+
+  if (imageUrl || derivedContentId) {
+    try {
+      let asset: string
+      const localBuffer = derivedContentId ? await readPostImageBuffer(derivedContentId) : null
+      if (localBuffer) {
+        asset = await linkedinUploadImageFromBuffer(accessToken, author, localBuffer, 'image/png')
+      } else if (imageUrl) {
+        asset = await linkedinUploadImageFromUrl(accessToken, author, imageUrl)
+      } else {
+        throw new Error('No image available')
+      }
+      shareContent = {
+        shareCommentary: { text },
+        shareMediaCategory: 'IMAGE',
+        media: [
+          {
+            status: 'READY',
+            description: { text: 'egitim.today' },
+            media: asset,
+            title: { text: 'egitim.today' },
+          },
+        ],
+      }
+    } catch (err) {
+      console.warn('[publishLinkedIn] image upload failed, text-only', err)
+      shareContent = {
+        shareCommentary: { text },
+        shareMediaCategory: 'NONE',
+      }
+    }
+  } else {
+    shareContent = {
+      shareCommentary: { text },
+      shareMediaCategory: 'NONE',
+    }
+  }
+
   const res = await fetch('https://api.linkedin.com/v2/ugcPosts', {
     method: 'POST',
     headers: {
@@ -94,10 +160,7 @@ async function publishLinkedIn(text: string, accessToken: string, authorUrn: str
       author,
       lifecycleState: 'PUBLISHED',
       specificContent: {
-        'com.linkedin.ugc.ShareContent': {
-          shareCommentary: { text },
-          shareMediaCategory: 'NONE',
-        },
+        'com.linkedin.ugc.ShareContent': shareContent,
       },
       visibility: { 'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC' },
     }),

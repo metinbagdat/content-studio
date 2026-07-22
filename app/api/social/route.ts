@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/auth'
 import { schedulePost, syncSocialDraftsFromApprovedCaptions } from '@/lib/pipeline'
 import { publishPost } from '@/lib/social/publish'
+import { publishCaptionWithImages, ensureGeneratedPostImage } from '@/lib/social/publishCaption'
 import { getAuthUrl, upsertDryRunAccount, deactivateAccount } from '@/lib/social/oauth'
 import { oauthPlatformStatus } from '@/lib/social/config'
 import { generatePkce, pkceCookieName } from '@/lib/social/pkce'
@@ -112,8 +113,54 @@ export async function POST(req: NextRequest) {
   if (action === 'publish-now') {
     const postId = String(body.postId || '')
     if (!postId) return NextResponse.json({ error: 'postId required' }, { status: 400 })
-    const result = await publishPost(postId)
-    return NextResponse.json(result)
+    try {
+      const post = await prisma.socialMediaPost.findUnique({ where: { id: postId } })
+      if (post) {
+        const mediaUrls = await ensureGeneratedPostImage(post.derivedContentId)
+        await prisma.socialMediaPost.update({
+          where: { id: postId },
+          data: { mediaUrls },
+        })
+      }
+      const result = await publishPost(postId)
+      return NextResponse.json(result)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      console.error('[publish-now]', postId, message)
+      return NextResponse.json({ error: message }, { status: 400 })
+    }
+  }
+
+  if (action === 'publish-caption') {
+    const derivedContentId = String(body.derivedContentId || '')
+    if (!derivedContentId) {
+      return NextResponse.json({ error: 'derivedContentId required' }, { status: 400 })
+    }
+    try {
+      const result = await publishCaptionWithImages(derivedContentId)
+      return NextResponse.json(result)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      return NextResponse.json({ error: message }, { status: 400 })
+    }
+  }
+
+  if (action === 'generate-image') {
+    const derivedContentId = String(body.derivedContentId || '')
+    if (!derivedContentId) {
+      return NextResponse.json({ error: 'derivedContentId required' }, { status: 400 })
+    }
+    try {
+      const mediaUrls = await ensureGeneratedPostImage(derivedContentId)
+      await prisma.socialMediaPost.updateMany({
+        where: { derivedContentId },
+        data: { mediaUrls },
+      })
+      return NextResponse.json({ mediaUrls })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      return NextResponse.json({ error: message }, { status: 400 })
+    }
   }
 
   return NextResponse.json({ error: 'Unknown action' }, { status: 400 })

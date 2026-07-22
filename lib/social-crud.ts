@@ -3,6 +3,16 @@ import { prisma } from './prisma'
 
 const MUTABLE_POST_STATUSES = ['DRAFT', 'SCHEDULED', 'FAILED'] as const
 
+function normalizeMediaUrls(input: unknown): string[] | undefined {
+  if (input === undefined) return undefined
+  if (!Array.isArray(input)) throw new Error('mediaUrls must be an array')
+  const urls = input.map(String).map((u) => u.trim()).filter((u) => u.startsWith('http'))
+  if (!urls.length && input.length > 0) {
+    throw new Error('mediaUrls must contain valid http(s) URLs')
+  }
+  return urls
+}
+
 export async function getSocialPost(id: string) {
   return prisma.socialMediaPost.findUnique({
     where: { id },
@@ -15,7 +25,12 @@ export async function getSocialPost(id: string) {
 
 export async function updateSocialPost(
   id: string,
-  input: { postContent?: string; scheduledAt?: string | null; cancelSchedule?: boolean },
+  input: {
+    postContent?: string
+    mediaUrls?: string[]
+    scheduledAt?: string | null
+    cancelSchedule?: boolean
+  },
 ) {
   const post = await prisma.socialMediaPost.findUnique({ where: { id } })
   if (!post) throw new Error('Post not found')
@@ -30,8 +45,11 @@ export async function updateSocialPost(
     input.postContent !== undefined ? String(input.postContent).trim() : undefined
   if (postContent !== undefined && !postContent) throw new Error('postContent cannot be empty')
 
+  const mediaUrls = normalizeMediaUrls(input.mediaUrls)
+
   const data: Prisma.SocialMediaPostUpdateInput = {}
   if (postContent !== undefined) data.postContent = postContent
+  if (mediaUrls !== undefined) data.mediaUrls = mediaUrls
   if (input.cancelSchedule) {
     data.status = 'DRAFT'
     data.scheduledAt = null

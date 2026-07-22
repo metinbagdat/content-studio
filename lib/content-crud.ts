@@ -15,7 +15,7 @@ export type UpdateDerivedInput = {
 }
 
 function appendEditHistory(
-  metadata: Prisma.JsonValue | null | undefined,
+  metadata: Prisma.InputJsonValue | Prisma.JsonValue | null | undefined,
   note: string,
 ): Prisma.InputJsonValue {
   const base =

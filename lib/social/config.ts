@@ -10,22 +10,33 @@ export function oauthPlatformStatus() {
       configured: Boolean(process.env.LINKEDIN_CLIENT_ID && process.env.LINKEDIN_CLIENT_SECRET),
       callbackUrl: process.env.LINKEDIN_CALLBACK_URL || `${appUrl}/api/social/callback/linkedin`,
       organizationId: process.env.LINKEDIN_ORGANIZATION_ID || null,
+      scopes: linkedinOAuthScopes(),
     },
   }
 }
 
+/**
+ * LinkedIn OAuth scopes.
+ * w_organization_social often fails authorize until Marketing/ org post approved —
+ * enable only with LINKEDIN_ORG_POST=true after LinkedIn grants it.
+ */
 export function linkedinOAuthScopes(): string {
-  const orgId = process.env.LINKEDIN_ORGANIZATION_ID
-  if (orgId) {
-    return 'openid profile w_member_social w_organization_social'
+  if (process.env.LINKEDIN_OAUTH_SCOPES?.trim()) {
+    return process.env.LINKEDIN_OAUTH_SCOPES.trim()
   }
-  return 'openid profile w_member_social'
+  const scopes = ['openid', 'profile', 'email', 'w_member_social']
+  if (process.env.LINKEDIN_ORG_POST === 'true' && process.env.LINKEDIN_ORGANIZATION_ID) {
+    scopes.push('w_organization_social')
+  }
+  return scopes.join(' ')
 }
 
 export function linkedinAuthorUrn(accountId: string, config: unknown): string {
   const cfg = config && typeof config === 'object' ? (config as Record<string, unknown>) : {}
   if (typeof cfg.linkedinAuthorUrn === 'string') return cfg.linkedinAuthorUrn
   const orgId = process.env.LINKEDIN_ORGANIZATION_ID
-  if (orgId) return `urn:li:organization:${orgId}`
+  if (orgId && process.env.LINKEDIN_ORG_POST === 'true') {
+    return `urn:li:organization:${orgId}`
+  }
   return accountId.startsWith('urn:') ? accountId : `urn:li:person:${accountId}`
 }

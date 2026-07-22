@@ -1,6 +1,7 @@
 import { ContentType } from '@prisma/client'
 import { brandCta } from '../auth'
 import { resolveLlm } from './llmClient'
+import { captionMetadataWithImage } from '../social/brandImage'
 
 export type TransformKind =
   | 'VIDEO_SCRIPT'
@@ -19,7 +20,7 @@ function mockTransform(kind: TransformKind, title: string, content: string) {
       return {
         title: `Caption: ${title}`,
         content: `${title}\n\n${snippet}…${cta}\n\n#egitim #yks #ogrenme`,
-        metadata: { platformHints: ['TWITTER', 'LINKEDIN'], mock: true },
+        metadata: captionMetadataWithImage({ platformHints: ['TWITTER', 'LINKEDIN'], mock: true }),
       }
     case 'VIDEO_SCRIPT':
       return {
@@ -131,10 +132,14 @@ export async function generateTransform(
   })
 
   const text = res.choices[0]?.message?.content?.trim() || ''
+  const metadata =
+    kind === 'SOCIAL_CAPTION'
+      ? captionMetadataWithImage({ model, provider, mock: false })
+      : { model, provider, mock: false }
   return {
     title: `${kind}: ${title}`,
     content: text + (kind === 'SOCIAL_CAPTION' ? brandCta() : ''),
-    metadata: { model, provider, mock: false },
+    metadata,
   }
 }
 

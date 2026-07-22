@@ -2,6 +2,8 @@ import { prisma } from '../prisma'
 import { extractPodcastSpeech, estimateSpeechDurationSec } from './podcastText'
 import { synthesizeSpeech, writeAudioFile, ttsModeLabel } from './tts'
 
+export { getMediaFile, listMedia } from './mediaDb'
+
 export async function generatePodcastAudio(derivedContentId: string) {
   const derived = await prisma.derivedContent.findUnique({
     where: { id: derivedContentId },
@@ -53,22 +55,4 @@ export async function generatePodcastAudio(derivedContentId: string) {
     })
     throw new Error(message)
   }
-}
-
-export async function listMedia(derivedContentId?: string) {
-  return prisma.mediaFile.findMany({
-    where: derivedContentId ? { derivedContentId } : undefined,
-    orderBy: { createdAt: 'desc' },
-    take: 50,
-    include: {
-      derivedContent: { select: { id: true, title: true, contentType: true, status: true } },
-    },
-  })
-}
-
-export async function getMediaFile(id: string) {
-  return prisma.mediaFile.findUnique({
-    where: { id },
-    include: { derivedContent: { select: { title: true } } },
-  })
 }

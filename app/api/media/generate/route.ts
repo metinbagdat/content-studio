@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
 import { generatePodcastAudio } from '@/lib/media/generatePodcast'
+import { generatePostImage } from '@/lib/media/generatePostImage'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,6 +14,11 @@ export async function POST(req: NextRequest) {
     const derivedContentId = String(body.derivedContentId || '')
     if (!derivedContentId) {
       return NextResponse.json({ error: 'derivedContentId required' }, { status: 400 })
+    }
+    const kind = String(body.kind || 'podcast').toLowerCase()
+    if (kind === 'image' || kind === 'post-image') {
+      const result = await generatePostImage(derivedContentId)
+      return NextResponse.json(result, { status: result.reused ? 200 : 201 })
     }
     const result = await generatePodcastAudio(derivedContentId)
     return NextResponse.json(result, { status: result.reused ? 200 : 201 })

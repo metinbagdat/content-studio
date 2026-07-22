@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
-import { listMedia } from '@/lib/media/generatePodcast'
+import { listMedia } from '@/lib/media/mediaDb'
 import { ttsModeLabel } from '@/lib/media/tts'
 
 export const dynamic = 'force-dynamic'
