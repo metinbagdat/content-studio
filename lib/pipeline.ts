@@ -5,9 +5,9 @@ import {
   type Prisma,
 } from '@prisma/client'
 import { prisma } from './prisma'
-import { FAZ1_KINDS, generateTransform, toContentType, type TransformKind } from './ai/transform'
-import { buildCaptionSeries, captionPartMetadata } from './content/captionSeries'
+import { FAZ1_KINDS, generateTransform, toContentType } from './ai/transform'
 import { generateAtomizationPlan, totalPlannedPieces } from './atomization/plan'
+import { generateAllDerivatives } from './atomization/generateDerivatives'
 import { buildDistributionCalendar } from './scheduling/distributionCalendar'
 import { enqueuePipelineJob, enqueuePublishJob } from './queue'
 import { ensureGeneratedPostImage, publishCaptionWithImages } from './social/publishCaption'
@@ -103,7 +103,11 @@ export async function processPipeline(pipelineId: string) {
       },
     })
 
-    const kinds = [...FAZ1_KINDS]
+    const articleUrl = pipeline.source.tags.find((t) => t.startsWith('blog:'))
+      ? `https://www.egitim.today/blog/${pipeline.source.tags.find((t) => t.startsWith('blog:'))!.replace('blog:', '')}`
+      : undefined
+
+    const kinds = [...FAZ1_KINDS].filter((k) => k !== 'SOCIAL_CAPTION')
     if (config.includeMarchSong) {
       kinds.push('MARCH_LYRICS', 'SONG_LYRICS')
     }
@@ -115,31 +119,6 @@ export async function processPipeline(pipelineId: string) {
         where: { id: pipelineId },
         data: { currentStep: step },
       })
-
-      if (kind === 'SOCIAL_CAPTION') {
-        const parts = buildCaptionSeries(pipeline.source.title, pipeline.source.content, 4)
-        const seriesId = crypto.randomUUID()
-        for (const part of parts) {
-          await prisma.derivedContent.create({
-            data: {
-              sourceId: pipeline.sourceId,
-              contentType: 'SOCIAL_CAPTION',
-              title: part.title,
-              content: part.content,
-              metadata: captionPartMetadata(
-                part,
-                seriesId,
-                pipeline.source.title,
-                pipeline.source.tags.find((t) => t.startsWith('blog:'))
-                  ? `https://www.egitim.today/blog/${pipeline.source.tags.find((t) => t.startsWith('blog:'))!.replace('blog:', '')}`
-                  : undefined,
-              ) as Prisma.InputJsonValue,
-              status: 'IN_REVIEW',
-            },
-          })
-        }
-        continue
-      }
 
       const out = await generateTransform(kind, pipeline.source.title, pipeline.source.content)
 
@@ -155,17 +134,33 @@ export async function processPipeline(pipelineId: string) {
       })
     }
 
+    const atomized = await generateAllDerivatives(atomizationPlan, {
+      sourceId: pipeline.sourceId,
+      title: pipeline.source.title,
+      article: pipeline.source.content,
+      articleUrl,
+      tags: pipeline.source.tags,
+    })
+
     await prisma.contentPipeline.update({
       where: { id: pipelineId },
       data: {
         status: 'COMPLETED',
         completedAt: new Date(),
-        currentStep: kinds.length,
-        totalSteps: kinds.length,
+        currentStep: kinds.length + 1,
+        totalSteps: kinds.length + 1,
+        config: {
+          ...config,
+          atomizationPlan,
+          distributionCalendar,
+          plannedPieces: totalPlannedPieces(atomizationPlan.contentPieces),
+          atomizedCreated: atomized.created,
+          atomizedByType: atomized.byType,
+        } as Prisma.InputJsonValue,
       },
     })
 
-    return { success: true, derivedCount: kinds.length }
+    return { success: true, derivedCount: kinds.length + atomized.created, atomized }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     await prisma.contentPipeline.update({
@@ -179,17 +174,37 @@ export async function processPipeline(pipelineId: string) {
   }
 }
 
-export async function createSocialDraftsForCaption(derivedId: string, postContent: string) {
+export async function createSocialDraftsForDerived(derivedId: string, postContent: string) {
+  const derived = await prisma.derivedContent.findUnique({ where: { id: derivedId } })
+  if (!derived) return []
+
+  const meta =
+    derived.metadata && typeof derived.metadata === 'object'
+      ? (derived.metadata as Record<string, unknown>)
+      : {}
+  const targetPlatform = meta.platform as SocialPlatform | 'PINTEREST' | undefined
+
+  let platforms: SocialPlatform[] = ['TWITTER', 'LINKEDIN']
+  if (derived.contentType === 'TWITTER_THREAD') platforms = ['TWITTER']
+  if (derived.contentType === 'LINKEDIN_CAROUSEL') platforms = ['LINKEDIN']
+  if (targetPlatform && targetPlatform !== 'PINTEREST') {
+    platforms = [targetPlatform]
+  }
+
   const accounts = await prisma.socialMediaAccount.findMany({
     where: {
       isActive: true,
-      platform: { in: ['TWITTER', 'LINKEDIN'] },
+      platform: { in: platforms },
       accountId: { not: { startsWith: 'dryrun_' } },
     },
   })
-  const mediaUrls = await ensureGeneratedPostImage(derivedId)
+  const mediaUrls =
+    derived.contentType === 'SOCIAL_CAPTION' ? await ensureGeneratedPostImage(derivedId) : []
   const created = []
   for (const account of accounts) {
+    if (targetPlatform && account.platform !== targetPlatform && derived.contentType === 'SOCIAL_CAPTION') {
+      continue
+    }
     const existing = await prisma.socialMediaPost.findFirst({
       where: { derivedContentId: derivedId, accountId: account.id },
     })
@@ -217,14 +232,22 @@ export async function createSocialDraftsForCaption(derivedId: string, postConten
   return created
 }
 
+/** @deprecated use createSocialDraftsForDerived */
+export async function createSocialDraftsForCaption(derivedId: string, postContent: string) {
+  return createSocialDraftsForDerived(derivedId, postContent)
+}
+
 /** Backfill drafts when caption was approved before accounts were connected. */
 export async function syncSocialDraftsFromApprovedCaptions() {
   const captions = await prisma.derivedContent.findMany({
-    where: { contentType: 'SOCIAL_CAPTION', status: { in: ['APPROVED', 'PUBLISHED'] } },
+    where: {
+      contentType: { in: ['SOCIAL_CAPTION', 'TWITTER_THREAD', 'LINKEDIN_CAROUSEL'] },
+      status: { in: ['APPROVED', 'PUBLISHED'] },
+    },
   })
   let created = 0
   for (const caption of captions) {
-    const posts = await createSocialDraftsForCaption(caption.id, caption.content)
+    const posts = await createSocialDraftsForDerived(caption.id, caption.content)
     created += posts.length
   }
   return { captions: captions.length, draftsCreated: created }
@@ -243,10 +266,13 @@ export async function setDerivedStatus(
     include: { source: true },
   })
 
-  if (status === 'APPROVED' && derived.contentType === 'SOCIAL_CAPTION') {
-    await createSocialDraftsForCaption(derived.id, derived.content)
-    if (process.env.SOCIAL_AUTO_PUBLISH === 'true') {
-      await publishCaptionWithImages(derived.id)
+  if (status === 'APPROVED') {
+    const socialTypes = ['SOCIAL_CAPTION', 'TWITTER_THREAD', 'LINKEDIN_CAROUSEL'] as const
+    if (socialTypes.includes(derived.contentType as (typeof socialTypes)[number])) {
+      await createSocialDraftsForDerived(derived.id, derived.content)
+      if (process.env.SOCIAL_AUTO_PUBLISH === 'true' && derived.contentType === 'SOCIAL_CAPTION') {
+        await publishCaptionWithImages(derived.id)
+      }
     }
   }
 

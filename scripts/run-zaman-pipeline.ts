@@ -92,6 +92,21 @@ async function main() {
     console.log(`  ${type}: ${count}`)
   }
 
+  const latestPipeline = await prisma.contentPipeline.findFirst({
+    where: { sourceId: source.id },
+    orderBy: { createdAt: 'desc' },
+  })
+  const cfg = latestPipeline?.config && typeof latestPipeline.config === 'object'
+    ? (latestPipeline.config as Record<string, unknown>)
+    : {}
+  if (cfg.atomizedCreated) {
+    console.log(`\nAtomization: ${cfg.atomizedCreated} parça`)
+    const abt = cfg.atomizedByType as Record<string, number> | undefined
+    if (abt) {
+      for (const [t, c] of Object.entries(abt).sort()) console.log(`  ${t}: ${c}`)
+    }
+  }
+
   console.log('\n=== SOCIAL_CAPTION serisi ===')
   for (const d of derived.filter((x) => x.contentType === 'SOCIAL_CAPTION')) {
     const meta = d.metadata && typeof d.metadata === 'object' ? (d.metadata as Record<string, unknown>) : {}
