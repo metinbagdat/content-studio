@@ -80,10 +80,19 @@ export async function updateSocialPost(
 }
 
 export async function deleteSocialPost(id: string) {
-  const post = await prisma.socialMediaPost.findUnique({ where: { id } })
+  const post = await prisma.socialMediaPost.findUnique({
+    where: { id },
+    include: { account: true },
+  })
   if (!post) throw new Error('Post not found')
-  if (post.status === 'PUBLISHED' || post.status === 'PUBLISHING') {
-    throw new Error('Yayınlanmış post silinemez')
+  const isMock = Boolean(post.platformPostId?.startsWith('mock_'))
+  const cfg =
+    post.account.config && typeof post.account.config === 'object'
+      ? (post.account.config as Record<string, unknown>)
+      : {}
+  const isDryRun = Boolean(cfg.dryRun) || post.account.accountId.startsWith('dryrun_')
+  if ((post.status === 'PUBLISHED' || post.status === 'PUBLISHING') && !isMock && !isDryRun) {
+    throw new Error('Yayınlanmış post silinemez — platformda güncelle veya LinkedIn\'den sil')
   }
   await prisma.socialMediaPost.delete({ where: { id } })
   return { deleted: true, id }

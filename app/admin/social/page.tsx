@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { socialPostPublicUrl } from '@/lib/social/postUrl'
 
 type OAuthStatus = {
@@ -65,6 +65,7 @@ export default function SocialPage() {
   const [editImageUrl, setEditImageUrl] = useState('')
   const [busyId, setBusyId] = useState<string | null>(null)
   const [imagesSynced, setImagesSynced] = useState(false)
+  const [hideDryRun, setHideDryRun] = useState(true)
 
   const load = useCallback(async () => {
     if (!adminKey) return
@@ -295,6 +296,20 @@ export default function SocialPage() {
   }
 
   const canMutate = (status: string) => ['DRAFT', 'SCHEDULED', 'FAILED'].includes(status)
+  const canDeletePost = (p: { status: string; isDryRun?: boolean; isMockPost?: boolean }) =>
+    canMutate(p.status) || Boolean(p.isDryRun || p.isMockPost)
+
+  const visiblePosts = hideDryRun ? posts.filter((p) => !p.isDryRun) : posts
+
+  const captionGroups = useMemo(() => {
+    const map = new Map<string, typeof visiblePosts>()
+    for (const p of visiblePosts) {
+      const key = String(p.derivedContentId || p.id)
+      if (!map.has(key)) map.set(key, [])
+      map.get(key)!.push(p)
+    }
+    return [...map.entries()]
+  }, [visiblePosts])
 
   async function updateOnPlatform(postId: string) {
     if (!confirm('Eski paylaşım platformdan silinir, güncel içerik+görsel ile tek post kalır. Devam?')) return
@@ -446,6 +461,14 @@ export default function SocialPage() {
 
       <section className="panel" style={{ marginTop: '1rem' }}>
         <h2>Post taslakları</h2>
+        <p className="muted" style={{ marginTop: 0, fontSize: '0.88rem' }}>
+          Her onaylı caption için <strong>bağlı her hesaba ayrı satır</strong> oluşturulur (LinkedIn, X, dry-run).
+          Aynı metin/görsel normal — farklı hesap hedefleri.
+        </p>
+        <label className="row" style={{ marginBottom: '0.75rem', fontSize: '0.88rem' }}>
+          <input type="checkbox" checked={hideDryRun} onChange={(e) => setHideDryRun(e.target.checked)} />
+          Dry-run / test satırlarını gizle
+        </label>
         {draftCaptionIds.length ? (
           <div className="row" style={{ marginBottom: '0.75rem' }}>
             {draftCaptionIds.map((cid) => (
@@ -462,141 +485,117 @@ export default function SocialPage() {
           </div>
         ) : null}
         <ul className="list">
-          {posts.map((p) => (
-            <li key={p.id}>
-              <div className="row">
-                <span className="badge">{p.platform}</span>
-                <span className={`badge ${p.status === 'PUBLISHED' ? 'ok' : p.status === 'FAILED' ? 'danger' : 'warn'}`}>
-                  {p.status}
-                </span>
-                {p.status === 'PUBLISHED' && p.imageAttached === true ? (
-                  <span className="badge ok">görsel OK</span>
-                ) : null}
-                {p.imageError ? (
-                  <span className="badge danger" title={String(p.imageError)}>
-                    görsel hata
-                  </span>
-                ) : null}
-                {p.scheduledAt ? (
-                  <span className="muted">{new Date(p.scheduledAt).toLocaleString('tr-TR')}</span>
-                ) : null}
-              </div>
-              {editingId === p.id ? (
-                <>
-                  <textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} style={{ marginTop: '0.5rem' }} />
-                  <div style={{ marginTop: '0.5rem' }}>
-                    <label className="muted" style={{ display: 'block', marginBottom: '0.25rem' }}>
-                      Görsel URL (LinkedIn paylaşımı)
-                    </label>
-                    <input
-                      type="url"
-                      value={editImageUrl}
-                      onChange={(e) => setEditImageUrl(e.target.value)}
-                      placeholder="https://www.egitim.today/opengraph-image.png"
-                      style={{ width: '100%' }}
-                    />
-                    {editImageUrl.trim() ? (
-                      <img
-                        src={editImageUrl.trim()}
-                        alt="Önizleme"
-                        style={{ marginTop: '0.5rem', maxWidth: '280px', maxHeight: '160px', borderRadius: '6px' }}
-                        onError={(e) => {
-                          ;(e.target as HTMLImageElement).style.display = 'none'
-                        }}
-                      />
-                    ) : (
-                      <p className="muted" style={{ margin: '0.35rem 0 0', fontSize: '0.82rem' }}>
-                        Boş bırakılırsa içeriğe uygun otomatik kart görseli üretilir.
-                      </p>
-                    )}
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="pre">{p.postContent}</div>
-                  {p.imagePreviewUrl ? (
-                    <div style={{ marginTop: '0.5rem' }}>
-                      <PostImagePreview src={p.imagePreviewUrl} alt="Post görseli" />
-                      <p className="muted" style={{ margin: '0.25rem 0 0', fontSize: '0.78rem' }}>
-                        {p.mediaUrls?.[0] || p.imagePreviewUrl}
-                      </p>
-                    </div>
-                  ) : (
-                    <p className="muted" style={{ margin: '0.35rem 0 0', fontSize: '0.82rem' }}>
-                      Görsel henüz yok — &quot;Görselleri senkronize et&quot; veya yayınla
-                    </p>
-                  )}
-                </>
-              )}
-              {p.status === 'PUBLISHED' && p.platformPostId ? (
-                <p className="muted" style={{ margin: '0.35rem 0 0', fontSize: '0.82rem' }}>
-                  {socialPostPublicUrl(p.platform, p.platformPostId) ? (
-                    <a href={socialPostPublicUrl(p.platform, p.platformPostId)!} target="_blank" rel="noreferrer">
-                      LinkedIn&apos;de aç
-                    </a>
-                  ) : (
-                    <>ID: {p.platformPostId} (dry-run — gerçek link yok)</>
-                  )}
-                </p>
-              ) : null}
-              {p.imageError ? (
-                <p className="muted" style={{ margin: '0.35rem 0 0', color: 'var(--danger)', fontSize: '0.82rem' }}>
-                  Görsel: {String(p.imageError).slice(0, 240)}
-                </p>
-              ) : null}
-              {p.status === 'FAILED' && p.error ? (
-                <p className="muted" style={{ margin: '0.35rem 0 0', color: 'var(--danger)', fontSize: '0.82rem' }}>
-                  {String(p.error).slice(0, 200)}
-                </p>
-              ) : null}
-              <div className="row" style={{ marginTop: '0.5rem' }}>
-                {editingId === p.id ? (
-                  <>
-                    <button type="button" className="ok" disabled={busyId === p.id} onClick={() => saveEdit(p.id)}>
-                      Kaydet
-                    </button>
-                    <button type="button" className="secondary" onClick={cancelEdit}>
-                      İptal
-                    </button>
-                  </>
+          {captionGroups.map(([captionId, groupPosts]) => {
+            const sample = groupPosts[0]
+            const previewUrl = groupPosts.find((p) => p.imagePreviewUrl)?.imagePreviewUrl
+            return (
+              <li key={captionId} style={{ marginBottom: '1.25rem' }}>
+                <div className="row" style={{ marginBottom: '0.5rem' }}>
+                  <strong>Caption</strong>
+                  <span className="badge">{groupPosts.length} hesap</span>
+                  <span className="muted" style={{ fontSize: '0.78rem' }}>{captionId.slice(0, 8)}…</span>
+                </div>
+                {editingId && groupPosts.some((p) => p.id === editingId) ? (
+                  groupPosts
+                    .filter((p) => p.id === editingId)
+                    .map((p) => (
+                      <div key={p.id}>
+                        <p className="muted" style={{ fontSize: '0.82rem' }}>
+                          Düzenleniyor: <strong>{p.account?.accountName}</strong> ({p.platform})
+                        </p>
+                        <textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} style={{ marginTop: '0.5rem' }} />
+                        <div style={{ marginTop: '0.5rem' }}>
+                          <label className="muted" style={{ display: 'block', marginBottom: '0.25rem' }}>
+                            Görsel URL
+                          </label>
+                          <input type="url" value={editImageUrl} onChange={(e) => setEditImageUrl(e.target.value)} style={{ width: '100%' }} />
+                        </div>
+                        <div className="row" style={{ marginTop: '0.5rem' }}>
+                          <button type="button" className="ok" disabled={busyId === p.id} onClick={() => saveEdit(p.id)}>
+                            Kaydet
+                          </button>
+                          <button type="button" className="secondary" onClick={cancelEdit}>
+                            İptal
+                          </button>
+                        </div>
+                      </div>
+                    ))
                 ) : (
                   <>
-                    {canMutate(p.status) ? (
-                      <button type="button" className="secondary" disabled={busyId === p.id} onClick={() => startEdit(p)}>
-                        Düzenle
-                      </button>
-                    ) : null}
-                    {canMutate(p.status) ? (
-                      <button type="button" className="ok" disabled={busyId === p.id} onClick={() => publishNow(p.id)}>
-                        Şimdi yayınla
-                      </button>
-                    ) : null}
-                    {canMutate(p.status) ? (
-                      <button type="button" className="secondary" disabled={busyId === p.id} onClick={() => schedule(p.id)}>
-                        +5 dk schedule
-                      </button>
-                    ) : null}
-                    {p.status === 'SCHEDULED' ? (
-                      <button type="button" className="secondary" disabled={busyId === p.id} onClick={() => cancelSchedule(p.id)}>
-                        Zamanlamayı iptal
-                      </button>
-                    ) : null}
-                    {p.status === 'PUBLISHED' && p.platform === 'LINKEDIN' && p.account?.accountName && !String(p.platformPostId || '').startsWith('mock_') ? (
-                      <button type="button" className="secondary" disabled={busyId === p.id} onClick={() => updateOnPlatform(p.id)}>
-                        Platformda güncelle (eski sil)
-                      </button>
-                    ) : null}
-                    {canMutate(p.status) ? (
-                      <button type="button" className="danger" disabled={busyId === p.id} onClick={() => removePost(p.id)}>
-                        Sil
-                      </button>
+                    <div className="pre" style={{ maxHeight: '120px', overflow: 'auto' }}>
+                      {sample?.postContent}
+                    </div>
+                    {previewUrl ? (
+                      <div style={{ marginTop: '0.5rem' }}>
+                        <PostImagePreview src={previewUrl} alt="Caption görseli" />
+                      </div>
                     ) : null}
                   </>
                 )}
-              </div>
-            </li>
-          ))}
-          {!posts.length ? (
+                <ul className="list" style={{ marginTop: '0.75rem', paddingLeft: '0.5rem' }}>
+                  {groupPosts.map((p) => (
+                    <li key={p.id} style={{ borderLeft: '3px solid var(--border)', paddingLeft: '0.75rem', marginTop: '0.5rem' }}>
+                      <div className="row">
+                        <strong>{p.account?.accountName || 'Hesap'}</strong>
+                        <span className="badge">{p.platform}</span>
+                        {p.isDryRun ? <span className="badge warn">dry-run</span> : null}
+                        {!p.account?.isActive && !p.isDryRun ? <span className="badge">off</span> : null}
+                        <span className={`badge ${p.status === 'PUBLISHED' ? 'ok' : p.status === 'FAILED' ? 'danger' : 'warn'}`}>
+                          {p.status}
+                        </span>
+                        {p.imageAttached === true ? <span className="badge ok">görsel OK</span> : null}
+                        {p.imageError ? <span className="badge danger">görsel hata</span> : null}
+                      </div>
+                      {p.imageError ? (
+                        <p className="muted" style={{ margin: '0.25rem 0 0', color: 'var(--danger)', fontSize: '0.8rem' }}>
+                          {String(p.imageError).slice(0, 180)}
+                        </p>
+                      ) : null}
+                      {p.status === 'PUBLISHED' && p.platformPostId ? (
+                        <p className="muted" style={{ margin: '0.25rem 0 0', fontSize: '0.8rem' }}>
+                          {socialPostPublicUrl(p.platform, p.platformPostId) ? (
+                            <a href={socialPostPublicUrl(p.platform, p.platformPostId)!} target="_blank" rel="noreferrer">
+                              LinkedIn&apos;de aç
+                            </a>
+                          ) : (
+                            <>mock: {p.platformPostId}</>
+                          )}
+                        </p>
+                      ) : null}
+                      {!editingId || editingId !== p.id ? (
+                        <div className="row" style={{ marginTop: '0.35rem' }}>
+                          {canMutate(p.status) ? (
+                            <button type="button" className="secondary" disabled={busyId === p.id} onClick={() => startEdit(p)}>
+                              Düzenle
+                            </button>
+                          ) : null}
+                          {canMutate(p.status) ? (
+                            <button type="button" className="ok" disabled={busyId === p.id} onClick={() => publishNow(p.id)}>
+                              Şimdi yayınla
+                            </button>
+                          ) : null}
+                          {p.status === 'PUBLISHED' &&
+                          p.platform === 'LINKEDIN' &&
+                          !p.isDryRun &&
+                          !String(p.platformPostId || '').startsWith('mock_') ? (
+                            <button type="button" className="secondary" disabled={busyId === p.id} onClick={() => updateOnPlatform(p.id)}>
+                              Platformda güncelle
+                            </button>
+                          ) : null}
+                          {canDeletePost(p) ? (
+                            <button type="button" className="danger" disabled={busyId === p.id} onClick={() => removePost(p.id)}>
+                              Sil
+                            </button>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            )
+          })}
+          {!visiblePosts.length ? (
             <li className="muted">Onaylı caption + bağlı hesap → taslak oluşur (veya senkronize et)</li>
           ) : null}
         </ul>

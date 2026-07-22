@@ -21,7 +21,11 @@ export async function GET(req: NextRequest) {
     prisma.socialMediaPost.findMany({
       orderBy: { createdAt: 'desc' },
       take: 50,
-      include: { account: { select: { accountName: true, platform: true } } },
+      include: {
+        account: {
+          select: { accountName: true, platform: true, isActive: true, accountId: true, config: true },
+        },
+      },
     }),
   ])
   return NextResponse.json({
@@ -42,12 +46,24 @@ export async function GET(req: NextRequest) {
     }),
     posts: posts.map((p) => {
       const m = readPublishMetrics(p.metrics)
+      const cfg =
+        p.account.config && typeof p.account.config === 'object'
+          ? (p.account.config as Record<string, unknown>)
+          : {}
+      const isDryRun = Boolean(cfg.dryRun) || p.account.accountId.startsWith('dryrun_')
+      const isMockPost = Boolean(p.platformPostId?.startsWith('mock_'))
       return {
         ...p,
+        account: {
+          accountName: p.account.accountName,
+          platform: p.account.platform,
+          isActive: p.account.isActive,
+        },
+        isDryRun,
+        isMockPost,
         imagePreviewUrl: toImagePreviewPath(p.mediaUrls?.[0]),
         imageAttached: m.imageAttached ?? null,
         imageError: m.imageError || (p.status === 'FAILED' ? p.error : null),
-        publishSkippedReason: null,
       }
     }),
   })
