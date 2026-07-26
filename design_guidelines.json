@@ -1,0 +1,90 @@
+{
+  "project_context": {
+    "name": "eğitim.today İçerik Atomizasyon & Otomatik Yayın Platformu",
+    "type": "Admin Dashboard / SaaS app",
+    "language": "Turkish"
+  },
+  "design_system": {
+    "theme": "Dark Theme (Notion + Linear mix). Ambient accountability, high density.",
+    "typography": {
+      "heading": "Cabinet Grotesk",
+      "body": "Manrope",
+      "mono": "JetBrains Mono",
+      "rules": "Never use Inter for headings. Use tight tracking for headings > 32px. Use wide tracking (0.1em) and uppercase for overlines/labels."
+    },
+    "colors": {
+      "background": "#0F1011",
+      "surface": "#191A1B",
+      "surface_hover": "#222325",
+      "border": "#2A2E33",
+      "border_subtle": "rgba(255, 255, 255, 0.06)",
+      "text_primary": "#FFFFFF",
+      "text_secondary": "#8A8F98",
+      "accent": "#5E6AD2",
+      "accent_hover": "#7380E8",
+      "success": "#27C281",
+      "warning": "#F3B72C",
+      "danger": "#E64C4C",
+      "rules": "No drop shadows. Use 1px borders to define shapes. Background must be deep obsidian, not pure black. Text contrast must pass APCA."
+    },
+    "grids": "High Density Grid (grid-cols-1 md:grid-cols-3 lg:grid-cols-4). Tight gaps (gap-4 or gap-6). Use h-full on children.",
+    "layouts": {
+      "sidebar": "Fixed width, distinct background (#0A0A0B), 1px right border.",
+      "header": "Sticky top, glassmorphism (backdrop-blur-xl bg-[#0F1011]/80) or solid #0F1011 with 1px bottom border.",
+      "kanban": "Flex horizontal scroll. Columns have min-width. Items stretch.",
+      "atom_preview": "Bento style or vertical feed. Exact platform mockups using custom HTML/Tailwind.",
+      "calendar": "Dense data grid. Use subtle borders for cell division."
+    },
+    "motion": {
+      "hover": "transition-colors duration-200. Elements should shift background color slightly.",
+      "active": "Scale down slightly (scale-[0.98])",
+      "drag": "Scale up (scale-105) and increase border opacity."
+    },
+    "accessibility": "Use data-testid on all interactive elements. Ensure focus rings are visible (ring-2 ring-[#5E6AD2]). Contrast ratios above 4.5:1.",
+    "component_usage": {
+      "cards": "Flat, border-border, no shadow. p-6 padding inside.",
+      "buttons": "Radius 6px. Primary uses accent color. Secondary is surface color with border.",
+      "inputs": "bg-surface border-border. Text secondary when empty.",
+      "badges": "Small, uppercase, tracking-wide. Colored based on status."
+    }
+  },
+  "image_urls": {
+    "login_bg": {
+      "url": "https://images.unsplash.com/photo-1578662996442-48f60103fc96?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzNzl8MHwxfHNlYXJjaHw0fHxhYnN0cmFjdCUyMGRhcmslMjB0ZXh0dXJlfGVufDB8fHx8MTc4NTA4ODE0NXww&ixlib=rb-4.1.0&q=85",
+      "description": "Abstract dark texture for login or empty states."
+    },
+    "admin_avatar": {
+      "url": "https://images.pexels.com/photos/20157010/pexels-photo-20157010.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "description": "Admin profile picture."
+    },
+    "article_thumb": {
+      "url": "https://images.pexels.com/photos/5827785/pexels-photo-5827785.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "description": "Placeholder for imported article thumbnails."
+    }
+  },
+  "instructions_to_main_agent": [
+    "Create all components in JavaScript (.jsx / .js). DO NOT USE TypeScript (.tsx / .ts).",
+    "Build the UI entirely in Turkish as requested.",
+    "Apply the 'Linear' aesthetic: deep dark #0F1011 background, flat cards with 1px borders, no drop shadows, and #5E6AD2 as the accent color.",
+    "Add Google Fonts 'Cabinet Grotesk' (Headings), 'Manrope' (Body), and 'JetBrains Mono' (Stats/Logs) to index.html.",
+    "Design the Kanban Review Queue using raw HTML/Tailwind with a horizontal flex layout.",
+    "For the Atom Preview cards, build precise mockups resembling Twitter, LinkedIn, Instagram using custom Tailwind classes.",
+    "Include an Observability section (Jobs/Logs) using JetBrains Mono for the text to give it a technical feel.",
+    "Never use 'transparent' background for dropdowns or modals. Always use #191A1B with a border.",
+    "Use standard HTML inputs customized via Tailwind if Shadcn is missing, but prefer Shadcn components customized to look flat.",
+    "Use framer-motion for drag-and-drop or mockup transitions if applicable."
+  ],
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "Do not use generic centered layouts or simplistic gradients.",
+    "Create depth through layered design elements with z-index hierarchy and border colors.",
+    "Use glass-morphism effects with backdrop filters (12-24px blur) only where scrolling content requires it (e.g. sticky header).",
+    "MUST NOT apply universal transition (e.g., `transition: all`). Specify properties (e.g. `transition-colors`).",
+    "MUST NOT center align the app container. Remove `.App { text-align: center; }` from CSS.",
+    "Always use modern button styles like pill-shaped or sharp with interaction animations.",
+    "NEVER use AI assistant Emoji characters like 🤖🧠💭💡🔮🎯 for icons. Use Phosphor or Lucide icons.",
+    "Use 2-3x more spacing than typical designs. Cramped designs look cheap.",
+    "Add `data-testid` attribute to all interactive and key informational elements.",
+    "Prioritize using pre-existing components from src/components/ui.",
+    "Use 'sonner' for toasts."
+  ]
+}
