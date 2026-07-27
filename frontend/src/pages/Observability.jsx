@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Twitter, Linkedin, CheckCircle2, XCircle } from "lucide-react";
 import apiClient from "@/lib/apiClient";
 
 export default function Observability() {
     const [jobs, setJobs] = useState([]);
     const [quotas, setQuotas] = useState([]);
+    const [social, setSocial] = useState(null);
 
     const load = () => {
         apiClient.get("/jobs").then((r) => setJobs(r.data));
         apiClient.get("/quotas").then((r) => setQuotas(r.data));
+        apiClient.get("/social/status").then((r) => setSocial(r.data)).catch(() => {});
     };
     useEffect(() => { load(); }, []);
 
@@ -22,6 +24,35 @@ export default function Observability() {
                 <button onClick={load} data-testid="refresh-btn" className="flex items-center gap-1.5 text-sm text-[#8A8F98] hover:text-white transition-colors duration-200">
                     <RefreshCw className="w-4 h-4" /> Yenile
                 </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6" data-testid="social-status">
+                <div className="bg-[#191A1B] border border-[#2A2E33] rounded-lg p-5 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <Twitter className="w-5 h-5 text-[#1DA1F2]" />
+                        <div>
+                            <div className="font-heading font-semibold text-sm">Twitter / X</div>
+                            <div className="text-xs text-[#8A8F98]">
+                                {social?.twitter?.connected ? `@${social.twitter.username}` : social?.twitter?.error || "Bağlı değil"}
+                            </div>
+                        </div>
+                    </div>
+                    {social?.twitter?.connected ? (
+                        <span className="flex items-center gap-1 text-xs text-[#27C281]" data-testid="twitter-connected"><CheckCircle2 className="w-4 h-4" /> Bağlı</span>
+                    ) : (
+                        <span className="flex items-center gap-1 text-xs text-[#E64C4C]"><XCircle className="w-4 h-4" /> Yok</span>
+                    )}
+                </div>
+                <div className="bg-[#191A1B] border border-[#2A2E33] rounded-lg p-5 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <Linkedin className="w-5 h-5 text-[#0A66C2]" />
+                        <div>
+                            <div className="font-heading font-semibold text-sm">LinkedIn</div>
+                            <div className="text-xs text-[#8A8F98]">{social?.linkedin?.configured ? "Yapılandırıldı" : "Key bekleniyor"}</div>
+                        </div>
+                    </div>
+                    <span className="flex items-center gap-1 text-xs text-[#8A8F98]"><XCircle className="w-4 h-4" /> Yok</span>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

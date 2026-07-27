@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Sparkles, RefreshCw, Check, X, Pencil, Loader2, ImageIcon, Music, Video, FileText } from "lucide-react";
+import { Sparkles, RefreshCw, Check, X, Pencil, Loader2, ImageIcon, Music, Video, FileText, Send, ExternalLink } from "lucide-react";
 import apiClient, { API, apiError } from "@/lib/apiClient";
 import StatusBadge from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -80,6 +80,12 @@ export default function AtomCard({ atom, onChange, selectable, selected, onSelec
             setEditing(false);
             toast.success("Kaydedildi");
         });
+    const publish = () =>
+        act(async () => {
+            const { data } = await apiClient.post(`/atoms/${atom.id}/publish`);
+            toast.success("Twitter/X'te yayınlandı");
+            if (data.url) window.open(data.url, "_blank");
+        });
 
     return (
         <div
@@ -129,6 +135,18 @@ export default function AtomCard({ atom, onChange, selectable, selected, onSelec
 
             {atom.notes && <p className="text-xs text-[#F3B72C]">Not: {atom.notes}</p>}
 
+            {atom.published && (
+                <a
+                    href={atom.publish_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    data-testid={`atom-published-link-${atom.id}`}
+                    className="flex items-center gap-1.5 text-xs text-[#27C281] hover:underline"
+                >
+                    <ExternalLink className="w-3 h-3" /> Twitter/X'te yayınlandı
+                </a>
+            )}
+
             {!editing && (
                 <div className="flex flex-wrap gap-1.5 pt-1">
                     <Button
@@ -154,6 +172,12 @@ export default function AtomCard({ atom, onChange, selectable, selected, onSelec
                     {atom.content && atom.status !== "rejected" && (
                         <Button size="sm" onClick={reject} disabled={busy} data-testid={`atom-reject-${atom.id}`} className="h-7 px-2 text-xs bg-[#E64C4C]/15 text-[#E64C4C] hover:bg-[#E64C4C]/25">
                             <X className="w-3 h-3" />
+                        </Button>
+                    )}
+                    {atom.platform === "Twitter/X" && atom.status === "approved" && !atom.published && (
+                        <Button size="sm" onClick={publish} disabled={busy} data-testid={`atom-publish-${atom.id}`} className="h-7 px-2 text-xs bg-[#1DA1F2]/15 text-[#1DA1F2] hover:bg-[#1DA1F2]/25">
+                            <Send className="w-3 h-3" />
+                            <span className="ml-1">Yayınla</span>
                         </Button>
                     )}
                 </div>

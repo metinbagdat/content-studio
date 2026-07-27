@@ -24,6 +24,13 @@ eğitim.today İçerik Atomizasyon & Otomatik Yayın Platformu. Bir makaleyi LLM
 - Dashboard stats + quota tracking; Observability (job logs + daily quota).
 - Verified: 20/20 backend tests pass; full UI flow passes.
 
+## Publishing Phase (2026-07-27)
+- Twitter/X publishing integrated REAL (publisher.py): POST /2/tweets via OAuth2 user Bearer token (@egitimtoday). Single tweet + thread (reply-chain) support. Tokens stored in social_tokens collection (seeded from env, updatable via POST /api/social/twitter/token).
+- Endpoints: GET /api/social/status, POST /api/atoms/{id}/publish. AtomCard has "Yayınla" button for approved Twitter/X atoms; Observability shows connection status per platform.
+- BLOCKER (X-side, not code): POST returns 402 "credits depleted" — the X developer account's write quota/plan is exhausted; error surfaced clearly to admin. Read (verify) works. Will function once X account has write credits.
+- LinkedIn: NOT connected — user provided placeholder Client ID/Secret (`...`). Playbook ready (LinkedIn OAuth + /rest/posts); pending real keys.
+- Token durability note: provided X token is OAuth2 (~2h expiry) + refresh token; refresh needs OAuth2 Client ID/Secret (not yet provided) OR paste a fresh token via the token endpoint.
+
 ## Prioritized Backlog
 - P0: eğitim.today RSS/API cron ingestion (06:00 IST); background job queue for analyze/generate (currently blocking); "generate all" bulk pipeline.
 - P1: Scheduling calendar (drag-drop) + publisher worker; real social integrations (Twitter/X, LinkedIn first) — needs OAuth developer apps/keys from user.

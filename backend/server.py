@@ -22,6 +22,7 @@ from typing import List, Optional
 import auth
 import blueprint as bp
 import ai_service
+import publisher
 
 mongo_url = os.environ["MONGO_URL"]
 client = AsyncIOMotorClient(mongo_url)
@@ -224,6 +225,10 @@ async def analyze_article(article_id: str, user: dict = Depends(get_current_user
                 "media_type": None,
                 "media": None,
                 "notes": "",
+                "published": False,
+                "publish_platform": None,
+                "publish_url": None,
+                "published_at": None,
                 "created_at": now_iso(),
                 "updated_at": now_iso(),
             })
@@ -348,6 +353,62 @@ async def bulk_approve(data: BulkIds, user: dict = Depends(get_current_user)):
     return {"ok": True, "count": len(data.ids)}
 
 
+# ---------- social publishing ----------
+class TwitterTokenIn(BaseModel):
+    access_token: str
+
+
+@api_router.get("/social/status")
+async def social_status(user: dict = Depends(get_current_user)):
+    token = await publisher.get_twitter_token(db)
+    twitter = {"connected": False, "username": None, "error": None}
+    if token:
+        info = publisher.verify_twitter(token)
+        if info:
+            twitter = {"connected": True, "username": info.get("username"), "error": None}
+        else:
+            twitter = {"connected": False, "username": None, "error": "Token geçersiz veya süresi dolmuş"}
+    li_id = os.environ.get("LINKEDIN_CLIENT_ID", "")
+    linkedin = {"connected": False, "configured": bool(li_id and li_id not in ("", "..."))}
+    return {"twitter": twitter, "linkedin": linkedin}
+
+
+@api_router.post("/social/twitter/token")
+async def set_twitter_token(data: TwitterTokenIn, user: dict = Depends(get_current_user)):
+    await db.social_tokens.update_one(
+        {"platform": "twitter"},
+        {"$set": {"platform": "twitter", "access_token": data.access_token.strip(), "updated_at": now_iso()}},
+        upsert=True,
+    )
+    return {"ok": True}
+
+
+@api_router.post("/atoms/{atom_id}/publish")
+async def publish_atom(atom_id: str, user: dict = Depends(get_current_user)):
+    atom = await db.atoms.find_one({"id": atom_id}, {"_id": 0})
+    if not atom:
+        raise HTTPException(status_code=404, detail="Atom bulunamadı")
+    if not atom.get("content"):
+        raise HTTPException(status_code=400, detail="Önce içerik üretin")
+    if atom["status"] != "approved":
+        raise HTTPException(status_code=400, detail="Yayınlamadan önce atomu onaylayın")
+    if atom["platform"] != "Twitter/X":
+        raise HTTPException(status_code=400, detail="Şu an yalnızca Twitter/X yayını aktif (LinkedIn key bekleniyor)")
+    token = await publisher.get_twitter_token(db)
+    if not token:
+        raise HTTPException(status_code=400, detail="Twitter/X bağlı değil")
+    try:
+        result = publisher.publish_twitter(token, atom)
+    except publisher.PublishError as e:
+        await log_job(atom_id, atom["type"], "error", str(e))
+        raise HTTPException(status_code=400, detail=str(e))
+    await db.atoms.update_one({"id": atom_id}, {"$set": {
+        "published": True, "publish_platform": "Twitter/X", "publish_url": result["url"], "published_at": now_iso(),
+    }})
+    await log_job(atom_id, atom["type"], "success", f"Yayınlandı: {result['url']}")
+    return {"ok": True, "url": result["url"]}
+
+
 # ---------- dashboard / observability ----------
 @api_router.get("/dashboard/stats")
 async def dashboard_stats(user: dict = Depends(get_current_user)):
@@ -406,6 +467,14 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup():
     await auth.seed_admin(db)
+    existing = await db.social_tokens.find_one({"platform": "twitter"})
+    if not existing and os.environ.get("TWITTER_ACCESS_TOKEN"):
+        await db.social_tokens.insert_one({
+            "platform": "twitter",
+            "access_token": os.environ["TWITTER_ACCESS_TOKEN"],
+            "refresh_token": os.environ.get("TWITTER_ACCESS_TOKEN_SECRET"),
+            "updated_at": now_iso(),
+        })
     await db.users.create_index("email", unique=True)
     await db.articles.create_index("content_hash")
     await db.atoms.create_index("article_id")
