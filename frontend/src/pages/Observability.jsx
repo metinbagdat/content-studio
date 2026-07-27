@@ -24,7 +24,12 @@ export default function Observability() {
     const connectLinkedIn = async () => {
         try {
             const { data } = await apiClient.get("/linkedin/login");
-            window.location.href = data.url;
+            const win = window.open(data.url, "_blank", "noopener");
+            if (!win) {
+                toast.error("Açılır pencere engellendi — lütfen bu site için pop-up'lara izin verin");
+            } else {
+                toast.info("LinkedIn izin sekmesi açıldı. İzin verdikten sonra bu sayfayı yenileyin.");
+            }
         } catch (e) {
             toast.error("LinkedIn bağlantısı başlatılamadı");
         }
