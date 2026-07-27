@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Sparkles, RefreshCw, Check, X, Pencil, Loader2, ImageIcon, Music, Video, FileText, Send, ExternalLink, Clock } from "lucide-react";
+import { Sparkles, RefreshCw, Check, X, Pencil, Loader2, ImageIcon, Music, Video, FileText, Send, ExternalLink, Clock, Eye } from "lucide-react";
 import apiClient, { apiError } from "@/lib/apiClient";
 import StatusBadge from "@/components/StatusBadge";
+import AtomPreview from "@/components/AtomPreview";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -47,6 +48,7 @@ export default function AtomCard({ atom, onChange, selectable, selected, onSelec
     const [busy, setBusy] = useState(false);
     const [editing, setEditing] = useState(false);
     const [draft, setDraft] = useState(atom.content || "");
+    const [preview, setPreview] = useState(false);
     const Icon = ICONS[atom.category] || Video;
     const isSocial = atom.platform === "Twitter/X" || atom.platform === "LinkedIn";
     const accent = PLATFORM_COLOR[atom.platform] || "#5E6AD2";
@@ -130,6 +132,9 @@ export default function AtomCard({ atom, onChange, selectable, selected, onSelec
                                 <Button size="sm" onClick={generate} disabled={busy} data-testid={`atom-regenerate-${atom.id}`} className="h-7 px-2 text-xs bg-[#2A2E33] hover:bg-[#3a3f45]">
                                     <RefreshCw className="w-3 h-3" /><span className="ml-1">Yeniden</span>
                                 </Button>
+                                <Button size="sm" onClick={() => setPreview(true)} data-testid={`atom-preview-${atom.id}`} className="h-7 px-2 text-xs bg-[#2A2E33] hover:bg-[#3a3f45]">
+                                    <Eye className="w-3 h-3" /><span className="ml-1">Önizle</span>
+                                </Button>
                                 {atom.category === "text" && (
                                     <Button size="sm" onClick={() => { setDraft(atom.content); setEditing(true); }} data-testid={`atom-edit-${atom.id}`} className="h-7 px-2 text-xs bg-[#2A2E33] hover:bg-[#3a3f45]">
                                         <Pencil className="w-3 h-3" /><span className="ml-1">Düzenle</span>
@@ -150,6 +155,8 @@ export default function AtomCard({ atom, onChange, selectable, selected, onSelec
                     )}
                 </div>
             )}
+
+            {atom.content && <AtomPreview atom={atom} open={preview} onOpenChange={setPreview} />}
         </div>
     );
 }
