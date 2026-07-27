@@ -59,6 +59,12 @@ eğitim.today İçerik Atomizasyon & Otomatik Yayın Platformu. Bir makaleyi LLM
 - New 'Takvim' page (/schedule): unscheduled list with datetime picker + 'Zamanla', 'Otomatik Dağıt', timeline grouped by day with Yayınlandı/Zamanlandı/Başarısız(DLQ) badges + Şimdi Yayınla/Tekrar/Kaldır actions. AtomCard shows amber 'zamanlandı' indicator.
 - Verified testing_agent iteration_4: 100% backend + frontend; worker executed past-scheduled Twitter atom → 402 retry/DLQ confirmed.
 
+## Analytics + Drag-Drop Calendar (2026-07-27)
+- Takvim: native HTML5 drag-drop reschedule across a 14-day drop grid (day-0..13); dropping a card reschedules keeping time-of-day. Published list + DLQ actions retained.
+- New Analitik page (/analytics) + GET /api/analytics: published by platform/type/IST-hour, scheduled/failed totals, DLQ list w/ retry, blueprint feedback suggestions (data-derived; engagement metrics noted as requiring paid social read APIs — not fabricated).
+- Verified testing_agent iteration_5: 100% backend + frontend; drag_to reschedule confirmed.
+- NOTE: Emergent Universal Key budget exhausted ($1.02/$1.00) → content generation (Gemini/OpenAI) now 500s until balance added.
+
 ## Next Tasks
 1. Confirm eğitim.today RSS URL; add RSS fetcher cron + manual URL already done.
 2. Move analyze/generate to background tasks (APScheduler/Celery) to avoid request blocking.
