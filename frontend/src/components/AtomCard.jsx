@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Sparkles, RefreshCw, Check, X, Pencil, Loader2, ImageIcon, Music, Video, FileText, Send, ExternalLink } from "lucide-react";
+import { Sparkles, RefreshCw, Check, X, Pencil, Loader2, ImageIcon, Music, Video, FileText, Send, ExternalLink, Clock } from "lucide-react";
 import apiClient, { apiError } from "@/lib/apiClient";
 import StatusBadge from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -86,6 +86,10 @@ export default function AtomCard({ atom, onChange, selectable, selected, onSelec
                 {atom.aspect !== "-" && <span>· {atom.aspect}</span>}
                 {atom.auto_approve && <span className="text-[#27C281]">· otomatik onay</span>}
             </div>
+
+            {atom.scheduled_at && !atom.published && (
+                <div className="flex items-center gap-1 text-[10px] text-[#F3B72C]"><Clock className="w-3 h-3" /> {new Date(atom.scheduled_at).toLocaleString("tr-TR")} için zamanlandı</div>
+            )}
 
             {editing ? (
                 <div className="space-y-2">

@@ -8,6 +8,7 @@ import Dashboard from "@/pages/Dashboard";
 import Articles from "@/pages/Articles";
 import ArticleDetail from "@/pages/ArticleDetail";
 import ReviewQueue from "@/pages/ReviewQueue";
+import Schedule from "@/pages/Schedule";
 import Observability from "@/pages/Observability";
 
 function Protected({ children }) {
@@ -33,6 +34,7 @@ function App() {
                         <Route path="/articles" element={<Protected><Articles /></Protected>} />
                         <Route path="/articles/:id" element={<Protected><ArticleDetail /></Protected>} />
                         <Route path="/review" element={<Protected><ReviewQueue /></Protected>} />
+                        <Route path="/schedule" element={<Protected><Schedule /></Protected>} />
                         <Route path="/observability" element={<Protected><Observability /></Protected>} />
                     </Routes>
                 </BrowserRouter>

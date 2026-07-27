@@ -12,7 +12,7 @@ import hashlib
 import logging
 import secrets
 from urllib.parse import urlencode
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 import requests
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request
@@ -21,6 +21,7 @@ from starlette.responses import RedirectResponse
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field
 from typing import List, Optional
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 import auth
 import blueprint as bp
@@ -36,6 +37,7 @@ api_router = APIRouter(prefix="/api")
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
+scheduler = AsyncIOScheduler()
 
 
 # ---------- helpers ----------
@@ -232,6 +234,10 @@ async def analyze_article(article_id: str, user: dict = Depends(get_current_user
                 "publish_platform": None,
                 "publish_url": None,
                 "published_at": None,
+                "scheduled_at": None,
+                "publish_attempts": 0,
+                "last_error": None,
+                "dead": False,
                 "created_at": now_iso(),
                 "updated_at": now_iso(),
             })
@@ -429,6 +435,34 @@ async def linkedin_callback(code: str = None, state: str = None, error: str = No
     return RedirectResponse(f"{frontend}/observability?linkedin=connected")
 
 
+async def _do_publish(atom: dict) -> dict:
+    platform = atom["platform"]
+    if platform == "Twitter/X":
+        token_row = await db.social_tokens.find_one({"platform": "twitter"})
+        token = (token_row or {}).get("access_token") or os.environ.get("TWITTER_ACCESS_TOKEN")
+        if not token:
+            raise ValueError("Twitter/X bağlı değil")
+        try:
+            return publisher.publish_twitter(token, atom)
+        except publisher.TokenExpired:
+            rt = (token_row or {}).get("refresh_token") or os.environ.get("TWITTER_ACCESS_TOKEN_SECRET")
+            new = publisher.refresh_twitter(rt)
+            if not new:
+                raise ValueError("Twitter token yenilenemedi (Client Secret gerekli)")
+            await db.social_tokens.update_one(
+                {"platform": "twitter"},
+                {"$set": {"platform": "twitter", "access_token": new["access_token"], "refresh_token": new.get("refresh_token", rt), "updated_at": now_iso()}},
+                upsert=True,
+            )
+            return publisher.publish_twitter(new["access_token"], atom)
+    if platform == "LinkedIn":
+        li = await db.social_tokens.find_one({"platform": "linkedin"})
+        if not li or not li.get("access_token"):
+            raise ValueError("LinkedIn bağlı değil")
+        return publisher.publish_linkedin(li["access_token"], li["sub"], atom["content"])
+    raise ValueError("Bu platform için yayın desteklenmiyor")
+
+
 @api_router.post("/atoms/{atom_id}/publish")
 async def publish_atom(atom_id: str, user: dict = Depends(get_current_user)):
     atom = await db.atoms.find_one({"id": atom_id}, {"_id": 0})
@@ -438,41 +472,110 @@ async def publish_atom(atom_id: str, user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=400, detail="Önce içerik üretin")
     if atom["status"] != "approved":
         raise HTTPException(status_code=400, detail="Yayınlamadan önce atomu onaylayın")
-    platform = atom["platform"]
     try:
-        if platform == "Twitter/X":
-            token_row = await db.social_tokens.find_one({"platform": "twitter"})
-            token = (token_row or {}).get("access_token") or os.environ.get("TWITTER_ACCESS_TOKEN")
-            if not token:
-                raise HTTPException(status_code=400, detail="Twitter/X bağlı değil")
-            try:
-                result = publisher.publish_twitter(token, atom)
-            except publisher.TokenExpired:
-                rt = (token_row or {}).get("refresh_token") or os.environ.get("TWITTER_ACCESS_TOKEN_SECRET")
-                new = publisher.refresh_twitter(rt)
-                if not new:
-                    raise HTTPException(status_code=400, detail="Twitter token süresi doldu ve yenilenemedi (TWITTER_CLIENT_SECRET gerekli)")
-                await db.social_tokens.update_one(
-                    {"platform": "twitter"},
-                    {"$set": {"platform": "twitter", "access_token": new["access_token"], "refresh_token": new.get("refresh_token", rt), "updated_at": now_iso()}},
-                    upsert=True,
-                )
-                result = publisher.publish_twitter(new["access_token"], atom)
-        elif platform == "LinkedIn":
-            li = await db.social_tokens.find_one({"platform": "linkedin"})
-            if not li or not li.get("access_token"):
-                raise HTTPException(status_code=400, detail="LinkedIn bağlı değil — Gözlemlenebilirlik'ten bağlanın")
-            result = publisher.publish_linkedin(li["access_token"], li["sub"], atom["content"])
-        else:
-            raise HTTPException(status_code=400, detail="Bu platform için otomatik yayın henüz aktif değil")
-    except publisher.PublishError as e:
+        result = await _do_publish(atom)
+    except (publisher.PublishError, ValueError) as e:
         await log_job(atom_id, atom["type"], "error", str(e))
         raise HTTPException(status_code=400, detail=str(e))
     await db.atoms.update_one({"id": atom_id}, {"$set": {
-        "published": True, "publish_platform": platform, "publish_url": result["url"], "published_at": now_iso(),
+        "published": True, "publish_platform": atom["platform"], "publish_url": result["url"], "published_at": now_iso(), "dead": False,
     }})
     await log_job(atom_id, atom["type"], "success", f"Yayınlandı: {result['url']}")
     return {"ok": True, "url": result["url"]}
+
+
+class ScheduleInput(BaseModel):
+    scheduled_at: str
+
+
+def _parse_dt(value: str) -> datetime:
+    dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+@api_router.post("/atoms/{atom_id}/schedule")
+async def schedule_atom(atom_id: str, data: ScheduleInput, user: dict = Depends(get_current_user)):
+    atom = await db.atoms.find_one({"id": atom_id}, {"_id": 0})
+    if not atom:
+        raise HTTPException(status_code=404, detail="Atom bulunamadı")
+    if atom["status"] != "approved" or not atom.get("content"):
+        raise HTTPException(status_code=400, detail="Yalnızca onaylı ve üretilmiş atomlar zamanlanabilir")
+    if atom["platform"] not in ("Twitter/X", "LinkedIn"):
+        raise HTTPException(status_code=400, detail="Bu platform için zamanlama desteklenmiyor")
+    await db.atoms.update_one({"id": atom_id}, {"$set": {"scheduled_at": _parse_dt(data.scheduled_at), "dead": False, "publish_attempts": 0, "last_error": None}})
+    return {"ok": True}
+
+
+@api_router.post("/atoms/{atom_id}/unschedule")
+async def unschedule_atom(atom_id: str, user: dict = Depends(get_current_user)):
+    await db.atoms.update_one({"id": atom_id}, {"$set": {"scheduled_at": None}})
+    return {"ok": True}
+
+
+OPTIMAL_SLOTS_UTC = [(3, 30), (7, 0), (12, 30), (15, 30)]  # ~09:00, 12:30, 18:00, 21:00 IST
+
+
+def _next_slots(count: int) -> list:
+    now = datetime.now(timezone.utc)
+    slots = []
+    day = 0
+    while len(slots) < count and day < 60:
+        base = (now + timedelta(days=day)).replace(second=0, microsecond=0)
+        for (h, m) in OPTIMAL_SLOTS_UTC:
+            s = base.replace(hour=h, minute=m)
+            if s > now:
+                slots.append(s)
+        day += 1
+    return slots[:count]
+
+
+@api_router.post("/schedule/auto")
+async def auto_schedule(user: dict = Depends(get_current_user)):
+    atoms = await db.atoms.find({
+        "status": "approved", "published": {"$ne": True}, "scheduled_at": None,
+        "platform": {"$in": ["Twitter/X", "LinkedIn"]},
+    }, {"_id": 0, "id": 1}).to_list(200)
+    slots = _next_slots(len(atoms))
+    for atom, slot in zip(atoms, slots):
+        await db.atoms.update_one({"id": atom["id"]}, {"$set": {"scheduled_at": slot, "dead": False, "publish_attempts": 0}})
+    return {"scheduled": len(atoms)}
+
+
+@api_router.get("/schedule")
+async def get_schedule(user: dict = Depends(get_current_user)):
+    proj = {"_id": 0, "media": 0}
+    unscheduled = await db.atoms.find({
+        "status": "approved", "published": {"$ne": True}, "scheduled_at": None,
+        "platform": {"$in": ["Twitter/X", "LinkedIn"]},
+    }, proj).to_list(500)
+    timeline = await db.atoms.find({"scheduled_at": {"$ne": None}}, proj).sort("scheduled_at", 1).to_list(500)
+    articles = await db.articles.find({}, {"_id": 0, "id": 1, "title": 1}).to_list(500)
+    title_map = {a["id"]: a["title"] for a in articles}
+    for a in unscheduled + timeline:
+        a["article_title"] = title_map.get(a["article_id"], "")
+    return {"unscheduled": unscheduled, "timeline": timeline}
+
+
+async def scheduled_publisher():
+    now = datetime.now(timezone.utc)
+    due = await db.atoms.find({
+        "scheduled_at": {"$ne": None, "$lte": now},
+        "published": {"$ne": True}, "dead": {"$ne": True}, "status": "approved",
+    }, {"_id": 0}).to_list(50)
+    for atom in due:
+        try:
+            result = await _do_publish(atom)
+            await db.atoms.update_one({"id": atom["id"]}, {"$set": {
+                "published": True, "publish_platform": atom["platform"], "publish_url": result["url"], "published_at": now_iso(),
+            }})
+            await log_job(atom["id"], atom["type"], "success", f"Zamanlı yayın: {result['url']}")
+        except Exception as e:
+            attempts = atom.get("publish_attempts", 0) + 1
+            dead = attempts >= 3
+            await db.atoms.update_one({"id": atom["id"]}, {"$set": {"publish_attempts": attempts, "last_error": str(e), "dead": dead}})
+            await log_job(atom["id"], atom["type"], "error", f"Zamanlı yayın hatası (deneme {attempts}{'/DLQ' if dead else ''}): {e}")
 
 
 # ---------- dashboard / observability ----------
@@ -547,6 +650,9 @@ async def startup():
     await db.articles.create_index("content_hash")
     await db.atoms.create_index("article_id")
     await db.atoms.create_index("status")
+    scheduler.add_job(scheduled_publisher, "interval", minutes=1, id="publisher", replace_existing=True)
+    if not scheduler.running:
+        scheduler.start()
     logger.info("content-studio backend ready")
 
 
