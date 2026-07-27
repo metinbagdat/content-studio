@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 
@@ -58,7 +58,10 @@ export default function Articles() {
                         </Button>
                     </DialogTrigger>
                     <DialogContent className="bg-[#191A1B] border-[#2A2E33] text-white max-w-lg">
-                        <DialogHeader><DialogTitle className="font-heading">Yeni Makale</DialogTitle></DialogHeader>
+                        <DialogHeader>
+                            <DialogTitle className="font-heading">Yeni Makale</DialogTitle>
+                            <DialogDescription className="text-[#8A8F98]">Makaleyi manuel yapıştırın veya URL'den içe aktarın.</DialogDescription>
+                        </DialogHeader>
                         <Tabs defaultValue="manual">
                             <TabsList className="bg-[#0f1011] border border-[#2A2E33]">
                                 <TabsTrigger value="manual" data-testid="tab-manual">Manuel Yapıştır</TabsTrigger>

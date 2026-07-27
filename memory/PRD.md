@@ -1,0 +1,36 @@
+# content-studio — PRD
+
+## Original Problem Statement
+eğitim.today İçerik Atomizasyon & Otomatik Yayın Platformu. Bir makaleyi LLM + görsel + ses + müzik + video pipeline'ından geçirerek 50+ içerik parçasına dönüştüren; admin onay kuyruğu + otomatik zamanlama ile sosyal kanallara dağıtan web uygulaması.
+
+## Agreed MVP Scope (Phase odağı: Analiz + Atomizasyon + İçerik Üretimi)
+- Model choices: Text=Gemini (gemini-3.5-flash), Image=Gemini Nano Banana (gemini-3.1-flash-image-preview), Audio=OpenAI TTS (tts-1). Auth=JWT email/password. Publishing/social = deferred.
+
+## Architecture
+- Backend: FastAPI + MongoDB (Motor). Files: server.py (routes), auth.py (JWT/bcrypt/seed), ai_service.py (Gemini text/image + OpenAI TTS via emergentintegrations + EMERGENT_LLM_KEY), blueprint.py (50-atom blueprint + prompt builders).
+- Frontend: React + Tailwind + shadcn/ui. Dark Linear/Notion theme (Cabinet Grotesk / Manrope / JetBrains Mono). AuthContext + Bearer token in localStorage (cs_token).
+- Collections: users, articles, atoms, quotas, jobs.
+
+## User Personas
+- Admin/İçerik Editörü (eğitim.today ekibi): makale ekler, atomize eder, üretir, onaylar.
+
+## Implemented (2026-07-26)
+- JWT admin auth (seed admin@egitim.today/admin123), login/me.
+- Article input: manual paste + URL fetch (HTML strip) + SHA256 duplicate check.
+- Gemini article analysis (summary/concepts/quotes/audience/tone/key_points).
+- Atomization blueprint engine: 50 atoms across YouTube/TikTok/podcast/song/anthem/cards/Twitter/LinkedIn/Instagram/Facebook/Pinterest/thumbnail.
+- AI generation per atom: text (Gemini), image (Nano Banana), audio (Gemini lyrics/script + OpenAI TTS). Hybrid approval: short text posts auto-approve, media/long content -> review.
+- Kanban Review Queue: approve/reject/edit/regenerate + bulk approve.
+- Dashboard stats + quota tracking; Observability (job logs + daily quota).
+- Verified: 20/20 backend tests pass; full UI flow passes.
+
+## Prioritized Backlog
+- P0: eğitim.today RSS/API cron ingestion (06:00 IST); background job queue for analyze/generate (currently blocking); "generate all" bulk pipeline.
+- P1: Scheduling calendar (drag-drop) + publisher worker; real social integrations (Twitter/X, LinkedIn first) — needs OAuth developer apps/keys from user.
+- P1: Blueprint template editor UI; platform-specific formatting rules/preview polish.
+- P2: FFmpeg video assembly; Suno music; Edge-TTS Turkish voices; analytics/feedback loop; performance metrics.
+
+## Next Tasks
+1. Confirm eğitim.today RSS URL; add RSS fetcher cron + manual URL already done.
+2. Move analyze/generate to background tasks (APScheduler/Celery) to avoid request blocking.
+3. Gather social OAuth keys (Twitter/X, LinkedIn) to begin publishing phase.
