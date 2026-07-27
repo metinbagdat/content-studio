@@ -481,6 +481,7 @@ async def dashboard_stats(user: dict = Depends(get_current_user)):
     total_articles = await db.articles.count_documents({})
     analyzed = await db.articles.count_documents({"status": "analyzed"})
     total_atoms = await db.atoms.count_documents({})
+    published = await db.atoms.count_documents({"published": True})
     by_status = {}
     for s in ["draft", "review", "approved", "rejected"]:
         by_status[s] = await db.atoms.count_documents({"status": s})
@@ -490,6 +491,7 @@ async def dashboard_stats(user: dict = Depends(get_current_user)):
         "total_articles": total_articles,
         "analyzed_articles": analyzed,
         "total_atoms": total_atoms,
+        "published": published,
         "atoms_by_status": by_status,
         "quota_today": {
             "gemini_text": quota.get("gemini_text", 0),
