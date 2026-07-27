@@ -52,6 +52,13 @@ eğitim.today İçerik Atomizasyon & Otomatik Yayın Platformu. Bir makaleyi LLM
 - Twitter/X: still 402 credits depleted — X account is on 'Pay Per Use' project with 0 credits; user must add credits or switch to Free tier (Billing → Credits / Products).
 - Verified by testing_agent iteration_3: 100% backend, 100% frontend.
 
+## Scheduling & Auto-Publish (2026-07-27)
+- Calendar-based scheduled publishing. Atoms gain scheduled_at/publish_attempts/last_error/dead fields.
+- Endpoints: POST /atoms/{id}/schedule, POST /atoms/{id}/unschedule, POST /schedule/auto (distributes to optimal IST slots ~09:00/12:30/18:00/21:00), GET /schedule (unscheduled + timeline).
+- APScheduler worker every 1 min: publishes due atoms; on failure auto-retry, dead-letter after 3 attempts. Shared _do_publish() used by manual + scheduled publish (incl. Twitter OAuth2 refresh).
+- New 'Takvim' page (/schedule): unscheduled list with datetime picker + 'Zamanla', 'Otomatik Dağıt', timeline grouped by day with Yayınlandı/Zamanlandı/Başarısız(DLQ) badges + Şimdi Yayınla/Tekrar/Kaldır actions. AtomCard shows amber 'zamanlandı' indicator.
+- Verified testing_agent iteration_4: 100% backend + frontend; worker executed past-scheduled Twitter atom → 402 retry/DLQ confirmed.
+
 ## Next Tasks
 1. Confirm eğitim.today RSS URL; add RSS fetcher cron + manual URL already done.
 2. Move analyze/generate to background tasks (APScheduler/Celery) to avoid request blocking.
