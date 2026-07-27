@@ -44,6 +44,14 @@ eğitim.today İçerik Atomizasyon & Otomatik Yayın Platformu. Bir makaleyi LLM
 - P1: Blueprint template editor UI; platform-specific formatting rules/preview polish.
 - P2: FFmpeg video assembly; Suno music; Edge-TTS Turkish voices; analytics/feedback loop; performance metrics.
 
+## UI Redesign + Publish Verified (2026-07-27)
+- LinkedIn publishing VERIFIED end-to-end (real post): https://www.linkedin.com/feed/update/urn:li:share:7487459635961126912 . Connected as 'metin bağdat'.
+- Root cause of 'publish button not visible': LinkedIn atoms were in 'draft'; publish button shows only for approved social atoms. Generating them (auto_approve → approved) reveals the button.
+- Redesigned Dashboard (accent stat cards incl. Yayınlanan, Bağlı Hesaplar, Son Makaleler, Kota), ReviewQueue (4-column responsive grid + article/platform filters), AtomCard (full-width 'İçerik Üret' for drafts, prominent branded 'Yayınla' CTA). Added ArticleDetail client-side bulk 'Eksik N Atomu Üret' with progress.
+- dashboard/stats now returns 'published' count (verified = 1 after real post).
+- Twitter/X: still 402 credits depleted — X account is on 'Pay Per Use' project with 0 credits; user must add credits or switch to Free tier (Billing → Credits / Products).
+- Verified by testing_agent iteration_3: 100% backend, 100% frontend.
+
 ## Next Tasks
 1. Confirm eğitim.today RSS URL; add RSS fetcher cron + manual URL already done.
 2. Move analyze/generate to background tasks (APScheduler/Celery) to avoid request blocking.
