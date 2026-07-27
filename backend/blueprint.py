@@ -65,7 +65,7 @@ _IMAGE_INSTRUCTIONS = {
     "thumbnail": "geniş (16:9) YouTube küçük resmi, dikkat çekici, yüksek kontrast, büyük başlık alanı",
 }
 
-_TTS_VOICE = {"podcast_script": "onyx", "song": "nova", "anthem": "echo"}
+_TTS_VOICE = {"podcast_script": "tr-TR-AhmetNeural", "song": "tr-TR-EmelNeural", "anthem": "tr-TR-AhmetNeural"}
 
 
 def text_prompt(atom_type: str, idx: int, article: dict, analysis: dict) -> str:
@@ -94,4 +94,4 @@ def image_prompt(atom_type: str, article: dict, analysis: dict) -> str:
 
 
 def tts_voice(atom_type: str) -> str:
-    return _TTS_VOICE.get(atom_type, "alloy")
+    return _TTS_VOICE.get(atom_type, "tr-TR-EmelNeural")

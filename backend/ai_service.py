@@ -1,6 +1,7 @@
 """AI provider abstraction (Gemini text/image + OpenAI TTS via Emergent key)."""
 import os
 import base64
+import edge_tts
 from emergentintegrations.llm.chat import LlmChat, UserMessage
 from emergentintegrations.llm.openai import OpenAITextToSpeech
 
@@ -30,9 +31,10 @@ async def generate_image(prompt: str, session_id: str) -> str | None:
     return None
 
 
-async def generate_audio(text: str, voice: str = "alloy") -> str:
-    tts = OpenAITextToSpeech(api_key=EMERGENT_KEY)
-    audio_bytes = await tts.generate_speech(
-        text=text[:4000], model="tts-1", voice=voice, response_format="mp3"
-    )
-    return base64.b64encode(audio_bytes).decode("utf-8")
+async def generate_audio(text: str, voice: str = "tr-TR-EmelNeural") -> str:
+    communicate = edge_tts.Communicate(text[:3000], voice)
+    audio = b""
+    async for chunk in communicate.stream():
+        if chunk["type"] == "audio":
+            audio += chunk["data"]
+    return base64.b64encode(audio).decode("utf-8")
