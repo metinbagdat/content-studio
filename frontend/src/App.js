@@ -9,6 +9,7 @@ import Articles from "@/pages/Articles";
 import ArticleDetail from "@/pages/ArticleDetail";
 import ReviewQueue from "@/pages/ReviewQueue";
 import Schedule from "@/pages/Schedule";
+import Analytics from "@/pages/Analytics";
 import Observability from "@/pages/Observability";
 
 function Protected({ children }) {
@@ -35,6 +36,7 @@ function App() {
                         <Route path="/articles/:id" element={<Protected><ArticleDetail /></Protected>} />
                         <Route path="/review" element={<Protected><ReviewQueue /></Protected>} />
                         <Route path="/schedule" element={<Protected><Schedule /></Protected>} />
+                        <Route path="/analytics" element={<Protected><Analytics /></Protected>} />
                         <Route path="/observability" element={<Protected><Observability /></Protected>} />
                     </Routes>
                 </BrowserRouter>

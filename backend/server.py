@@ -619,6 +619,45 @@ async def get_blueprint(user: dict = Depends(get_current_user)):
     return {"blueprint": bp.BLUEPRINT, "total": bp.total_atom_count()}
 
 
+@api_router.get("/analytics")
+async def analytics(user: dict = Depends(get_current_user)):
+    pub = await db.atoms.find({"published": True}, {"_id": 0, "media": 0}).to_list(2000)
+    dead = await db.atoms.find({"dead": True}, {"_id": 0, "media": 0}).to_list(500)
+    scheduled_total = await db.atoms.count_documents({"scheduled_at": {"$ne": None}, "published": {"$ne": True}, "dead": {"$ne": True}})
+    by_platform: dict = {}
+    by_type: dict = {}
+    by_hour = {str(h): 0 for h in range(24)}
+    for a in pub:
+        by_platform[a["platform"]] = by_platform.get(a["platform"], 0) + 1
+        by_type[a["label"]] = by_type.get(a["label"], 0) + 1
+        pa = a.get("published_at")
+        if pa:
+            try:
+                dt = datetime.fromisoformat(pa.replace("Z", "+00:00"))
+                ist = dt + timedelta(hours=5, minutes=30)
+                by_hour[str(ist.hour)] += 1
+            except Exception:
+                pass
+    feedback = []
+    if by_platform:
+        tp = max(by_platform, key=by_platform.get)
+        feedback.append(f"En çok yayınlanan platform: {tp} ({by_platform[tp]} gönderi) — blueprint'te bu platforma ağırlık verilebilir.")
+    if by_type:
+        tt = max(by_type, key=by_type.get)
+        feedback.append(f"En çok yayınlanan içerik türü: {tt} — bu türden atom sayısını artırmayı değerlendirin.")
+    if sum(by_hour.values()):
+        th = max(by_hour, key=lambda k: by_hour[k])
+        feedback.append(f"En yoğun yayın saati (IST): {th}:00 civarı.")
+    if dead:
+        feedback.append(f"{len(dead)} atom yayınlanamadı (DLQ). En sık neden: kota/kimlik hataları — bağlantı ve kotayı kontrol edin.")
+    feedback.append("Not: Beğeni/görüntülenme gibi etkileşim metrikleri, Twitter/LinkedIn okuma API'lerine (ücretli/ek izin) bağlıdır; bu sürümde yalnızca yayın verisi analiz edilir.")
+    dlq = [{"id": a["id"], "platform": a["platform"], "label": a["label"], "index": a.get("index", 0), "last_error": a.get("last_error")} for a in dead]
+    return {
+        "published_total": len(pub), "scheduled_total": scheduled_total, "failed_total": len(dead),
+        "by_platform": by_platform, "by_type": by_type, "by_hour": by_hour, "dlq": dlq, "feedback": feedback,
+    }
+
+
 @api_router.get("/")
 async def root():
     return {"message": "content-studio API"}

@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { LayoutDashboard, FileText, KanbanSquare, Activity, LogOut, Sparkles, CalendarClock } from "lucide-react";
+import { LayoutDashboard, FileText, KanbanSquare, Activity, LogOut, Sparkles, CalendarClock, BarChart3 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
 const NAV = [
@@ -7,6 +7,7 @@ const NAV = [
     { to: "/articles", label: "Makaleler", icon: FileText, testid: "nav-articles" },
     { to: "/review", label: "İnceleme Kuyruğu", icon: KanbanSquare, testid: "nav-review" },
     { to: "/schedule", label: "Takvim", icon: CalendarClock, testid: "nav-schedule" },
+    { to: "/analytics", label: "Analitik", icon: BarChart3, testid: "nav-analytics" },
     { to: "/observability", label: "Gözlemlenebilirlik", icon: Activity, testid: "nav-observability" },
 ];
 
