@@ -24,7 +24,7 @@ export default function Observability() {
     const connectLinkedIn = async () => {
         try {
             const { data } = await apiClient.get("/linkedin/login");
-            const win = window.open(data.url, "_blank", "noopener");
+            const win = window.open(data.url, "_blank");
             if (!win) {
                 toast.error("Açılır pencere engellendi — lütfen bu site için pop-up'lara izin verin");
             } else {
