@@ -11,6 +11,30 @@ class PublishError(Exception):
     pass
 
 
+class TokenExpired(Exception):
+    pass
+
+
+def refresh_twitter(refresh_token: str | None) -> dict | None:
+    import base64
+    cid = os.environ.get("TWITTER_CLIENT_ID")
+    csec = os.environ.get("TWITTER_CLIENT_SECRET")
+    if not cid or not refresh_token:
+        return None
+    headers = {"Content-Type": "application/x-www-form-urlencoded"}
+    if csec:
+        basic = base64.b64encode(f"{cid}:{csec}".encode()).decode()
+        headers["Authorization"] = f"Basic {basic}"
+    data = {"grant_type": "refresh_token", "refresh_token": refresh_token, "client_id": cid}
+    try:
+        r = requests.post("https://api.twitter.com/2/oauth2/token", data=data, headers=headers, timeout=30)
+        if r.status_code == 200:
+            return r.json()
+    except Exception:
+        pass
+    return None
+
+
 async def get_twitter_token(db) -> str | None:
     row = await db.social_tokens.find_one({"platform": "twitter"})
     if row and row.get("access_token"):
@@ -40,6 +64,8 @@ def _tweet(token: str, text: str, reply_to: str | None = None) -> str:
     )
     if r.status_code in (200, 201):
         return r.json()["data"]["id"]
+    if r.status_code == 401:
+        raise TokenExpired()
     # surface a clean error message
     try:
         j = r.json()

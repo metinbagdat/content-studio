@@ -441,10 +441,23 @@ async def publish_atom(atom_id: str, user: dict = Depends(get_current_user)):
     platform = atom["platform"]
     try:
         if platform == "Twitter/X":
-            token = await publisher.get_twitter_token(db)
+            token_row = await db.social_tokens.find_one({"platform": "twitter"})
+            token = (token_row or {}).get("access_token") or os.environ.get("TWITTER_ACCESS_TOKEN")
             if not token:
                 raise HTTPException(status_code=400, detail="Twitter/X bağlı değil")
-            result = publisher.publish_twitter(token, atom)
+            try:
+                result = publisher.publish_twitter(token, atom)
+            except publisher.TokenExpired:
+                rt = (token_row or {}).get("refresh_token") or os.environ.get("TWITTER_ACCESS_TOKEN_SECRET")
+                new = publisher.refresh_twitter(rt)
+                if not new:
+                    raise HTTPException(status_code=400, detail="Twitter token süresi doldu ve yenilenemedi (TWITTER_CLIENT_SECRET gerekli)")
+                await db.social_tokens.update_one(
+                    {"platform": "twitter"},
+                    {"$set": {"platform": "twitter", "access_token": new["access_token"], "refresh_token": new.get("refresh_token", rt), "updated_at": now_iso()}},
+                    upsert=True,
+                )
+                result = publisher.publish_twitter(new["access_token"], atom)
         elif platform == "LinkedIn":
             li = await db.social_tokens.find_one({"platform": "linkedin"})
             if not li or not li.get("access_token"):
