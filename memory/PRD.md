@@ -31,6 +31,13 @@ eğitim.today İçerik Atomizasyon & Otomatik Yayın Platformu. Bir makaleyi LLM
 - LinkedIn: NOT connected — user provided placeholder Client ID/Secret (`...`). Playbook ready (LinkedIn OAuth + /rest/posts); pending real keys.
 - Token durability note: provided X token is OAuth2 (~2h expiry) + refresh token; refresh needs OAuth2 Client ID/Secret (not yet provided) OR paste a fresh token via the token endpoint.
 
+## LinkedIn Publishing (2026-07-27)
+- Real Client ID/Secret provided. Full OAuth2 (OpenID Connect) connect flow: GET /api/linkedin/login (returns auth URL, scopes: openid profile email w_member_social), GET /api/linkedin/callback (exchanges code, fetches /v2/userinfo for member sub, stores token in social_tokens, redirects to /observability?linkedin=connected).
+- Publishing: publisher.publish_linkedin -> POST /rest/posts (LinkedIn-Version 202607, X-Restli 2.0.0) as urn:li:person:{sub}, commentary with reserved-char escaping, 2900 char cap.
+- UI: Observability "Bağlan" button (data-testid linkedin-connect-btn) + connected state; AtomCard "Yayınla" now covers LinkedIn atoms too.
+- STATUS: Code-complete & wired. NOT yet end-to-end verified because it requires the admin's one-time LinkedIn consent (browser OAuth) which only the user can perform. Redirect URI registered must exactly equal LINKEDIN_REDIRECT_URI.
+- Twitter/X: retried with new API keys — still 402 credits depleted (X account write plan/quota, not code). Provided access token is still OAuth2 (not OAuth1a).
+
 ## Prioritized Backlog
 - P0: eğitim.today RSS/API cron ingestion (06:00 IST); background job queue for analyze/generate (currently blocking); "generate all" bulk pipeline.
 - P1: Scheduling calendar (drag-drop) + publisher worker; real social integrations (Twitter/X, LinkedIn first) — needs OAuth developer apps/keys from user.

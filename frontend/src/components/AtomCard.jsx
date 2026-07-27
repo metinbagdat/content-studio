@@ -83,7 +83,7 @@ export default function AtomCard({ atom, onChange, selectable, selected, onSelec
     const publish = () =>
         act(async () => {
             const { data } = await apiClient.post(`/atoms/${atom.id}/publish`);
-            toast.success("Twitter/X'te yayınlandı");
+            toast.success(`${atom.platform}'te yayınlandı`);
             if (data.url) window.open(data.url, "_blank");
         });
 
@@ -143,7 +143,7 @@ export default function AtomCard({ atom, onChange, selectable, selected, onSelec
                     data-testid={`atom-published-link-${atom.id}`}
                     className="flex items-center gap-1.5 text-xs text-[#27C281] hover:underline"
                 >
-                    <ExternalLink className="w-3 h-3" /> Twitter/X'te yayınlandı
+                    <ExternalLink className="w-3 h-3" /> {atom.publish_platform || atom.platform}'te yayınlandı
                 </a>
             )}
 
@@ -174,7 +174,7 @@ export default function AtomCard({ atom, onChange, selectable, selected, onSelec
                             <X className="w-3 h-3" />
                         </Button>
                     )}
-                    {atom.platform === "Twitter/X" && atom.status === "approved" && !atom.published && (
+                    {(atom.platform === "Twitter/X" || atom.platform === "LinkedIn") && atom.status === "approved" && !atom.published && (
                         <Button size="sm" onClick={publish} disabled={busy} data-testid={`atom-publish-${atom.id}`} className="h-7 px-2 text-xs bg-[#1DA1F2]/15 text-[#1DA1F2] hover:bg-[#1DA1F2]/25">
                             <Send className="w-3 h-3" />
                             <span className="ml-1">Yayınla</span>

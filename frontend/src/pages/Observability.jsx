@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { RefreshCw, Twitter, Linkedin, CheckCircle2, XCircle } from "lucide-react";
 import apiClient from "@/lib/apiClient";
+import { toast } from "sonner";
 
 export default function Observability() {
     const [jobs, setJobs] = useState([]);
@@ -13,6 +14,21 @@ export default function Observability() {
         apiClient.get("/social/status").then((r) => setSocial(r.data)).catch(() => {});
     };
     useEffect(() => { load(); }, []);
+
+    useEffect(() => {
+        const p = new URLSearchParams(window.location.search).get("linkedin");
+        if (p === "connected") { toast.success("LinkedIn bağlandı"); window.history.replaceState({}, "", "/observability"); }
+        else if (p === "error") { toast.error("LinkedIn bağlantısı başarısız oldu"); window.history.replaceState({}, "", "/observability"); }
+    }, []);
+
+    const connectLinkedIn = async () => {
+        try {
+            const { data } = await apiClient.get("/linkedin/login");
+            window.location.href = data.url;
+        } catch (e) {
+            toast.error("LinkedIn bağlantısı başlatılamadı");
+        }
+    };
 
     return (
         <div className="p-8 max-w-6xl">
@@ -48,10 +64,18 @@ export default function Observability() {
                         <Linkedin className="w-5 h-5 text-[#0A66C2]" />
                         <div>
                             <div className="font-heading font-semibold text-sm">LinkedIn</div>
-                            <div className="text-xs text-[#8A8F98]">{social?.linkedin?.configured ? "Yapılandırıldı" : "Key bekleniyor"}</div>
+                            <div className="text-xs text-[#8A8F98]">
+                                {social?.linkedin?.connected ? social.linkedin.name : social?.linkedin?.configured ? "Bağlı değil" : "Key bekleniyor"}
+                            </div>
                         </div>
                     </div>
-                    <span className="flex items-center gap-1 text-xs text-[#8A8F98]"><XCircle className="w-4 h-4" /> Yok</span>
+                    {social?.linkedin?.connected ? (
+                        <span className="flex items-center gap-1 text-xs text-[#27C281]" data-testid="linkedin-connected"><CheckCircle2 className="w-4 h-4" /> Bağlı</span>
+                    ) : social?.linkedin?.configured ? (
+                        <button onClick={connectLinkedIn} data-testid="linkedin-connect-btn" className="px-3 py-1.5 rounded-md bg-[#0A66C2] hover:bg-[#0A66C2]/80 text-xs font-medium transition-colors duration-200">Bağlan</button>
+                    ) : (
+                        <span className="flex items-center gap-1 text-xs text-[#8A8F98]"><XCircle className="w-4 h-4" /> Yok</span>
+                    )}
                 </div>
             </div>
 

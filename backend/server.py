@@ -10,11 +10,14 @@ import json
 import uuid
 import hashlib
 import logging
+import secrets
+from urllib.parse import urlencode
 from datetime import datetime, timezone
 
 import requests
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request
 from starlette.middleware.cors import CORSMiddleware
+from starlette.responses import RedirectResponse
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field
 from typing import List, Optional
@@ -369,7 +372,12 @@ async def social_status(user: dict = Depends(get_current_user)):
         else:
             twitter = {"connected": False, "username": None, "error": "Token geçersiz veya süresi dolmuş"}
     li_id = os.environ.get("LINKEDIN_CLIENT_ID", "")
-    linkedin = {"connected": False, "configured": bool(li_id and li_id not in ("", "..."))}
+    li_row = await db.social_tokens.find_one({"platform": "linkedin"})
+    linkedin = {
+        "connected": bool(li_row and li_row.get("access_token")),
+        "configured": bool(li_id and li_id not in ("", "...")),
+        "name": li_row.get("name") if li_row else None,
+    }
     return {"twitter": twitter, "linkedin": linkedin}
 
 
@@ -383,6 +391,44 @@ async def set_twitter_token(data: TwitterTokenIn, user: dict = Depends(get_curre
     return {"ok": True}
 
 
+@api_router.get("/linkedin/login")
+async def linkedin_login(user: dict = Depends(get_current_user)):
+    state = secrets.token_urlsafe(24)
+    await db.oauth_states.insert_one({"state": state, "created_at": now_iso()})
+    params = urlencode({
+        "response_type": "code",
+        "client_id": os.environ["LINKEDIN_CLIENT_ID"],
+        "redirect_uri": os.environ["LINKEDIN_REDIRECT_URI"],
+        "state": state,
+        "scope": "openid profile email w_member_social",
+    })
+    return {"url": f"https://www.linkedin.com/oauth/v2/authorization?{params}"}
+
+
+@api_router.get("/linkedin/callback")
+async def linkedin_callback(code: str = None, state: str = None, error: str = None):
+    frontend = os.environ.get("FRONTEND_URL", "")
+    if error or not code or not state:
+        return RedirectResponse(f"{frontend}/observability?linkedin=error")
+    st = await db.oauth_states.find_one({"state": state})
+    if not st:
+        return RedirectResponse(f"{frontend}/observability?linkedin=error")
+    await db.oauth_states.delete_one({"state": state})
+    try:
+        token = publisher.linkedin_exchange_code(code, os.environ["LINKEDIN_REDIRECT_URI"])
+        access_token = token["access_token"]
+        info = publisher.linkedin_userinfo(access_token)
+        await db.social_tokens.update_one(
+            {"platform": "linkedin"},
+            {"$set": {"platform": "linkedin", "access_token": access_token, "sub": info.get("sub"), "name": info.get("name"), "updated_at": now_iso()}},
+            upsert=True,
+        )
+    except Exception as e:
+        logger.error(f"LinkedIn callback error: {e}")
+        return RedirectResponse(f"{frontend}/observability?linkedin=error")
+    return RedirectResponse(f"{frontend}/observability?linkedin=connected")
+
+
 @api_router.post("/atoms/{atom_id}/publish")
 async def publish_atom(atom_id: str, user: dict = Depends(get_current_user)):
     atom = await db.atoms.find_one({"id": atom_id}, {"_id": 0})
@@ -392,18 +438,25 @@ async def publish_atom(atom_id: str, user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=400, detail="Önce içerik üretin")
     if atom["status"] != "approved":
         raise HTTPException(status_code=400, detail="Yayınlamadan önce atomu onaylayın")
-    if atom["platform"] != "Twitter/X":
-        raise HTTPException(status_code=400, detail="Şu an yalnızca Twitter/X yayını aktif (LinkedIn key bekleniyor)")
-    token = await publisher.get_twitter_token(db)
-    if not token:
-        raise HTTPException(status_code=400, detail="Twitter/X bağlı değil")
+    platform = atom["platform"]
     try:
-        result = publisher.publish_twitter(token, atom)
+        if platform == "Twitter/X":
+            token = await publisher.get_twitter_token(db)
+            if not token:
+                raise HTTPException(status_code=400, detail="Twitter/X bağlı değil")
+            result = publisher.publish_twitter(token, atom)
+        elif platform == "LinkedIn":
+            li = await db.social_tokens.find_one({"platform": "linkedin"})
+            if not li or not li.get("access_token"):
+                raise HTTPException(status_code=400, detail="LinkedIn bağlı değil — Gözlemlenebilirlik'ten bağlanın")
+            result = publisher.publish_linkedin(li["access_token"], li["sub"], atom["content"])
+        else:
+            raise HTTPException(status_code=400, detail="Bu platform için otomatik yayın henüz aktif değil")
     except publisher.PublishError as e:
         await log_job(atom_id, atom["type"], "error", str(e))
         raise HTTPException(status_code=400, detail=str(e))
     await db.atoms.update_one({"id": atom_id}, {"$set": {
-        "published": True, "publish_platform": "Twitter/X", "publish_url": result["url"], "published_at": now_iso(),
+        "published": True, "publish_platform": platform, "publish_url": result["url"], "published_at": now_iso(),
     }})
     await log_job(atom_id, atom["type"], "success", f"Yayınlandı: {result['url']}")
     return {"ok": True, "url": result["url"]}

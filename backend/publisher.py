@@ -68,3 +68,75 @@ def publish_twitter(token: str, atom: dict) -> dict:
         return {"url": f"https://x.com/i/status/{first_id}", "id": first_id}
     tid = _tweet(token, atom["content"])
     return {"url": f"https://x.com/i/status/{tid}", "id": tid}
+
+
+# ---------- LinkedIn ----------
+LI_VERSION = os.environ.get("LINKEDIN_VERSION", "202607")
+
+
+def linkedin_exchange_code(code: str, redirect_uri: str) -> dict:
+    data = {
+        "grant_type": "authorization_code",
+        "code": code,
+        "redirect_uri": redirect_uri,
+        "client_id": os.environ["LINKEDIN_CLIENT_ID"],
+        "client_secret": os.environ["LINKEDIN_CLIENT_SECRET"],
+    }
+    r = requests.post("https://www.linkedin.com/oauth/v2/accessToken", data=data, timeout=30)
+    if r.status_code != 200:
+        raise PublishError(f"LinkedIn token {r.status_code}: {r.text}")
+    return r.json()
+
+
+def linkedin_userinfo(token: str) -> dict:
+    r = requests.get("https://api.linkedin.com/v2/userinfo", headers={"Authorization": f"Bearer {token}"}, timeout=20)
+    if r.status_code != 200:
+        raise PublishError(f"LinkedIn userinfo {r.status_code}: {r.text}")
+    return r.json()
+
+
+def verify_linkedin(token: str) -> dict | None:
+    try:
+        r = requests.get("https://api.linkedin.com/v2/userinfo", headers={"Authorization": f"Bearer {token}"}, timeout=15)
+        if r.status_code == 200:
+            return r.json()
+    except Exception:
+        pass
+    return None
+
+
+def _li_escape(text: str) -> str:
+    for ch in "()[]{}<>":
+        text = text.replace(ch, "\\" + ch)
+    return text
+
+
+def publish_linkedin(token: str, sub: str, text: str) -> dict:
+    payload = {
+        "author": f"urn:li:person:{sub}",
+        "commentary": _li_escape(text[:2900]),
+        "visibility": "PUBLIC",
+        "distribution": {"feedDistribution": "MAIN_FEED", "targetEntities": [], "thirdPartyDistributionChannels": []},
+        "lifecycleState": "PUBLISHED",
+        "isReshareDisabledByAuthor": False,
+    }
+    r = requests.post(
+        "https://api.linkedin.com/rest/posts",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "LinkedIn-Version": LI_VERSION,
+            "X-Restli-Protocol-Version": "2.0.0",
+            "Content-Type": "application/json",
+        },
+        json=payload,
+        timeout=30,
+    )
+    if r.status_code in (200, 201):
+        pid = r.headers.get("x-restli-id") or ""
+        return {"url": f"https://www.linkedin.com/feed/update/{pid}", "id": pid}
+    try:
+        j = r.json()
+        msg = j.get("message") or j.get("detail") or str(j)
+    except Exception:
+        msg = r.text
+    raise PublishError(f"LinkedIn API {r.status_code}: {msg}")
