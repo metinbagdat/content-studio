@@ -65,6 +65,14 @@ eğitim.today İçerik Atomizasyon & Otomatik Yayın Platformu. Bir makaleyi LLM
 - Verified testing_agent iteration_5: 100% backend + frontend; drag_to reschedule confirmed.
 - NOTE: Emergent Universal Key budget exhausted ($1.02/$1.00) → content generation (Gemini/OpenAI) now 500s until balance added.
 
+## Free Providers (2026-07-27)
+- Emergent Universal Key budget exhausted ($1). Added free fallbacks:
+  - TEXT: Groq (llama-3.3-70b-versatile) via GROQ_API_KEY — used as primary when key present. VERIFIED (Twitter atom auto-approved, LinkedIn generated).
+  - AUDIO: Edge-TTS (tr-TR-Emel/Ahmet, no key). VERIFIED (song lyrics via Groq + 626KB mp3).
+  - IMAGE: HF Inference attempted (router.huggingface.co) but hf-inference provider deprecated SDXL/FLUX (410) and account non-Pro/no-credit → free image gen NOT available. generate_image raises a clean Turkish message; bulk-generate skips and continues.
+- ai_service.py: generate_text prefers Groq, generate_image uses HF (clean error), generate_audio uses Edge-TTS. Keys in backend/.env (GROQ_API_KEY, HF_TOKEN).
+- WYSIWYG publish preview: AtomPreview.jsx dialog (Twitter/LinkedIn/generic faithful cards) + 'Önizle' button on every AtomCard.
+
 ## Next Tasks
 1. Confirm eğitim.today RSS URL; add RSS fetcher cron + manual URL already done.
 2. Move analyze/generate to background tasks (APScheduler/Celery) to avoid request blocking.
