@@ -1,0 +1,163 @@
+import { useState } from "react";
+import { Sparkles, RefreshCw, Check, X, Pencil, Loader2, ImageIcon, Music, Video, FileText } from "lucide-react";
+import apiClient, { API, apiError } from "@/lib/apiClient";
+import StatusBadge from "@/components/StatusBadge";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { toast } from "sonner";
+
+const ICONS = { image: ImageIcon, audio: Music, text: FileText };
+
+function PlatformMock({ atom }) {
+    const p = atom.platform;
+    if (atom.media_type === "image" && atom.media) {
+        return (
+            <img
+                src={`data:image/png;base64,${atom.media}`}
+                alt={atom.label}
+                data-testid={`atom-image-${atom.id}`}
+                className="w-full rounded-md border border-[#2A2E33] object-cover"
+            />
+        );
+    }
+    if (atom.media_type === "audio" && atom.media) {
+        return (
+            <div className="space-y-2">
+                <audio controls src={`data:audio/mp3;base64,${atom.media}`} data-testid={`atom-audio-${atom.id}`} className="w-full" />
+                <p className="text-xs text-[#8A8F98] whitespace-pre-wrap line-clamp-6">{atom.content}</p>
+            </div>
+        );
+    }
+    if (!atom.content) {
+        return <p className="text-sm text-[#8A8F98] italic">Henüz üretilmedi. "Üret" butonuna basın.</p>;
+    }
+    // text platform mockups
+    const accent =
+        p === "Twitter/X" ? "#1DA1F2" : p === "LinkedIn" ? "#0A66C2" : p === "Instagram" ? "#E1306C" : p === "Facebook" ? "#1877F2" : "#5E6AD2";
+    return (
+        <div className="rounded-md border border-[#2A2E33] bg-[#0f1011] p-3">
+            <div className="flex items-center gap-2 mb-2">
+                <div className="w-7 h-7 rounded-full" style={{ background: accent }} />
+                <div>
+                    <div className="text-xs font-semibold">eğitim.today</div>
+                    <div className="text-[10px] text-[#8A8F98]">@egitimtoday · {p}</div>
+                </div>
+            </div>
+            <p className="text-sm whitespace-pre-wrap leading-relaxed text-white/90">{atom.content}</p>
+        </div>
+    );
+}
+
+export default function AtomCard({ atom, onChange, selectable, selected, onSelect }) {
+    const [busy, setBusy] = useState(false);
+    const [editing, setEditing] = useState(false);
+    const [draft, setDraft] = useState(atom.content || "");
+    const Icon = ICONS[atom.category] || Video;
+
+    const act = async (fn) => {
+        setBusy(true);
+        try {
+            await fn();
+            onChange && onChange();
+        } catch (e) {
+            toast.error(apiError(e));
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const generate = () =>
+        act(async () => {
+            await apiClient.post(`/atoms/${atom.id}/${atom.content ? "regenerate" : "generate"}`);
+            toast.success("İçerik üretildi");
+        });
+    const approve = () => act(async () => { await apiClient.post(`/atoms/${atom.id}/approve`); });
+    const reject = () => act(async () => { await apiClient.post(`/atoms/${atom.id}/reject`); });
+    const saveEdit = () =>
+        act(async () => {
+            await apiClient.put(`/atoms/${atom.id}`, { content: draft });
+            setEditing(false);
+            toast.success("Kaydedildi");
+        });
+
+    return (
+        <div
+            data-testid={`atom-card-${atom.id}`}
+            className="bg-[#191A1B] border border-[#2A2E33] rounded-lg p-4 space-y-3 hover:border-[#3a3f45] transition-colors duration-200"
+        >
+            <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2">
+                    {selectable && (
+                        <Checkbox
+                            checked={selected}
+                            onCheckedChange={onSelect}
+                            data-testid={`atom-select-${atom.id}`}
+                            className="border-[#2A2E33]"
+                        />
+                    )}
+                    <Icon className="w-4 h-4 text-[#5E6AD2]" />
+                    <span className="text-xs font-medium">{atom.label} #{atom.index + 1}</span>
+                </div>
+                <StatusBadge status={atom.status} />
+            </div>
+
+            <div className="flex items-center gap-2 text-[10px] text-[#8A8F98] uppercase tracking-wide">
+                <span>{atom.platform}</span>
+                {atom.aspect !== "-" && <span>· {atom.aspect}</span>}
+                {atom.auto_approve && <span className="text-[#27C281]">· otomatik</span>}
+            </div>
+
+            {editing ? (
+                <div className="space-y-2">
+                    <Textarea
+                        value={draft}
+                        onChange={(e) => setDraft(e.target.value)}
+                        data-testid={`atom-edit-textarea-${atom.id}`}
+                        className="bg-[#0f1011] border-[#2A2E33] min-h-[120px] text-sm"
+                    />
+                    <div className="flex gap-2">
+                        <Button size="sm" onClick={saveEdit} disabled={busy} data-testid={`atom-save-${atom.id}`} className="bg-[#5E6AD2] hover:bg-[#7380E8]">
+                            Kaydet
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>İptal</Button>
+                    </div>
+                </div>
+            ) : (
+                <PlatformMock atom={atom} />
+            )}
+
+            {atom.notes && <p className="text-xs text-[#F3B72C]">Not: {atom.notes}</p>}
+
+            {!editing && (
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                    <Button
+                        size="sm"
+                        onClick={generate}
+                        disabled={busy}
+                        data-testid={`atom-generate-${atom.id}`}
+                        className="h-7 px-2 text-xs bg-[#5E6AD2] hover:bg-[#7380E8]"
+                    >
+                        {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : atom.content ? <RefreshCw className="w-3 h-3" /> : <Sparkles className="w-3 h-3" />}
+                        <span className="ml-1">{atom.content ? "Yeniden Üret" : "Üret"}</span>
+                    </Button>
+                    {atom.content && atom.category === "text" && (
+                        <Button size="sm" variant="secondary" onClick={() => { setDraft(atom.content); setEditing(true); }} data-testid={`atom-edit-${atom.id}`} className="h-7 px-2 text-xs bg-[#2A2E33] hover:bg-[#3a3f45]">
+                            <Pencil className="w-3 h-3" />
+                        </Button>
+                    )}
+                    {atom.content && atom.status !== "approved" && (
+                        <Button size="sm" onClick={approve} disabled={busy} data-testid={`atom-approve-${atom.id}`} className="h-7 px-2 text-xs bg-[#27C281]/15 text-[#27C281] hover:bg-[#27C281]/25">
+                            <Check className="w-3 h-3" />
+                        </Button>
+                    )}
+                    {atom.content && atom.status !== "rejected" && (
+                        <Button size="sm" onClick={reject} disabled={busy} data-testid={`atom-reject-${atom.id}`} className="h-7 px-2 text-xs bg-[#E64C4C]/15 text-[#E64C4C] hover:bg-[#E64C4C]/25">
+                            <X className="w-3 h-3" />
+                        </Button>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
