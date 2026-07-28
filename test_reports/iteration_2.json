@@ -1,0 +1,27 @@
+{
+  "summary": "Verified LinkedIn 'Bağlan' iframe-refuse bug fix on /observability. Backend + frontend both pass. GET /api/social/status returns twitter.connected=true (egitimtoday), linkedin.configured=true, linkedin.connected=false. GET /api/linkedin/login returns a valid JSON {url} pointing to https://www.linkedin.com/oauth/v2/authorization with client_id=77scj5itads5dk, correct redirect_uri (URL-encoded https://studio-publish.preview.emergentagent.com/api/linkedin/callback) and scope=openid+profile+email+w_member_social. Playwright: logged in as admin@egitim.today, opened /observability, clicked [data-testid=linkedin-connect-btn]; captured a new top-level page via context.on('page') whose URL starts with https://www.linkedin.com/oauth/v2/authorization — so the fix (window.open(url, '_blank') instead of window.location.href) correctly breaks out of the Emergent preview iframe and no 'refused to connect' error would occur.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Observability.connectLinkedIn", "issue": "window.open(url, '_blank', 'noopener') returns null in Chromium when 'noopener' is set, so the code path `if (!win) toast.error('Açılır pencere engellendi …')` fires on EVERY successful click. During the test the popup opened correctly AND the misleading 'pop-up blocked' toast still appeared. Fix: either drop the 'noopener' feature string (then `win` is non-null) OR do not rely on the return value — instead show only the info toast, or open a same-origin bounce URL. This does not break the bug fix but produces a false-negative user message.", "selector": "[data-testid=linkedin-connect-btn]", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/backend_test.py"],
+  "action_items": [
+    "Optional: remove the 'noopener' arg from window.open(data.url, '_blank', 'noopener') OR change the false-blocked toast logic in Observability.jsx connectLinkedIn (line 27-32) so users don't see the misleading 'Açılır pencere engellendi' error after a successful popup."
+  ],
+  "critical_code_review_comments": [
+    "Observability.jsx: window.open(...,'noopener') returns null in Chromium — the current `if(!win)` branch is unreachable-as-intended and yields a false error toast. Prefer opening without the noopener feature string, or just always show the info toast.",
+    "server.py /api/linkedin/login uses a fresh random state each request but does not persist/verify it in /api/linkedin/callback — CSRF/state check is missing. Non-blocking for MVP but should be added for production."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (2/2 endpoints in this iteration)", "frontend": "100% (bug fix verified)"},
+  "test_credentials": "admin@egitim.today / admin123",
+  "seed_data_creation": "None.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "The LinkedIn iframe 'refused to connect' bug is FIXED. Verified via Playwright that clicking linkedin-connect-btn triggers GET /api/linkedin/login and opens a NEW top-level page at https://www.linkedin.com/oauth/v2/authorization... Completing the actual OAuth consent requires human LinkedIn creds and is out of scope. Only remaining nit: the misleading 'pop-up blocked' toast (LOW).",
+  "rca of the issue": "Original bug: connectLinkedIn used window.location.href = data.url which redirects the current window; inside Emergent preview that current window is an iframe and www.linkedin.com sends X-Frame-Options: DENY -> browser shows 'www.linkedin.com bağlanmayı reddetti'. Fix: use window.open(data.url, '_blank', ...) so LinkedIn opens as a top-level browsing context, bypassing X-Frame-Options. Verified working."
+}

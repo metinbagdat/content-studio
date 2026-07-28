@@ -1,0 +1,80 @@
+@import url("https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,700,800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+    --background: 220 6% 6%;
+    --foreground: 0 0% 100%;
+    --card: 220 5% 10%;
+    --card-foreground: 0 0% 100%;
+    --popover: 220 5% 10%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 232 56% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 5% 14%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 220 5% 14%;
+    --muted-foreground: 220 4% 58%;
+    --accent: 232 56% 60%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 74% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 213 8% 18%;
+    --input: 213 8% 18%;
+    --ring: 232 56% 60%;
+    --radius: 0.5rem;
+}
+
+* {
+    border-color: hsl(var(--border));
+}
+
+body {
+    margin: 0;
+    background-color: #0f1011;
+    color: #ffffff;
+    font-family: "Manrope", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.font-heading {
+    font-family: "Cabinet Grotesk", "Manrope", sans-serif;
+}
+
+.font-mono {
+    font-family: "JetBrains Mono", monospace;
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: #2a2e33;
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #3a3f45;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+.animate-fade-in-up {
+    animation: fadeInUp 0.4s ease-out forwards;
+}

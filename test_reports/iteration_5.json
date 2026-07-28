@@ -1,0 +1,24 @@
+{
+  "summary": "Tested both new enhancements. BACKEND (/api/analytics + reschedule): 3/3 pytest cases pass — response contains all required keys (published_total, scheduled_total, failed_total, by_platform, by_type, by_hour with 24 keys, dlq list, feedback list); unauthorized returns 401; POST /api/atoms/<id>/schedule with a new date moves the atom into a new day bucket while preserving time-of-day. FRONTEND: Sidebar nav-analytics → /analytics renders 'Analitik & Geri Besleme' with 3 stat cards (Yayınlanan=1, Zamanlanmış=2, Başarısız=0) and all required data-testids: bars-platform, bars-type, bars-hour, feedback-list, dlq-list. DLQ empty → shows 'Başarısız yayın yok 🎉' (no dlq-retry- buttons — correct per spec). /schedule shows 14/14 day-<i> zones and 2 draggable Twitter/X timeline-<id> cards. DRAG-DROP verified via native Playwright drag_to: card moved from day-0 → day-3, ended up under the new day zone, success toast 'Yeniden zamanlandı' shown. No console errors on either page.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_analytics.py",
+    "/app/test_reports/pytest/analytics_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Analytics.jsx retry() sets scheduled_at=new Date().toISOString() (immediate). Fine for DLQ retry but stacks work in the next 1-min publisher tick — acceptable.",
+    "Schedule.jsx dropOnDay uses new Date(day).setHours(orig.getHours(), orig.getMinutes(),...) then toISOString. This uses local timezone of the browser; since the day-<i> zones are created via new Date() with local midnight, the produced ISO correctly maps back to the same displayed day after reload.",
+    "Backend /api/analytics: dlq entries omit article_title/content — UI only shows platform+label which is enough, but including article_title would improve DLQ operator context.",
+    "server.py analytics(): parses published_at via fromisoformat; if a legacy record stores non-ISO string it is silently skipped (try/except pass). Acceptable but a debug log would help diagnose gaps in by_hour."
+  ],
+  "updated_files": ["/app/backend/tests/test_analytics.py"],
+  "success_rate": {"backend": "100% (3/3)", "frontend": "100%"},
+  "test_credentials": "admin@egitim.today / admin123",
+  "seed_data_creation": "None. Used existing 2 pending Twitter/X scheduled atoms. Backend reschedule test restores original scheduled_at. Frontend drag-drop test moved one atom from day-0 to day-3 and left it there (per instructions cleanup is not required; publisher will attempt at that future time and hit expected Twitter 402).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Analytics + drag-drop reschedule both fully working. Playwright native drag_to() WORKS with the HTML5 draggable/onDrop implementation in Schedule.jsx — no need to fall back to raw API. auto-distribute-btn is only rendered when unscheduled.length>0 (per code); during this run unscheduled=0 so it was absent — not a bug. published- anchor didn't render because the only published atom lacked scheduled_at in timeline; not a regression per iteration_4 note.",
+  "rca of the issue": "N/A — no issues found."
+}

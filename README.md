@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Content Studio
 
 Private ops tool for **egitim.today** social + SEO content: source article -> AI transforms -> human approval -> X / LinkedIn schedule/publish.
@@ -71,3 +72,6 @@ Set `X_CLIENT_ID` / `X_CLIENT_SECRET` and LinkedIn equivalents for real publish.
 ## LearnCon
 
 Docs only: update `docs/CONTENT_STUDIO_FINAL_PLAN.md` in learncon. No SM code in learncon.
+=======
+# Here are your Instructions
+>>>>>>> origin/main2
