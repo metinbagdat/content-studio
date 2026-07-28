@@ -73,6 +73,10 @@ eğitim.today İçerik Atomizasyon & Otomatik Yayın Platformu. Bir makaleyi LLM
 - ai_service.py: generate_text prefers Groq, generate_image uses HF (clean error), generate_audio uses Edge-TTS. Keys in backend/.env (GROQ_API_KEY, HF_TOKEN).
 - WYSIWYG publish preview: AtomPreview.jsx dialog (Twitter/LinkedIn/generic faithful cards) + 'Önizle' button on every AtomCard.
 
+## Free Image via Pollinations (2026-07-27)
+- IMAGE now works FREE keyless via https://image.pollinations.ai/prompt/{prompt} (verified 84KB image). Optional POLLINATIONS_API_KEY (from enter.pollinations.ai) upgrades to gen.pollinations.ai Nano Banana (nanobanana-2-lite/2/pro).
+- ALL THREE modalities free (no Emergent budget): TEXT=Groq, AUDIO=Edge-TTS, IMAGE=Pollinations.
+
 ## Next Tasks
 1. Confirm eğitim.today RSS URL; add RSS fetcher cron + manual URL already done.
 2. Move analyze/generate to background tasks (APScheduler/Celery) to avoid request blocking.

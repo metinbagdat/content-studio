@@ -53,24 +53,28 @@ def _hf_image(prompt: str) -> str:
     raise RuntimeError(f"HF {r.status_code}: {r.text[:200]}")
 
 
+import urllib.parse as _urlparse
+
+POLLINATIONS_KEY = os.environ.get("POLLINATIONS_API_KEY")
+POLLINATIONS_MODEL = os.environ.get("POLLINATIONS_MODEL", "nanobanana-2-lite")
+
+
+def _pollinations_image(prompt: str) -> str:
+    p = _urlparse.quote(prompt[:1000])
+    if POLLINATIONS_KEY:
+        url = f"https://gen.pollinations.ai/image/{p}?model={POLLINATIONS_MODEL}&width=1024&height=1024"
+        headers = {"Authorization": f"Bearer {POLLINATIONS_KEY}"}
+    else:
+        url = f"https://image.pollinations.ai/prompt/{p}?width=1024&height=1024&nologo=true"
+        headers = {}
+    r = requests.get(url, headers=headers, timeout=120)
+    if r.status_code == 200 and r.headers.get("content-type", "").startswith("image"):
+        return base64.b64encode(r.content).decode("utf-8")
+    raise RuntimeError(f"Pollinations {r.status_code}: {r.text[:150]}")
+
+
 async def generate_image(prompt: str, session_id: str) -> str | None:
-    if HF_TOKEN:
-        try:
-            return _hf_image(prompt)
-        except Exception as e:
-            raise RuntimeError(
-                "Görsel üretimi ücretsiz Hugging Face planında şu an kullanılamıyor "
-                "(modeller kaldırıldı/kredi gerekiyor). Metin ve ses ücretsiz çalışıyor; "
-                "görsel için Emergent bütçesi veya HF Pro gerekir."
-            )
-    chat = LlmChat(
-        api_key=EMERGENT_KEY, session_id=session_id,
-        system_message="You are an expert educational graphic designer.",
-    ).with_model("gemini", IMAGE_MODEL).with_params(modalities=["image", "text"])
-    _text, images = await chat.send_message_multimodal_response(UserMessage(text=prompt))
-    if images:
-        return images[0]["data"]
-    return None
+    return _pollinations_image(prompt)
 
 
 async def generate_audio(text: str, voice: str = "tr-TR-EmelNeural") -> str:
