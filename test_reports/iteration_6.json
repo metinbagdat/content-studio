@@ -1,0 +1,36 @@
+{
+  "summary": "Validated all 4 new features end-to-end. BACKEND (pytest 10/10 pass, 29s): (1) POST /atoms/{id}/generate on an image atom returns media_type=image + media_choice='watermarked'; (2) GET /atoms/{id}/media returns both 'original' (72KB) and 'watermarked' (102KB — larger due to overlay) base64 strings that differ; (3) POST /atoms/{id}/select-media persists choice='original' then flips back to 'watermarked'; 404 for missing atom; (4) generating a twitter_post auto-approves AND auto-schedules — scheduled_at hour/min matches Twitter/X UTC slots (06:00/09:30/12:00/17:00 UTC = 09:00/12:30/15:00/20:00 TR); LinkedIn generated+approved lands on LinkedIn slots; (5) POST /atoms/bulk-approve returns {ok, count, scheduled} and each id becomes status='approved' with scheduled_at set; (6) GET /schedule returns {unscheduled, timeline}; POST /schedule/auto returns {scheduled:n}. FRONTEND (playwright): login OK (redirects to '/' not '/dashboard' — minor, non-blocking); Review Queue: 50 selectable atom checkboxes in İnceleme+Onaylı columns, selecting 2 shows 'bulk-approve-btn' with text '2 Atomu Onayla' and clicking approves+auto-schedules (success). Image atom preview (freshly generated social_card): dialog title 'Görsel Versiyonu Seç · INSTAGRAM · SOSYAL MEDYA KARTI', both media-version-watermarked-<id> and media-version-original-<id> cards render side-by-side with actual base64 images (visible eğitim.today watermark with indigo dot on bottom-left of watermarked version); 'Seçili' badge starts on watermarked, clicking Orijinal switches badge + shows toast 'Orijinal versiyon seçildi' + persists via POST /select-media (verified via API). Text atom preview (twitter_thread): dialog title 'Yayın Önizlemesi' with WYSIWYG Twitter card, NO media-version-* elements rendered. Schedule page: 14 day-<i> zones, 9 timeline-<id> items each with publish-now-<id> + unschedule-<id> buttons; only 1 unscheduled item remains (auto-schedule from approvals worked). Two harmless console warnings about DialogContent missing aria-describedby (radix-ui a11y — not a functional bug).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "AtomPreview dialog", "issues": ["Radix Dialog console warning: 'Missing Description or aria-describedby for DialogContent' — a11y hint only; consider adding <DialogDescription> or aria-describedby={undefined} suppressor."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_new_features.py",
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/iter6_results.xml"
+  ],
+  "action_items": [
+    "OPTIONAL: Add <DialogDescription> (or aria-describedby) to AtomPreview DialogContent to remove Radix a11y console warning.",
+    "OPTIONAL: For LEGACY image atoms (generated before this session), GET /atoms/{id}/media returns original=null & watermarked=null → UI correctly shows 'Bu görsel henüz üretilmedi.' but the atom still has legacy 'media' populated. Consider a one-off migration that fills media_original/media_watermarked from existing 'media' (treat existing as watermarked and set original=null), or hint the user to regenerate."
+  ],
+  "critical_code_review_comments": [
+    "server.py `list_atoms` and `article_atoms` correctly exclude media/media_original/media_watermarked to keep payloads small — good.",
+    "_auto_schedule_atom is idempotent (skips if scheduled_at already set) — safe against double invocation from approve+bulk-approve paths.",
+    "bulk-approve does not verify that content exists; atoms with empty content are marked approved but _auto_schedule_atom short-circuits (requires content). Confirmed behavior. Consider surfacing a per-id error list so UI can highlight atoms that couldn't be scheduled.",
+    "ai_service._pollinations_image: paid nanobanana-2 endpoint returns 402 (no balance) → correctly falls back to free keyless endpoint. Images produced successfully in ~15-25s each.",
+    "apply_watermark: proper alpha compositing, dot+shadow+text, saves JPEG q=90; watermarked b64 is larger than original — verified by size diff (102KB vs 72KB).",
+    "Schedule.jsx dropOnDay uses local-timezone Date; works because day-<i> anchors use the same local midnight. Consistent with iteration_5 review."
+  ],
+  "updated_files": ["/app/backend/tests/test_new_features.py"],
+  "success_rate": {"backend": "100% (10/10)", "frontend": "100% (all critical flows verified)"},
+  "test_credentials": "admin@egitim.today / admin123",
+  "seed_data_creation": "test_new_features.py creates one TEST_iter6 article per module (auto-cleaned in fixture teardown). During UI testing I generated one image atom (id 849b52e3-ef18-4fac-81e6-a59ac0cdab41 — Instagram Sosyal Medya Kartı) and flipped its media_choice from watermarked → original → back. Its status='review' and it is NOT auto-scheduled (Instagram not in slot table — correct).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "All 4 iteration-6 features fully working end-to-end. Key data points: (a) Pollinations paid endpoint hits 402 → free fallback used; images are still returned. (b) Twitter UTC slots = 06:00/09:30/12:00/17:00, LinkedIn UTC = 05:00/09:00/14:30 (TR-3). (c) Legacy image atoms (pre-iteration-6) have media populated but not media_original/media_watermarked → UI shows 'Bu görsel henüz üretilmedi.' in the version selector — expected. New generations populate both. (d) DialogContent aria-describedby warning is cosmetic only.",
+  "rca of the issue": "N/A — no functional issues found."
+}

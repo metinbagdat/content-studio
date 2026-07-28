@@ -1,8 +1,10 @@
 """AI provider abstraction with free fallbacks (Groq text, HF image, Edge-TTS)."""
 import os
+import io
 import base64
 import requests
 import edge_tts
+from PIL import Image, ImageDraw, ImageFont
 from emergentintegrations.llm.chat import LlmChat, UserMessage
 
 EMERGENT_KEY = os.environ.get("EMERGENT_LLM_KEY")
@@ -84,6 +86,44 @@ def _pollinations_image(prompt: str, width: int = 1024, height: int = 1024) -> s
 
 async def generate_image(prompt: str, session_id: str, width: int = 1024, height: int = 1024) -> str | None:
     return _pollinations_image(prompt, width, height)
+
+
+_ASPECT_SIZE = {"1:1": (1024, 1024), "16:9": (1280, 720), "9:16": (720, 1280), "2:3": (768, 1152)}
+_FONT_PATH = "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf"
+
+
+def aspect_size(aspect: str) -> tuple[int, int]:
+    return _ASPECT_SIZE.get(aspect, (1024, 1024))
+
+
+def apply_watermark(b64_img: str, text: str = "eğitim.today") -> str:
+    """Overlay a semi-transparent 'eğitim.today' label with an indigo dot in the bottom-left."""
+    img = Image.open(io.BytesIO(base64.b64decode(b64_img))).convert("RGBA")
+    W, H = img.size
+    overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(overlay)
+    font_size = max(20, int(H * 0.038))
+    try:
+        font = ImageFont.truetype(_FONT_PATH, font_size)
+    except Exception:
+        font = ImageFont.load_default()
+    margin = int(H * 0.045)
+    bbox = draw.textbbox((0, 0), text, font=font)
+    tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    dot_r = int(font_size * 0.32)
+    gap = int(font_size * 0.45)
+    x = margin
+    y = H - margin - th
+    cy = y + th // 2 + bbox[1]
+    # readability shadow
+    draw.text((x + dot_r * 2 + gap + 2, y + 2), text, font=font, fill=(0, 0, 0, 150))
+    # indigo brand accent dot
+    draw.ellipse([x, cy - dot_r, x + dot_r * 2, cy + dot_r], fill=(94, 106, 210, 240))
+    draw.text((x + dot_r * 2 + gap, y), text, font=font, fill=(255, 255, 255, 240))
+    out = Image.alpha_composite(img, overlay).convert("RGB")
+    buf = io.BytesIO()
+    out.save(buf, format="JPEG", quality=90)
+    return base64.b64encode(buf.getvalue()).decode("utf-8")
 
 
 async def generate_audio(text: str, voice: str = "tr-TR-EmelNeural") -> str:

@@ -56,7 +56,7 @@ export default function Schedule() {
             <div className="flex items-start justify-between mb-6 flex-wrap gap-4">
                 <div>
                     <h1 className="font-heading text-3xl font-bold" data-testid="page-title">Takvim & Zamanlama</h1>
-                    <p className="text-[#8A8F98] mt-1 text-sm">Sürükle-bırak ile günü değiştir · publisher her dakika kontrol eder, hatada 3 kez dener (→ DLQ)</p>
+                    <p className="text-[#8A8F98] mt-1 text-sm">Onaylanan sosyal atomlar platforma-özel optimum saatlere (LinkedIn 08:00/12:00/17:30 · Twitter 09:00/12:30/15:00/20:00, TR saati) otomatik zamanlanır · sürükle-bırak ile günü değiştir · publisher her dakika kontrol eder</p>
                 </div>
                 {data.unscheduled.length > 0 && (
                     <Button onClick={autoDistribute} disabled={busy} data-testid="auto-distribute-btn" className="bg-[#5E6AD2] hover:bg-[#7380E8]">

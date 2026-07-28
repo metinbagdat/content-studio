@@ -248,7 +248,7 @@ async def analyze_article(article_id: str, user: dict = Depends(get_current_user
 
 @api_router.get("/articles/{article_id}/atoms")
 async def article_atoms(article_id: str, user: dict = Depends(get_current_user)):
-    atoms = await db.atoms.find({"article_id": article_id}, {"_id": 0, "media": 0}).to_list(1000)
+    atoms = await db.atoms.find({"article_id": article_id}, {"_id": 0, "media": 0, "media_original": 0, "media_watermarked": 0}).to_list(1000)
     return atoms
 
 
@@ -258,7 +258,7 @@ async def list_atoms(status: Optional[str] = None, include_media: bool = False, 
     query = {}
     if status:
         query["status"] = status
-    proj = {"_id": 0} if include_media else {"_id": 0, "media": 0}
+    proj = {"_id": 0} if include_media else {"_id": 0, "media": 0, "media_original": 0, "media_watermarked": 0}
     atoms = await db.atoms.find(query, proj).sort("updated_at", -1).to_list(1000)
     return atoms
 
@@ -279,12 +279,17 @@ async def _generate_atom(atom: dict, article: dict):
 
     if category == "image":
         prompt = bp.image_prompt(atom_type, article, analysis)
-        b64 = await ai_service.generate_image(prompt, session_id=f"img-{atom['id']}")
+        w, h = ai_service.aspect_size(atom.get("aspect", "1:1"))
+        b64 = await ai_service.generate_image(prompt, session_id=f"img-{atom['id']}", width=w, height=h)
         await bump_quota("gemini_image")
         if not b64:
             raise RuntimeError("Görsel üretilemedi")
+        watermarked = ai_service.apply_watermark(b64)
         updates["media_type"] = "image"
-        updates["media"] = b64
+        updates["media_original"] = b64
+        updates["media_watermarked"] = watermarked
+        updates["media"] = watermarked
+        updates["media_choice"] = "watermarked"
         updates["content"] = prompt
     elif category == "audio":
         text = await ai_service.generate_text(
@@ -323,7 +328,11 @@ async def generate_atom(atom_id: str, user: dict = Depends(get_current_user)):
     except Exception as e:
         await log_job(atom_id, atom["type"], "error", str(e))
         raise HTTPException(status_code=500, detail=f"Üretim hatası: {e}")
-    return await db.atoms.find_one({"id": atom_id}, {"_id": 0})
+    result = await db.atoms.find_one({"id": atom_id}, {"_id": 0})
+    if result and result.get("status") == "approved":
+        await _auto_schedule_atom(result)
+        result = await db.atoms.find_one({"id": atom_id}, {"_id": 0})
+    return result
 
 
 @api_router.post("/atoms/{atom_id}/regenerate")
@@ -347,7 +356,9 @@ async def update_atom(atom_id: str, data: AtomUpdate, user: dict = Depends(get_c
 @api_router.post("/atoms/{atom_id}/approve")
 async def approve_atom(atom_id: str, user: dict = Depends(get_current_user)):
     await db.atoms.update_one({"id": atom_id}, {"$set": {"status": "approved", "updated_at": now_iso()}})
-    return {"ok": True}
+    atom = await db.atoms.find_one({"id": atom_id}, {"_id": 0})
+    slot = await _auto_schedule_atom(atom) if atom else None
+    return {"ok": True, "scheduled_at": slot.isoformat() if slot else None}
 
 
 @api_router.post("/atoms/{atom_id}/reject")
@@ -359,7 +370,48 @@ async def reject_atom(atom_id: str, user: dict = Depends(get_current_user)):
 @api_router.post("/atoms/bulk-approve")
 async def bulk_approve(data: BulkIds, user: dict = Depends(get_current_user)):
     await db.atoms.update_many({"id": {"$in": data.ids}}, {"$set": {"status": "approved", "updated_at": now_iso()}})
-    return {"ok": True, "count": len(data.ids)}
+    atoms = await db.atoms.find({"id": {"$in": data.ids}}, {"_id": 0}).to_list(1000)
+    scheduled = 0
+    for atom in atoms:
+        if await _auto_schedule_atom(atom):
+            scheduled += 1
+    return {"ok": True, "count": len(data.ids), "scheduled": scheduled}
+
+
+class MediaChoice(BaseModel):
+    choice: str  # "watermarked" | "original"
+
+
+@api_router.get("/atoms/{atom_id}/media")
+async def get_atom_media(atom_id: str, user: dict = Depends(get_current_user)):
+    atom = await db.atoms.find_one(
+        {"id": atom_id},
+        {"_id": 0, "media_original": 1, "media_watermarked": 1, "media_choice": 1, "media_type": 1},
+    )
+    if not atom:
+        raise HTTPException(status_code=404, detail="Atom bulunamadı")
+    return {
+        "media_type": atom.get("media_type"),
+        "media_choice": atom.get("media_choice", "watermarked"),
+        "original": atom.get("media_original"),
+        "watermarked": atom.get("media_watermarked"),
+    }
+
+
+@api_router.post("/atoms/{atom_id}/select-media")
+async def select_media(atom_id: str, data: MediaChoice, user: dict = Depends(get_current_user)):
+    atom = await db.atoms.find_one({"id": atom_id})
+    if not atom:
+        raise HTTPException(status_code=404, detail="Atom bulunamadı")
+    field = "media_watermarked" if data.choice == "watermarked" else "media_original"
+    media = atom.get(field)
+    if not media:
+        raise HTTPException(status_code=400, detail="Bu versiyon mevcut değil")
+    await db.atoms.update_one(
+        {"id": atom_id},
+        {"$set": {"media": media, "media_choice": data.choice, "updated_at": now_iso()}},
+    )
+    return {"ok": True, "choice": data.choice}
 
 
 # ---------- social publishing ----------
@@ -514,21 +566,63 @@ async def unschedule_atom(atom_id: str, user: dict = Depends(get_current_user)):
     return {"ok": True}
 
 
-OPTIMAL_SLOTS_UTC = [(3, 30), (7, 0), (12, 30), (15, 30)]  # ~09:00, 12:30, 18:00, 21:00 IST
+TR_UTC_OFFSET = 3  # Türkiye UTC+3
 
 
-def _next_slots(count: int) -> list:
+PLATFORM_SLOTS_LOCAL = {
+    "LinkedIn": [(8, 0), (12, 0), (17, 30)],           # profesyonel iş saatleri
+    "Twitter/X": [(9, 0), (12, 30), (15, 0), (20, 0)],  # yüksek etkileşim saatleri
+}
+DEFAULT_SLOTS_LOCAL = [(9, 0), (13, 0), (18, 0)]
+
+
+def _platform_slots_utc(platform: str) -> list:
+    local = PLATFORM_SLOTS_LOCAL.get(platform, DEFAULT_SLOTS_LOCAL)
+    return sorted(((h - TR_UTC_OFFSET) % 24, m) for (h, m) in local)
+
+
+def _candidate_slots(platform: str, count: int) -> list:
+    slots = _platform_slots_utc(platform)
     now = datetime.now(timezone.utc)
-    slots = []
-    day = 0
-    while len(slots) < count and day < 60:
+    out, day = [], 0
+    while len(out) < count and day < 90:
         base = (now + timedelta(days=day)).replace(second=0, microsecond=0)
-        for (h, m) in OPTIMAL_SLOTS_UTC:
+        for (h, m) in slots:
             s = base.replace(hour=h, minute=m)
             if s > now:
-                slots.append(s)
+                out.append(s)
         day += 1
-    return slots[:count]
+    return out
+
+
+async def _taken_slots(platform: str) -> set:
+    rows = await db.atoms.find(
+        {"platform": platform, "scheduled_at": {"$ne": None}, "published": {"$ne": True}},
+        {"_id": 0, "scheduled_at": 1},
+    ).to_list(1000)
+    taken = set()
+    for r in rows:
+        t = r.get("scheduled_at")
+        if isinstance(t, datetime):
+            taken.add(t.replace(second=0, microsecond=0, tzinfo=None))
+    return taken
+
+
+async def _auto_schedule_atom(atom: dict) -> Optional[datetime]:
+    """Assign the next free platform-optimal slot to an eligible social atom."""
+    if atom.get("platform") not in ("Twitter/X", "LinkedIn"):
+        return None
+    if not atom.get("content") or atom.get("published") or atom.get("scheduled_at"):
+        return None
+    taken = await _taken_slots(atom["platform"])
+    for s in _candidate_slots(atom["platform"], 400):
+        if s.replace(tzinfo=None) not in taken:
+            await db.atoms.update_one(
+                {"id": atom["id"]},
+                {"$set": {"scheduled_at": s, "dead": False, "publish_attempts": 0, "last_error": None}},
+            )
+            return s
+    return None
 
 
 @api_router.post("/schedule/auto")
@@ -536,16 +630,17 @@ async def auto_schedule(user: dict = Depends(get_current_user)):
     atoms = await db.atoms.find({
         "status": "approved", "published": {"$ne": True}, "scheduled_at": None,
         "platform": {"$in": ["Twitter/X", "LinkedIn"]},
-    }, {"_id": 0, "id": 1}).to_list(200)
-    slots = _next_slots(len(atoms))
-    for atom, slot in zip(atoms, slots):
-        await db.atoms.update_one({"id": atom["id"]}, {"$set": {"scheduled_at": slot, "dead": False, "publish_attempts": 0}})
-    return {"scheduled": len(atoms)}
+    }, {"_id": 0}).to_list(500)
+    count = 0
+    for atom in atoms:
+        if await _auto_schedule_atom(atom):
+            count += 1
+    return {"scheduled": count}
 
 
 @api_router.get("/schedule")
 async def get_schedule(user: dict = Depends(get_current_user)):
-    proj = {"_id": 0, "media": 0}
+    proj = {"_id": 0, "media": 0, "media_original": 0, "media_watermarked": 0}
     unscheduled = await db.atoms.find({
         "status": "approved", "published": {"$ne": True}, "scheduled_at": None,
         "platform": {"$in": ["Twitter/X", "LinkedIn"]},
@@ -621,8 +716,8 @@ async def get_blueprint(user: dict = Depends(get_current_user)):
 
 @api_router.get("/analytics")
 async def analytics(user: dict = Depends(get_current_user)):
-    pub = await db.atoms.find({"published": True}, {"_id": 0, "media": 0}).to_list(2000)
-    dead = await db.atoms.find({"dead": True}, {"_id": 0, "media": 0}).to_list(500)
+    pub = await db.atoms.find({"published": True}, {"_id": 0, "media": 0, "media_original": 0, "media_watermarked": 0}).to_list(2000)
+    dead = await db.atoms.find({"dead": True}, {"_id": 0, "media": 0, "media_original": 0, "media_watermarked": 0}).to_list(500)
     scheduled_total = await db.atoms.count_documents({"scheduled_at": {"$ne": None}, "published": {"$ne": True}, "dead": {"$ne": True}})
     by_platform: dict = {}
     by_type: dict = {}

@@ -156,7 +156,7 @@ export default function AtomCard({ atom, onChange, selectable, selected, onSelec
                 </div>
             )}
 
-            {atom.content && <AtomPreview atom={atom} open={preview} onOpenChange={setPreview} />}
+            {atom.content && <AtomPreview atom={atom} open={preview} onOpenChange={setPreview} onChange={onChange} />}
         </div>
     );
 }
