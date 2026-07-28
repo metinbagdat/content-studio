@@ -74,7 +74,7 @@ export default function AtomCard({ atom, onChange, selectable, selected, onSelec
         <div data-testid={`atom-card-${atom.id}`} className="bg-[#191A1B] border border-[#2A2E33] rounded-xl p-4 space-y-3 hover:border-[#3a3f45] transition-colors duration-200">
             <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
-                    {selectable && <Checkbox checked={selected} onCheckedChange={onSelect} data-testid={`atom-select-${atom.id}`} className="border-[#2A2E33]" />}
+                    {selectable && <Checkbox checked={selected} onCheckedChange={onSelect} data-testid={`atom-select-${atom.id}`} className="w-4 h-4 border-2 border-[#5E6AD2]/70 data-[state=checked]:bg-[#5E6AD2] data-[state=checked]:border-[#5E6AD2] data-[state=checked]:text-white" />}
                     <span className="w-6 h-6 rounded-md flex items-center justify-center shrink-0" style={{ background: `${accent}22` }}>
                         <Icon className="w-3.5 h-3.5" style={{ color: accent }} />
                     </span>
