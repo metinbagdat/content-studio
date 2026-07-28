@@ -27,6 +27,7 @@ import auth
 import blueprint as bp
 import ai_service
 import publisher
+import notifications
 
 mongo_url = os.environ["MONGO_URL"]
 client = AsyncIOMotorClient(mongo_url)
@@ -543,6 +544,7 @@ async def publish_atom(atom_id: str, user: dict = Depends(get_current_user)):
         "published": True, "publish_platform": atom["platform"], "publish_url": result["url"], "published_at": now_iso(), "dead": False,
     }})
     await log_job(atom_id, atom["type"], "success", f"Yayınlandı: {result['url']}")
+    await notifications.notify_published(atom, result["url"])
     return {"ok": True, "url": result["url"]}
 
 
@@ -676,6 +678,7 @@ async def scheduled_publisher():
                 "published": True, "publish_platform": atom["platform"], "publish_url": result["url"], "published_at": now_iso(),
             }})
             await log_job(atom["id"], atom["type"], "success", f"Zamanlı yayın: {result['url']}")
+            await notifications.notify_published(atom, result["url"])
         except Exception as e:
             attempts = atom.get("publish_attempts", 0) + 1
             dead = attempts >= 3

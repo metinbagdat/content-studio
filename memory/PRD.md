@@ -93,7 +93,6 @@ User choices: nanobanana-2 model; text watermark 'eğitim.today' bottom-left; tw
 - Verified testing_agent iteration_6: backend 10/10, frontend 100%. No functional issues.
 
 ## Backlog / Future
-- P1: Instagram/Facebook/TikTok/YouTube/Pinterest native publishing (currently only Twitter/LinkedIn auto-schedule+publish).
 - P1: Detailed deployment guidance for full-stack (FastAPI+Mongo+APScheduler) — Vercel frontend-only; recommend Emergent Deploy / Railway / Render for backend+worker+persistent DB.
 - P2: Real post-publish metrics (views/likes) feedback loop; optimum-time recommendations by timezone.
 - P2: Blueprint template editor UI.
