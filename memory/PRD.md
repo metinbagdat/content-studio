@@ -81,3 +81,19 @@ eğitim.today İçerik Atomizasyon & Otomatik Yayın Platformu. Bir makaleyi LLM
 1. Confirm eğitim.today RSS URL; add RSS fetcher cron + manual URL already done.
 2. Move analyze/generate to background tasks (APScheduler/Celery) to avoid request blocking.
 3. Gather social OAuth keys (Twitter/X, LinkedIn) to begin publishing phase.
+
+## Iteration 6 — Pollinations Key, Bulk Approve, Watermark, Auto-Schedule (2026-06 / handoff date 2026-07-28)
+User choices: nanobanana-2 model; text watermark 'eğitim.today' bottom-left; two-version (watermarked vs original) selectable; platform-based optimal-time auto-scheduling; deploy deferred (wants detailed guidance later); balance added later.
+- IMAGE (ai_service._pollinations_image): POLLINATIONS_API_KEY + POLLINATIONS_MODEL=nanobanana-2 in backend/.env. Tries paid gen.pollinations.ai/image/{p}?model=nanobanana-2 (Bearer); on 402/403 (no balance) AUTO-FALLS BACK to free keyless image.pollinations.ai. NOTE: account balance currently 0 → all authenticated models 402 → free endpoint used; images still produced. Add pollen at enter.pollinations.ai to activate nanobanana-2.
+- WATERMARK (ai_service.apply_watermark via Pillow, FreeSansBold): semi-transparent white 'eğitim.today' + indigo (#5E6AD2) dot bottom-left; aspect_size(): social_card 1024x1024 (1:1), thumbnail 1280x720 (16:9), else 1024x1024.
+- Image atoms now store media_original + media_watermarked + media(=selected, default watermarked) + media_choice. Endpoints: GET /atoms/{id}/media (with read-time backfill for legacy atoms), POST /atoms/{id}/select-media {choice}. List projections exclude the big media_* fields.
+- Frontend AtomPreview.jsx: image atoms show ImageVersionSelector (Watermark'lı vs Orijinal side-by-side, 'Seçili' badge, persists on click). Text atoms keep WYSIWYG preview.
+- BULK APPROVE: POST /atoms/bulk-approve {ids} → {ok,count,scheduled}; ReviewQueue checkboxes (İnceleme+Onaylı columns) + 'N Atomu Onayla' button.
+- AUTO-SCHEDULE: approving/generating(auto_approve) a Twitter/X or LinkedIn atom with content auto-assigns next free platform-optimal slot. Slots (TR local, UTC = -3): LinkedIn 08:00/12:00/17:30; Twitter/X 09:00/12:30/15:00/20:00. _auto_schedule_atom idempotent + collision-avoiding. /schedule/auto handles leftovers. Schedule.jsx subtitle updated.
+- Verified testing_agent iteration_6: backend 10/10, frontend 100%. No functional issues.
+
+## Backlog / Future
+- P1: Instagram/Facebook/TikTok/YouTube/Pinterest native publishing (currently only Twitter/LinkedIn auto-schedule+publish).
+- P1: Detailed deployment guidance for full-stack (FastAPI+Mongo+APScheduler) — Vercel frontend-only; recommend Emergent Deploy / Railway / Render for backend+worker+persistent DB.
+- P2: Real post-publish metrics (views/likes) feedback loop; optimum-time recommendations by timezone.
+- P2: Blueprint template editor UI.

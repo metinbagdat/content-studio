@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Heart, MessageCircle, Repeat2, Share, ThumbsUp, Send, MoreHorizontal, Globe, Check, Loader2, Sparkles, ImageOff } from "lucide-react";
 import apiClient, { apiError } from "@/lib/apiClient";
@@ -142,6 +142,7 @@ export default function AtomPreview({ atom, open, onOpenChange, onChange }) {
                     <DialogTitle className="font-heading flex items-center gap-2 text-sm">
                         {isImage ? "Görsel Versiyonu Seç" : "Yayın Önizlemesi"} <span className="text-[10px] font-normal text-[#8A8F98] uppercase tracking-wide">{atom.platform} · {atom.label} #{atom.index + 1}</span>
                     </DialogTitle>
+                    <DialogDescription className="sr-only">{isImage ? "Watermark'lı ve orijinal görsel versiyonları arasından seçim yapın" : "İçeriğin platformdaki yayın önizlemesi"}</DialogDescription>
                 </DialogHeader>
                 <div className="flex justify-center py-2 max-h-[70vh] overflow-y-auto">
                     {isImage ? <ImageVersionSelector atom={atom} onChange={onChange} /> : <View atom={atom} />}

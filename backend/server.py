@@ -386,15 +386,25 @@ class MediaChoice(BaseModel):
 async def get_atom_media(atom_id: str, user: dict = Depends(get_current_user)):
     atom = await db.atoms.find_one(
         {"id": atom_id},
-        {"_id": 0, "media_original": 1, "media_watermarked": 1, "media_choice": 1, "media_type": 1},
+        {"_id": 0, "media": 1, "media_original": 1, "media_watermarked": 1, "media_choice": 1, "media_type": 1},
     )
     if not atom:
         raise HTTPException(status_code=404, detail="Atom bulunamadı")
+    original = atom.get("media_original")
+    watermarked = atom.get("media_watermarked")
+    # Backfill legacy image atoms generated before dual-version support.
+    if not original and not watermarked and atom.get("media_type") == "image" and atom.get("media"):
+        original = atom["media"]
+        watermarked = ai_service.apply_watermark(original)
+        await db.atoms.update_one(
+            {"id": atom_id},
+            {"$set": {"media_original": original, "media_watermarked": watermarked, "media": watermarked, "media_choice": "watermarked"}},
+        )
     return {
         "media_type": atom.get("media_type"),
         "media_choice": atom.get("media_choice", "watermarked"),
-        "original": atom.get("media_original"),
-        "watermarked": atom.get("media_watermarked"),
+        "original": original,
+        "watermarked": watermarked,
     }
 
 
