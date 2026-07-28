@@ -59,22 +59,31 @@ POLLINATIONS_KEY = os.environ.get("POLLINATIONS_API_KEY")
 POLLINATIONS_MODEL = os.environ.get("POLLINATIONS_MODEL", "nanobanana-2-lite")
 
 
-def _pollinations_image(prompt: str) -> str:
+def _pollinations_free(prompt: str, width: int, height: int) -> str:
     p = _urlparse.quote(prompt[:1000])
-    if POLLINATIONS_KEY:
-        url = f"https://gen.pollinations.ai/image/{p}?model={POLLINATIONS_MODEL}&width=1024&height=1024"
-        headers = {"Authorization": f"Bearer {POLLINATIONS_KEY}"}
-    else:
-        url = f"https://image.pollinations.ai/prompt/{p}?width=1024&height=1024&nologo=true"
-        headers = {}
-    r = requests.get(url, headers=headers, timeout=120)
+    url = f"https://image.pollinations.ai/prompt/{p}?width={width}&height={height}&nologo=true"
+    r = requests.get(url, timeout=120)
     if r.status_code == 200 and r.headers.get("content-type", "").startswith("image"):
         return base64.b64encode(r.content).decode("utf-8")
-    raise RuntimeError(f"Pollinations {r.status_code}: {r.text[:150]}")
+    raise RuntimeError(f"Pollinations(free) {r.status_code}: {r.text[:150]}")
 
 
-async def generate_image(prompt: str, session_id: str) -> str | None:
-    return _pollinations_image(prompt)
+def _pollinations_image(prompt: str, width: int = 1024, height: int = 1024) -> str:
+    # Prefer paid nanobanana model when a key + balance is available; otherwise
+    # fall back to the free keyless endpoint (402 = no balance, 403 = no access).
+    if POLLINATIONS_KEY:
+        p = _urlparse.quote(prompt[:1000])
+        url = f"https://gen.pollinations.ai/image/{p}?model={POLLINATIONS_MODEL}&width={width}&height={height}"
+        r = requests.get(url, headers={"Authorization": f"Bearer {POLLINATIONS_KEY}"}, timeout=120)
+        if r.status_code == 200 and r.headers.get("content-type", "").startswith("image"):
+            return base64.b64encode(r.content).decode("utf-8")
+        if r.status_code not in (402, 403):
+            raise RuntimeError(f"Pollinations {r.status_code}: {r.text[:150]}")
+    return _pollinations_free(prompt, width, height)
+
+
+async def generate_image(prompt: str, session_id: str, width: int = 1024, height: int = 1024) -> str | None:
+    return _pollinations_image(prompt, width, height)
 
 
 async def generate_audio(text: str, voice: str = "tr-TR-EmelNeural") -> str:
