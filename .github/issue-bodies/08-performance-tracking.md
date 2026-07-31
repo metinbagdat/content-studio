@@ -1,3 +1,8 @@
+## Meta
+- **ID:** CS-08
+- **Status:** todo
+- **Repo:** content-studio
+
 ## Summary
 Fetch engagement metrics per post and feed back into posting time / content optimization.
 

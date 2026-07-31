@@ -1,3 +1,8 @@
+## Meta
+- **ID:** CS-05
+- **Status:** todo
+- **Repo:** content-studio
+
 ## Summary
 Upgrade podcast scripts to multi-segment structure with intro/outro music cues.
 

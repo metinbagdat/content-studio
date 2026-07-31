@@ -1,3 +1,8 @@
+## Meta
+- **ID:** CS-10
+- **Status:** todo
+- **Repo:** content-studio
+
 ## Summary
 Resize/crop generated images for each platform aspect ratio.
 
