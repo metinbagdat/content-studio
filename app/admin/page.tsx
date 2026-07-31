@@ -1,7 +1,14 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { DEFAULT_ADMIN_API_KEY } from '@/lib/adminKey'
+import {
+  DEFAULT_PIPELINE_PLATFORMS,
+  PLATFORM_TARGETS,
+  type PlatformTarget,
+} from '@/lib/platforms/targets'
+
+type PlatformId = PlatformTarget['id']
 
 type Source = { id: string; title: string; content?: string; category: string; createdAt: string }
 type Pipeline = {
@@ -27,11 +34,21 @@ export default function AdminPipelinePage() {
   const [content, setContent] = useState('')
   const [sourceId, setSourceId] = useState('')
   const [includeMarchSong, setIncludeMarchSong] = useState(true)
+  const [platforms, setPlatforms] = useState<PlatformId[]>([...DEFAULT_PIPELINE_PLATFORMS])
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
+  const [msgError, setMsgError] = useState(false)
   const [editSourceId, setEditSourceId] = useState<string | null>(null)
   const [editTitle, setEditTitle] = useState('')
   const [editContent, setEditContent] = useState('')
+
+  const selectedLabels = useMemo(
+    () =>
+      PLATFORM_TARGETS.filter((p) => platforms.includes(p.id))
+        .map((p) => p.short)
+        .join(' · '),
+    [platforms],
+  )
 
   const load = useCallback(async () => {
     if (!adminKey) return
@@ -40,13 +57,15 @@ export default function AdminPipelinePage() {
       fetch('/api/pipelines', { headers: adminHeaders(adminKey), cache: 'no-store' }),
     ])
     if (!sRes.ok || !pRes.ok) {
-      setMsg(`Yetkisiz veya API hatası — .env ADMIN_API_KEY ile aynı olmalı (varsayılan: ${DEFAULT_ADMIN_API_KEY})`)
+      setMsgError(true)
+      setMsg(`Yetkisiz veya API hatası — ADMIN_API_KEY = ${DEFAULT_ADMIN_API_KEY} olmalı`)
       return
     }
     const s = await sRes.json()
     const p = await pRes.json()
     setSources(s.sources || [])
     setPipelines(p.pipelines || [])
+    setMsgError(false)
     setMsg('')
   }, [adminKey])
 
@@ -63,6 +82,16 @@ export default function AdminPipelinePage() {
     }
   }, [adminKey, load])
 
+  function togglePlatform(id: PlatformId) {
+    setPlatforms((prev) => {
+      if (prev.includes(id)) {
+        if (prev.length === 1) return prev
+        return prev.filter((p) => p !== id)
+      }
+      return [...prev, id]
+    })
+  }
+
   async function createSource() {
     setBusy(true)
     try {
@@ -77,8 +106,10 @@ export default function AdminPipelinePage() {
       setContent('')
       setSourceId(data.source.id)
       await load()
-      setMsg('Kaynak eklendi')
+      setMsgError(false)
+      setMsg('Kaynak eklendi — pipeline için hazır')
     } catch (e) {
+      setMsgError(true)
       setMsg(e instanceof Error ? e.message : 'Hata')
     } finally {
       setBusy(false)
@@ -87,26 +118,36 @@ export default function AdminPipelinePage() {
 
   async function startPipeline() {
     if (!sourceId) {
-      setMsg('Kaynak seç')
+      setMsgError(true)
+      setMsg('Önce bir kaynak seç')
+      return
+    }
+    if (!platforms.length) {
+      setMsgError(true)
+      setMsg('En az bir platform seç (X veya YouTube önerilir)')
       return
     }
     setBusy(true)
+    setMsgError(false)
+    setMsg('Pipeline çalışıyor… X / YouTube türevleri üretiliyor')
     try {
       const res = await fetch('/api/pipelines', {
         method: 'POST',
         headers: adminHeaders(adminKey, true),
         body: JSON.stringify({
           sourceId,
-          platforms: ['TWITTER', 'LINKEDIN'],
+          platforms,
           includeMarchSong,
           runSync: true,
         }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'pipeline fail')
-      setMsg(`Pipeline ${data.pipeline?.status}: ${data.pipeline?.id}`)
+      setMsgError(false)
+      setMsg(`Pipeline ${data.pipeline?.status} · ${selectedLabels} · id ${data.pipeline?.id}`)
       await load()
     } catch (e) {
+      setMsgError(true)
       setMsg(e instanceof Error ? e.message : 'Hata')
     } finally {
       setBusy(false)
@@ -144,8 +185,10 @@ export default function AdminPipelinePage() {
       if (!res.ok) throw new Error(data.error || 'fail')
       cancelEditSource()
       await load()
+      setMsgError(false)
       setMsg('Kaynak güncellendi')
     } catch (e) {
+      setMsgError(true)
       setMsg(e instanceof Error ? e.message : 'Hata')
     } finally {
       setBusy(false)
@@ -162,8 +205,10 @@ export default function AdminPipelinePage() {
       if (sourceId === id) setSourceId('')
       if (editSourceId === id) cancelEditSource()
       await load()
+      setMsgError(false)
       setMsg('Kaynak silindi')
     } catch (e) {
+      setMsgError(true)
       setMsg(e instanceof Error ? e.message : 'Hata')
     } finally {
       setBusy(false)
@@ -172,27 +217,46 @@ export default function AdminPipelinePage() {
 
   return (
     <div>
-      <h1>Pipeline</h1>
-      <p className="lead">Kaynak CRUD + AI türev üretimi (onay ayrı ekranda).</p>
+      <section className="hero-panel">
+        <h1>Pipeline</h1>
+        <p className="lead" style={{ marginBottom: 0 }}>
+          Kaynak ekle → platform seç (öncelik: <strong>X</strong> + <strong>YouTube</strong>) → AI
+          türev üret → Onay ekranında incele.
+        </p>
+      </section>
 
       <div className="keybar">
-        <div style={{ flex: 1 }}>
-          <label>Admin API key (`.env` → ADMIN_API_KEY, varsayılan: {DEFAULT_ADMIN_API_KEY})</label>
-          <input value={adminKey} onChange={(e) => setAdminKey(e.target.value)} placeholder={DEFAULT_ADMIN_API_KEY} type="password" />
+        <div>
+          <label>Admin API key</label>
+          <input
+            value={adminKey}
+            onChange={(e) => setAdminKey(e.target.value)}
+            placeholder={DEFAULT_ADMIN_API_KEY}
+            type="password"
+            autoComplete="off"
+          />
         </div>
-        <button type="button" className="secondary" onClick={load}>
+        <button type="button" className="secondary" onClick={load} disabled={busy}>
           Yenile
         </button>
       </div>
-      {msg ? <p className="muted">{msg}</p> : null}
+      {msg ? <p className={`flash ${msgError ? 'error' : ''}`}>{msg}</p> : null}
 
       <div className="grid two">
         <section className="panel">
           <h2>1. Kaynak makale</h2>
           <label>Başlık</label>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} />
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Örn. Zamanı zafere dönüştürmek"
+          />
           <label>İçerik</label>
-          <textarea value={content} onChange={(e) => setContent(e.target.value)} />
+          <textarea
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="Makale metnini yapıştır…"
+          />
           <button type="button" disabled={busy || !title || !content} onClick={createSource}>
             Kaynak kaydet
           </button>
@@ -209,19 +273,48 @@ export default function AdminPipelinePage() {
               </option>
             ))}
           </select>
-          <p className="muted">Platformlar: X + LinkedIn · autoPublish kapalı · marş/şarkı dahil</p>
-          <label className="row" style={{ marginBottom: '0.75rem' }}>
-            <input type="checkbox" checked={includeMarchSong} onChange={(e) => setIncludeMarchSong(e.target.checked)} />
+
+          <label>Hedef platformlar</label>
+          <div className="platform-grid">
+            {PLATFORM_TARGETS.map((p) => {
+              const on = platforms.includes(p.id)
+              return (
+                <label
+                  key={p.id}
+                  className={`platform-chip ${on ? 'on' : ''} ${p.featured ? 'featured' : ''}`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={on}
+                    onChange={() => togglePlatform(p.id)}
+                  />
+                  <span className="chip-label">
+                    {p.label}
+                    {p.featured ? <small>öncelikli</small> : <small>{p.short}</small>}
+                  </span>
+                </label>
+              )
+            })}
+          </div>
+
+          <p className="muted">Seçili: {selectedLabels || '—'} · autoPublish kapalı</p>
+          <label className="row" style={{ marginBottom: '0.85rem', textTransform: 'none' }}>
+            <input
+              type="checkbox"
+              checked={includeMarchSong}
+              onChange={(e) => setIncludeMarchSong(e.target.checked)}
+              style={{ width: 'auto', margin: 0 }}
+            />
             <span className="muted">Marş + şarkı sözü üret</span>
           </label>
           <button type="button" disabled={busy || !sourceId} onClick={startPipeline}>
-            Start Pipeline
+            {busy ? 'Üretiliyor…' : 'Start Pipeline'}
           </button>
         </section>
       </div>
 
       <section className="panel" style={{ marginTop: '1rem' }}>
-        <h2>Kaynaklar (düzenle / sil)</h2>
+        <h2>Kaynaklar</h2>
         <ul className="list">
           {sources.map((s) => (
             <li key={s.id}>
@@ -242,10 +335,24 @@ export default function AdminPipelinePage() {
                 </>
               ) : (
                 <>
-                  <strong>{s.title}</strong>{' '}
-                  <span className="badge">{s.category}</span>
-                  <div className="muted">{s.id}</div>
-                  <div className="row" style={{ marginTop: '0.35rem' }}>
+                  <div className="row">
+                    <strong>{s.title}</strong>
+                    <span className="badge">{s.category}</span>
+                  </div>
+                  <div className="muted">{new Date(s.createdAt).toLocaleString()}</div>
+                  <div className="row" style={{ marginTop: '0.45rem' }}>
+                    <button
+                      type="button"
+                      className="secondary"
+                      disabled={busy}
+                      onClick={() => {
+                        setSourceId(s.id)
+                        setMsgError(false)
+                        setMsg(`Kaynak seçildi: ${s.title}`)
+                      }}
+                    >
+                      Pipeline’da kullan
+                    </button>
                     <button type="button" className="secondary" disabled={busy} onClick={() => startEditSource(s)}>
                       Düzenle
                     </button>
@@ -257,23 +364,35 @@ export default function AdminPipelinePage() {
               )}
             </li>
           ))}
-          {!sources.length ? <li className="muted">Kaynak yok</li> : null}
+          {!sources.length ? (
+            <li className="empty-state">
+              <strong>Henüz kaynak yok</strong>
+              Soldan makale ekle veya Discovery ile tara. DB boşsa `.env` DATABASE_URL’i kontrol et.
+            </li>
+          ) : null}
         </ul>
       </section>
 
       <section className="panel" style={{ marginTop: '1rem' }}>
-        <h2>Aktif / son pipeline’lar</h2>
+        <h2>Son pipeline’lar</h2>
         <ul className="list">
           {pipelines.map((p) => (
             <li key={p.id}>
-              <strong>{p.source?.title || p.name}</strong>{' '}
-              <span className={`badge ${p.status === 'COMPLETED' ? 'ok' : 'warn'}`}>{p.status}</span>
+              <div className="row">
+                <strong>{p.source?.title || p.name}</strong>
+                <span className={`badge ${p.status === 'COMPLETED' ? 'ok' : 'warn'}`}>{p.status}</span>
+              </div>
               <div className="muted">
-                step {p.currentStep}/{p.totalSteps} · {p.id}
+                adım {p.currentStep}/{p.totalSteps}
               </div>
             </li>
           ))}
-          {!pipelines.length ? <li className="muted">Henüz yok</li> : null}
+          {!pipelines.length ? (
+            <li className="empty-state">
+              <strong>Pipeline yok</strong>
+              Kaynak seçip Start Pipeline ile X + YouTube türevlerini üret.
+            </li>
+          ) : null}
         </ul>
       </section>
     </div>

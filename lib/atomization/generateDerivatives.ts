@@ -1,7 +1,8 @@
-import type { Prisma } from '@prisma/client'
+import type { Prisma, SocialPlatform } from '@prisma/client'
 import { prisma } from '../prisma'
 import { buildCaptionSeries, captionPartMetadata } from '../content/captionSeries'
 import { formatForPlatform, PINTEREST_FORMAT, PLATFORM_FORMATS } from '../platforms/formats'
+import { platformWants } from '../platforms/targets'
 import type { AtomizationPlan } from './types'
 import {
   articleExcerpt,
@@ -271,39 +272,60 @@ export async function generateAllDerivatives(
   plan: AtomizationPlan,
   input: GenerateDerivativesInput,
 ): Promise<GenerateDerivativesResult> {
-  const { sourceId, title, article, articleUrl } = input
+  const { sourceId, title, article, articleUrl, platforms } = input
+  const want = (p: SocialPlatform) => platformWants(platforms, p)
   const p = plan.contentPieces
   const drafts: DerivativeDraft[] = []
 
-  // LinkedIn series (up to 4) + extra single posts
-  const seriesCount = Math.min(4, p.linkedinPosts)
-  drafts.push(...linkedinCaptionSeries(title, article, articleUrl, seriesCount))
-  const extraLinkedin = Math.max(0, p.linkedinPosts - seriesCount)
-  if (extraLinkedin) {
+  // X (Twitter) first — primary SM surface for egitim.today
+  if (want('TWITTER')) {
+    drafts.push(...(await generateSocialPostsBatch('TWITTER', p.twitterPosts, title, article, plan, 'twitter_post')))
+    drafts.push(...(await generateTwitterThreads(p.twitterThreads, title, article, plan, articleUrl)))
+  }
+
+  // YouTube Shorts (+ long-form handled separately as VIDEO_SCRIPT in pipeline)
+  if (want('YOUTUBE')) {
     drafts.push(
-      ...(await generateSocialPostsBatch('LINKEDIN', extraLinkedin, title, article, plan, 'linkedin_post')),
+      ...(await generateShortVideos(p.youtubeShorts, title, article, plan, 'YOUTUBE', 'youtube_short', 'YouTube Short')),
     )
   }
 
-  // Platform social batches
-  drafts.push(...(await generateSocialPostsBatch('TWITTER', p.twitterPosts, title, article, plan, 'twitter_post')))
-  drafts.push(...(await generateTwitterThreads(p.twitterThreads, title, article, plan, articleUrl)))
-  drafts.push(...(await generateLinkedInCarousels(p.linkedinCarousels, title, article, plan, articleUrl)))
-  drafts.push(...(await generateSocialPostsBatch('INSTAGRAM', p.instagramPosts, title, article, plan, 'instagram_post')))
-  drafts.push(...(await generateSocialPostsBatch('FACEBOOK', p.facebookPosts, title, article, plan, 'facebook_post')))
-  drafts.push(...(await generatePinterestPins(p.pinterestPins, title, article, plan)))
+  if (want('LINKEDIN')) {
+    const seriesCount = Math.min(4, p.linkedinPosts)
+    drafts.push(...linkedinCaptionSeries(title, article, articleUrl, seriesCount))
+    const extraLinkedin = Math.max(0, p.linkedinPosts - seriesCount)
+    if (extraLinkedin) {
+      drafts.push(
+        ...(await generateSocialPostsBatch('LINKEDIN', extraLinkedin, title, article, plan, 'linkedin_post')),
+      )
+    }
+    drafts.push(...(await generateLinkedInCarousels(p.linkedinCarousels, title, article, plan, articleUrl)))
+  }
 
-  // Short-form video scripts
-  drafts.push(...(await generateShortVideos(p.tiktokVideos, title, article, plan, 'TIKTOK', 'tiktok_video', 'TikTok')))
-  drafts.push(
-    ...(await generateShortVideos(p.instagramReels, title, article, plan, 'INSTAGRAM', 'instagram_reel', 'Reels')),
-  )
-  drafts.push(
-    ...(await generateShortVideos(p.youtubeShorts, title, article, plan, 'YOUTUBE', 'youtube_short', 'YouTube Short')),
-  )
-  drafts.push(
-    ...(await generateShortVideos(p.shortVideos, title, article, plan, 'TIKTOK', 'short_video', 'Short video')),
-  )
+  if (want('INSTAGRAM')) {
+    drafts.push(
+      ...(await generateSocialPostsBatch('INSTAGRAM', p.instagramPosts, title, article, plan, 'instagram_post')),
+    )
+    drafts.push(
+      ...(await generateShortVideos(p.instagramReels, title, article, plan, 'INSTAGRAM', 'instagram_reel', 'Reels')),
+    )
+  }
+
+  if (want('TIKTOK')) {
+    drafts.push(...(await generateShortVideos(p.tiktokVideos, title, article, plan, 'TIKTOK', 'tiktok_video', 'TikTok')))
+    drafts.push(
+      ...(await generateShortVideos(p.shortVideos, title, article, plan, 'TIKTOK', 'short_video', 'Short video')),
+    )
+  }
+
+  if (want('FACEBOOK')) {
+    drafts.push(...(await generateSocialPostsBatch('FACEBOOK', p.facebookPosts, title, article, plan, 'facebook_post')))
+  }
+
+  // Pinterest when any social surface is selected (no enum on SocialPlatform)
+  if (!platforms?.length || platforms.some((x) => ['TWITTER', 'INSTAGRAM', 'FACEBOOK'].includes(x))) {
+    drafts.push(...(await generatePinterestPins(p.pinterestPins, title, article, plan)))
+  }
 
   // Social cards = reuse first N twitter/linkedin posts metadata flag
   for (let i = 0; i < p.socialCards && i < drafts.length; i++) {

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/auth'
 import { createPipeline, processPipeline } from '@/lib/pipeline'
-import { SocialPlatform } from '@prisma/client'
+import { normalizePlatforms } from '@/lib/platforms/targets'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,11 +28,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'sourceId required' }, { status: 400 })
   }
 
-  const platforms = (Array.isArray(body.platforms) ? body.platforms : ['TWITTER', 'LINKEDIN'])
-    .map((p: unknown) => String(p))
-    .filter((p: string) =>
-      Object.values(SocialPlatform).includes(p as SocialPlatform),
-    ) as SocialPlatform[]
+  const platforms = normalizePlatforms(body.platforms)
 
   const pipeline = await createPipeline(sourceId, {
     platforms,

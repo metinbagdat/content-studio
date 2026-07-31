@@ -39,7 +39,14 @@ export type ApplyScheduleResult = {
   postIds: string[]
 }
 
-const VIDEO_KINDS = new Set(['instagram_reel', 'tiktok_video', 'youtube_short', 'short_video'])
+const VIDEO_KINDS = new Set([
+  'instagram_reel',
+  'tiktok_video',
+  'youtube_short',
+  'short_video',
+  'long_form_video',
+  'long_video',
+])
 
 const KIND_TO_CONTENT_TYPE: Record<string, ContentType[]> = {
   twitter_post: ['SOCIAL_CAPTION'],
@@ -49,6 +56,8 @@ const KIND_TO_CONTENT_TYPE: Record<string, ContentType[]> = {
   social_card: ['SOCIAL_CAPTION'],
   twitter_thread: ['TWITTER_THREAD'],
   linkedin_carousel: ['LINKEDIN_CAROUSEL'],
+  youtube_short: ['SHORT_VIDEO_SCRIPT'],
+  long_form_video: ['VIDEO_SCRIPT'],
 }
 
 type DerivativeRow = {
