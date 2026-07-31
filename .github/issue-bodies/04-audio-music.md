@@ -1,3 +1,8 @@
+## Meta
+- **ID:** CS-04
+- **Status:** todo
+- **Repo:** content-studio
+
 ## Summary
 Full audio pipeline: TTS narration, Suno/Udio song composition, march/anthem, podcast intro/outro music.
 

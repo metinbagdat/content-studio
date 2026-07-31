@@ -1,3 +1,8 @@
+## Meta
+- **ID:** CS-03
+- **Status:** todo
+- **Repo:** content-studio
+
 ## Summary
 DALL-E 3 / Stable Diffusion integration for social cards, thumbnails, carousel slides, Pinterest pins.
 

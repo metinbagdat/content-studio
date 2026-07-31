@@ -1,3 +1,8 @@
+## Meta
+- **ID:** CS-09
+- **Status:** todo
+- **Repo:** content-studio
+
 ## Summary
 FFmpeg pipeline for long-form YouTube + short-form TikTok/Reels/Shorts.
 

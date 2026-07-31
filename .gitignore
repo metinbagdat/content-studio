@@ -1,25 +1,6 @@
-<<<<<<< HEAD
-storage/
-
-node_modules
-.next
-.env
-.env.local
-dist
-coverage
-*.log
-.DS_Store
-=======
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# IDE and editors
-.idea/
-.vscode/
-
 # Dependencies
 node_modules/
-/node_modules
-/.pnp
+.pnp
 .pnp.js
 .yarn/install-state.gz
 .yarn/*
@@ -28,74 +9,51 @@ node_modules/
 !.yarn/releases
 !.yarn/versions
 
-# Testing
-/coverage
-
-# Next.js
-/.next/
-/out/
-next-env.d.ts
+# Next.js / builds
+.next/
+out/
+dist/
+build/
+coverage/
 *.tsbuildinfo
 
-# Production builds
-/build
-dist/
-dist
-
-# Environment files (comprehensive coverage)
-
+# Environment & secrets
+.env
+.env.*
+!.env.example
 *token.json*
 *credentials.json*
+credentials.json
+*.key
+.credentials
+*.pem
 
-# Logs and debug files
+# Logs
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 dump.rdb
 
-# System files
+# System / IDE
 .DS_Store
-*.pem
+.idea/
+.vscode/
 
-# Python
+# Python (legacy Emergent)
 __pycache__/
-*pyc*
+*.pyc
 venv/
 .venv/
 
-# Development tools
-chainlit.md
-.chainlit
-.ipynb_checkpoints/
-.ac
+# App data
+storage/
 
-# Deployment
+# Deploy / misc
 .vercel
-
-# Data and databases
-agenthub/agents/youtube/db
-
-# Archive files and large assets
+.cache/
+memory/test_credentials.md
 **/*.zip
 **/*.tar.gz
-**/*.tar
 **/*.tgz
-*.pack
-*.deb
-*.dylib
-
-# Build caches
-.cache/
-
-memory/test_credentials.md
-
-# Mobile development
-android-sdk/
-.env
-.env.*
-*.env
-credentials.json
-*.key
-.credentials
->>>>>>> origin/main2

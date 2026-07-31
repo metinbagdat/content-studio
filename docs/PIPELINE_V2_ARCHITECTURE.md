@@ -1,6 +1,6 @@
 # Enhanced Content Pipeline v2.0
 
-Canonical architecture reference for content-studio. Implementation is phased via GitHub issues.
+Canonical architecture reference for content-studio. Implementation is phased via issue bodies (`.github/issue-bodies/`) and tracked in [ROADMAP.md](./ROADMAP.md). Monorepo plan: [MONOREPO.md](./MONOREPO.md).
 
 ## Phases
 
