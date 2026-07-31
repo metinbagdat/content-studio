@@ -1,23 +1,24 @@
 #!/usr/bin/env bash
-# Safe pull of origin/main when package-lock.json blocks checkout.
+# Force sync to origin/main when package-lock.json blocks checkout/merge.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-echo "==> content-studio sync-main"
-
-if git diff --quiet package-lock.json 2>/dev/null; then
-  echo "package-lock.json: clean"
-else
-  echo "package-lock.json: local changes — discarding (npm will regenerate)"
-  git checkout -- package-lock.json || git stash push -m "sync-main-lock" -- package-lock.json
-fi
+echo "==> content-studio sync-main (hard reset to origin/main)"
 
 git fetch origin
-git checkout main
-git pull origin main
+
+echo "==> Dropping local package-lock.json changes..."
+git restore --staged package-lock.json 2>/dev/null || true
+git restore package-lock.json 2>/dev/null || true
+git checkout -- package-lock.json 2>/dev/null || true
+rm -f package-lock.json
+
+echo "==> Switching to main and matching origin exactly..."
+git checkout -f main 2>/dev/null || git checkout main
+git reset --hard origin/main
 
 echo "==> HEAD: $(git log -1 --oneline)"
-echo "==> next in package.json: $(node -p "require('./package.json').dependencies.next")"
+echo "==> next: $(node -p "require('./package.json').dependencies.next")"
 
 rm -rf node_modules
 npm install
@@ -26,6 +27,5 @@ echo "==> npm audit"
 npm audit || true
 
 echo ""
-echo "OK. Start dev server:"
-echo "  npm run dev"
-echo "Expect: Next.js 15.5.22 and ~90 packages audited"
+echo "OK. Run: npm run dev"
+echo "Expect terminal: Next.js 15.5.22"
