@@ -71,6 +71,7 @@ export default function DiscoveryPage() {
       const r = data.result || {}
       setMsg(
         `Tarama: ${r.scanned ?? '?'} · yeni: ${r.newArticles ?? 0} · duplicate: ${r.skippedDuplicates ?? 0}` +
+          (r.skippedHubPages ? ` · hub atlandı: ${r.skippedHubPages}` : '') +
           (r.errors?.length ? ` · hatalar: ${r.errors.length}` : ''),
       )
       await load()
@@ -84,7 +85,10 @@ export default function DiscoveryPage() {
   return (
     <div>
       <h1>Discovery</h1>
-      <p className="lead">egitim.today sitemap tarama → kaynak ingest → isteğe bağlı pipeline (Phase 0).</p>
+      <p className="lead">
+        egitim.today sitemap tarama → kaynak ingest → isteğe bağlı pipeline. Kategori/hub sayfaları
+        (ör. &quot;TYT Hazırlık Rehberleri&quot;) artık otomatik atlanır — benzer başlıkların tekrarını önler.
+      </p>
 
       <div className="keybar">
         <div style={{ flex: 1 }}>

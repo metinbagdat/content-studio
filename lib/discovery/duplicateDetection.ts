@@ -1,6 +1,6 @@
 import { prisma } from '../prisma'
 
-function normalizeTitle(title: string): string {
+export function normalizeTitle(title: string): string {
   return title
     .toLowerCase()
     .replace(/\s*[|—–-]\s*egitim\.today.*$/i, '')
@@ -9,8 +9,29 @@ function normalizeTitle(title: string): string {
     .trim()
 }
 
-/** Skip if slug tag or normalized title already exists. */
-export async function isDuplicateArticle(slug: string, title: string): Promise<boolean> {
+function hashContent(content: string): string {
+  const norm = content.replace(/\s+/g, ' ').trim().slice(0, 4000)
+  let h = 0
+  for (let i = 0; i < norm.length; i++) h = (h * 31 + norm.charCodeAt(i)) | 0
+  return `h${(h >>> 0).toString(16)}`
+}
+
+/** Category / index pages from sitemap — not full articles. */
+export function isLikelyHubPage(slug: string, title: string, content: string): boolean {
+  const s = slug.toLowerCase()
+  if (/(^|-)(rehberleri|rehber|hazirlik|hazırlık)(-|$)/i.test(s) && content.length < 1200) return true
+  if (/hazirlik-rehberleri$/i.test(s) || /-rehberleri$/i.test(s)) return true
+  if (content.trim().length < 450) return true
+  if (normalizeTitle(title).match(/^(tyt|ayt|lgs)\s+hazırlık rehberleri$/i)) return true
+  return false
+}
+
+/** Skip if slug tag, normalized title, or content fingerprint already exists. */
+export async function isDuplicateArticle(
+  slug: string,
+  title: string,
+  content?: string,
+): Promise<boolean> {
   const bySlug = await prisma.contentSource.findFirst({
     where: { tags: { has: `blog:${slug}` } },
     select: { id: true },
@@ -20,12 +41,17 @@ export async function isDuplicateArticle(slug: string, title: string): Promise<b
   const norm = normalizeTitle(title)
   if (!norm) return false
 
+  const fingerprint = content ? hashContent(content) : null
   const sources = await prisma.contentSource.findMany({
-    select: { title: true },
+    select: { title: true, content: true },
     take: 500,
     orderBy: { createdAt: 'desc' },
   })
-  return sources.some((s) => normalizeTitle(s.title) === norm)
+  for (const s of sources) {
+    if (normalizeTitle(s.title) === norm) return true
+    if (fingerprint && hashContent(s.content) === fingerprint) return true
+  }
+  return false
 }
 
-export { normalizeTitle }
+export { hashContent }

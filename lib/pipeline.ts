@@ -299,6 +299,63 @@ export async function setDerivedStatus(
   return derived
 }
 
+export type BulkStatusResult = {
+  processed: number
+  approved: number
+  rejected: number
+  draftsCreated: number
+  mediaGenerated: number
+  errors: string[]
+}
+
+/** Approve/reject many derivatives; optional podcast/image generation on approve. */
+export async function bulkSetDerivedStatus(
+  ids: string[],
+  status: 'APPROVED' | 'REJECTED',
+  options: { autoMedia?: boolean } = {},
+): Promise<BulkStatusResult> {
+  const result: BulkStatusResult = {
+    processed: 0,
+    approved: 0,
+    rejected: 0,
+    draftsCreated: 0,
+    mediaGenerated: 0,
+    errors: [],
+  }
+
+  for (const id of ids) {
+    try {
+      const before = await prisma.socialMediaPost.count({ where: { derivedContentId: id } })
+      const derived = await setDerivedStatus(id, status)
+      result.processed += 1
+      if (status === 'APPROVED') {
+        result.approved += 1
+        const after = await prisma.socialMediaPost.count({ where: { derivedContentId: id } })
+        result.draftsCreated += Math.max(0, after - before)
+
+        if (options.autoMedia) {
+          if (derived.contentType === 'PODCAST_SCRIPT') {
+            const { generatePodcastAudio } = await import('./media/generatePodcast')
+            await generatePodcastAudio(id)
+            result.mediaGenerated += 1
+          }
+          if (derived.contentType === 'SOCIAL_CAPTION') {
+            await ensureGeneratedPostImage(id)
+            result.mediaGenerated += 1
+          }
+        }
+      } else {
+        result.rejected += 1
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      result.errors.push(`${id}: ${msg}`)
+    }
+  }
+
+  return result
+}
+
 export async function schedulePost(postId: string, scheduledAt: Date) {
   const post = await prisma.socialMediaPost.update({
     where: { id: postId },
