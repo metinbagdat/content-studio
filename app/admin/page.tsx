@@ -10,7 +10,12 @@ import {
 
 type PlatformId = PlatformTarget['id']
 
-type Source = { id: string; title: string; content?: string; category: string; createdAt: string }
+type Source = { id: string; title: string; content?: string; category: string; createdAt: string; tags?: string[] }
+
+function sourceSlug(tags?: string[]): string | null {
+  const t = tags?.find((x) => x.startsWith('blog:'))
+  return t ? t.replace('blog:', '') : null
+}
 type Pipeline = {
   id: string
   name: string
@@ -219,10 +224,13 @@ export default function AdminPipelinePage() {
     <div>
       <section className="hero-panel">
         <h1>Pipeline</h1>
-        <p className="lead" style={{ marginBottom: 0 }}>
-          Kaynak ekle → platform seç (öncelik: <strong>X</strong> + <strong>YouTube</strong>) → AI
-          türev üret → Onay ekranında incele.
+        <p className="lead" style={{ marginBottom: '0.75rem' }}>
+          Kaynak ekle → platform seç → Start Pipeline (podcast, video script, SM metinleri otomatik).
         </p>
+        <div className="row">
+          <a className="btn" href="/admin/review">Onay kuyruğuna git →</a>
+          <a className="btn secondary" href="/admin/discovery">Discovery</a>
+        </div>
       </section>
 
       <div className="keybar">
@@ -315,6 +323,10 @@ export default function AdminPipelinePage() {
 
       <section className="panel" style={{ marginTop: '1rem' }}>
         <h2>Kaynaklar</h2>
+        <p className="muted" style={{ marginBottom: '0.75rem' }}>
+          Discovery bazen sitemap’taki <strong>kategori sayfalarını</strong> (ör. “TYT Hazırlık Rehberleri”)
+          ayrı kaynak olarak ekler — slug farklı, başlık benzer görünür. Yeni discovery hub sayfalarını atlar.
+        </p>
         <ul className="list">
           {sources.map((s) => (
             <li key={s.id}>
@@ -338,6 +350,7 @@ export default function AdminPipelinePage() {
                   <div className="row">
                     <strong>{s.title}</strong>
                     <span className="badge">{s.category}</span>
+                    {sourceSlug(s.tags) ? <span className="badge muted">slug: {sourceSlug(s.tags)}</span> : null}
                   </div>
                   <div className="muted">{new Date(s.createdAt).toLocaleString()}</div>
                   <div className="row" style={{ marginTop: '0.45rem' }}>
@@ -353,6 +366,9 @@ export default function AdminPipelinePage() {
                     >
                       Pipeline’da kullan
                     </button>
+                    <a className="btn secondary" href="/admin/review" style={{ textDecoration: 'none' }}>
+                      Onay
+                    </a>
                     <button type="button" className="secondary" disabled={busy} onClick={() => startEditSource(s)}>
                       Düzenle
                     </button>

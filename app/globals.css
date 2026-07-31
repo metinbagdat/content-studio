@@ -442,6 +442,196 @@ button:disabled {
   margin-bottom: 0.35rem;
 }
 
+/* Admin workflow chrome */
+.admin-subnav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: rgba(22, 32, 51, 0.65);
+}
+
+.admin-nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.88rem;
+  font-weight: 500;
+  padding: 0.42rem 0.72rem;
+  border-radius: 999px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.admin-nav-link:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.admin-nav-link.active {
+  color: var(--text);
+  background: rgba(58, 160, 255, 0.16);
+  border: 1px solid rgba(58, 160, 255, 0.35);
+}
+
+.admin-nav-link.emph {
+  font-weight: 650;
+}
+
+.admin-nav-link.muted-link {
+  color: var(--muted);
+  margin-left: auto;
+}
+
+.nav-pill {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.1rem 0.42rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+}
+
+.nav-pill.warn {
+  background: rgba(240, 180, 41, 0.22);
+  color: var(--warn);
+}
+
+.workflow-track {
+  margin-bottom: 1.25rem;
+  padding: 1rem 1.1rem;
+}
+
+.workflow-steps {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.35rem 0.15rem;
+  margin-bottom: 0.85rem;
+}
+
+.workflow-step-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.workflow-step {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 7.5rem;
+  max-width: 9.5rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(8, 12, 22, 0.45);
+  text-decoration: none;
+  color: var(--text);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.workflow-step:hover {
+  border-color: rgba(58, 160, 255, 0.45);
+}
+
+.workflow-step.current-page {
+  box-shadow: 0 0 0 2px rgba(58, 160, 255, 0.25);
+}
+
+.workflow-step.state-done {
+  border-color: rgba(62, 207, 142, 0.35);
+  background: rgba(62, 207, 142, 0.08);
+}
+
+.workflow-step.state-active {
+  border-color: rgba(58, 160, 255, 0.5);
+  background: rgba(58, 160, 255, 0.12);
+}
+
+.workflow-step.state-warn {
+  border-color: rgba(240, 180, 41, 0.45);
+  background: rgba(240, 180, 41, 0.1);
+}
+
+.workflow-step.state-pending {
+  opacity: 0.72;
+}
+
+.workflow-step-num {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+
+.workflow-step-label {
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.workflow-step-detail {
+  font-size: 0.72rem;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.workflow-arrow {
+  color: var(--muted);
+  font-size: 0.85rem;
+  padding: 0 0.15rem;
+  opacity: 0.65;
+}
+
+.workflow-next {
+  font-size: 0.88rem;
+  color: var(--muted);
+  border-top: 1px solid rgba(42, 58, 85, 0.65);
+  padding-top: 0.75rem;
+}
+
+.workflow-next strong {
+  color: var(--text);
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.workflow-next ul {
+  margin: 0;
+  padding-left: 1.15rem;
+  line-height: 1.5;
+}
+
+.bulk-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding: 0.75rem 0.95rem;
+  border-radius: var(--radius);
+  border: 1px solid rgba(62, 207, 142, 0.3);
+  background: rgba(62, 207, 142, 0.06);
+}
+
+.bulk-bar label.row {
+  margin-bottom: 0;
+}
+
+.review-check {
+  width: auto;
+  margin: 0;
+  flex-shrink: 0;
+}
+
 @media (max-width: 720px) {
   .topbar {
     flex-direction: column;
@@ -455,5 +645,21 @@ button:disabled {
   .keybar {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .workflow-steps {
+    flex-direction: column;
+  }
+
+  .workflow-arrow {
+    display: none;
+  }
+
+  .workflow-step {
+    max-width: 100%;
+  }
+
+  .admin-nav-link.muted-link {
+    margin-left: 0;
   }
 }

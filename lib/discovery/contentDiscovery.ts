@@ -1,13 +1,15 @@
 import { prisma } from '../prisma'
 import { fetchEgitimTodayBlog } from '../blog/fetchEgitimToday'
 import { createPipeline } from '../pipeline'
-import { isDuplicateArticle } from './duplicateDetection'
+import { DEFAULT_PIPELINE_PLATFORMS } from '../platforms/targets'
+import { isDuplicateArticle, isLikelyHubPage } from './duplicateDetection'
 import { fetchBlogSitemap, type SitemapEntry } from './sitemap'
 
 export type DiscoveryResult = {
   scanned: number
   newArticles: number
   skippedDuplicates: number
+  skippedHubPages: number
   errors: string[]
   ingested: Array<{ slug: string; sourceId: string; title: string }>
 }
@@ -23,7 +25,10 @@ export type DiscoveryOptions = {
 
 async function ingestBlogSlug(slug: string): Promise<{ sourceId: string; title: string }> {
   const blog = await fetchEgitimTodayBlog(slug)
-  if (await isDuplicateArticle(slug, blog.title)) {
+  if (isLikelyHubPage(slug, blog.title, blog.contentMarkdown)) {
+    throw new Error(`HUB_PAGE:${slug}`)
+  }
+  if (await isDuplicateArticle(slug, blog.title, blog.contentMarkdown)) {
     throw new Error(`DUPLICATE:${slug}`)
   }
 
@@ -47,6 +52,7 @@ export async function runContentDiscovery(options: DiscoveryOptions = {}): Promi
     scanned: 0,
     newArticles: 0,
     skippedDuplicates: 0,
+    skippedHubPages: 0,
     errors: [],
     ingested: [],
   }
@@ -68,7 +74,11 @@ export async function runContentDiscovery(options: DiscoveryOptions = {}): Promi
 
     try {
       const blog = await fetchEgitimTodayBlog(entry.slug)
-      if (await isDuplicateArticle(entry.slug, blog.title)) {
+      if (isLikelyHubPage(entry.slug, blog.title, blog.contentMarkdown)) {
+        result.skippedHubPages += 1
+        continue
+      }
+      if (await isDuplicateArticle(entry.slug, blog.title, blog.contentMarkdown)) {
         result.skippedDuplicates += 1
         continue
       }
@@ -87,7 +97,7 @@ export async function runContentDiscovery(options: DiscoveryOptions = {}): Promi
 
       if (triggerPipeline) {
         await createPipeline(source.id, {
-          platforms: ['TWITTER', 'LINKEDIN'],
+          platforms: [...DEFAULT_PIPELINE_PLATFORMS],
           includeMarchSong: true,
         })
       }

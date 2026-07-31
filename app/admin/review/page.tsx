@@ -137,6 +137,11 @@ export default function ReviewPage() {
   const [newType, setNewType] = useState<string>('SOCIAL_CAPTION')
   const [newTitle, setNewTitle] = useState('')
   const [newContent, setNewContent] = useState('')
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [autoMedia, setAutoMedia] = useState(true)
+  const [bulkBusy, setBulkBusy] = useState(false)
+
+  const pendingItems = useMemo(() => items.filter((i) => i.status === 'IN_REVIEW'), [items])
 
   const counts = useMemo(() => {
     const pending = items.filter((i) => i.status === 'IN_REVIEW').length
@@ -153,6 +158,14 @@ export default function ReviewPage() {
     }
     return sortItems(filtered)
   }, [items, showAll, platformFilter])
+
+  const visiblePendingIds = useMemo(
+    () => visibleItems.filter((i) => i.status === 'IN_REVIEW').map((i) => i.id),
+    [visibleItems],
+  )
+
+  const allVisibleSelected =
+    visiblePendingIds.length > 0 && visiblePendingIds.every((id) => selectedIds.has(id))
 
   const load = useCallback(async () => {
     if (!adminKey.trim()) {
@@ -237,7 +250,7 @@ export default function ReviewPage() {
     await load()
   }
 
-  async function act(id: string, action: 'approve' | 'reject') {
+  async function act(id: string, action: 'approve' | 'reject', withAutoMedia = false) {
     const nextStatus = action === 'approve' ? 'APPROVED' : 'REJECTED'
     setBusyId(id)
     setItems((prev) =>
@@ -248,7 +261,11 @@ export default function ReviewPage() {
     const res = await fetch('/api/content', {
       method: 'POST',
       headers: adminHeaders(adminKey, true),
-      body: JSON.stringify({ id, action }),
+      body: JSON.stringify({
+        id,
+        action,
+        ...(action === 'approve' && withAutoMedia ? { autoMedia: true } : {}),
+      }),
     })
     setBusyId(null)
     if (!res.ok) {
@@ -256,6 +273,75 @@ export default function ReviewPage() {
       await load()
       return
     }
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      next.delete(id)
+      return next
+    })
+    await load()
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function toggleSelectAllVisible() {
+    if (allVisibleSelected) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev)
+        visiblePendingIds.forEach((id) => next.delete(id))
+        return next
+      })
+    } else {
+      setSelectedIds((prev) => {
+        const next = new Set(prev)
+        visiblePendingIds.forEach((id) => next.add(id))
+        return next
+      })
+    }
+  }
+
+  async function bulkAct(action: 'bulkApprove' | 'bulkReject') {
+    const ids = Array.from(selectedIds).filter((id) => {
+      const item = items.find((i) => i.id === id)
+      return item?.status === 'IN_REVIEW'
+    })
+    if (!ids.length) {
+      setMsg('Önce onay bekleyen öğeleri seç')
+      return
+    }
+    if (action === 'bulkReject' && !confirm(`${ids.length} öğe reddedilsin mi?`)) return
+
+    setBulkBusy(true)
+    setMsg(`${ids.length} öğe işleniyor…`)
+    const res = await fetch('/api/content', {
+      method: 'POST',
+      headers: adminHeaders(adminKey, true),
+      body: JSON.stringify({
+        action,
+        ids,
+        autoMedia: action === 'bulkApprove' && autoMedia,
+      }),
+    })
+    setBulkBusy(false)
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      setMsg(data.error || 'Toplu işlem başarısız')
+      return
+    }
+    const r = data.result || {}
+    setSelectedIds(new Set())
+    setMsg(
+      `Toplu: ${r.processed ?? ids.length} işlendi · ${r.approved ?? 0} onay · ${r.rejected ?? 0} red` +
+        (r.draftsCreated ? ` · ${r.draftsCreated} taslak` : '') +
+        (r.mediaGenerated ? ` · ${r.mediaGenerated} medya` : '') +
+        (r.errors?.length ? ` · hata: ${r.errors.length}` : ''),
+    )
     await load()
   }
 
@@ -326,8 +412,9 @@ export default function ReviewPage() {
       <section className="hero-panel">
         <h1>Onay kuyruğu</h1>
         <p className="lead" style={{ marginBottom: '0.65rem' }}>
-          Otomatik üretilen LinkedIn / X / YouTube metinleri önce burada. Onaylayınca{' '}
-          <a href="/admin/social">Sosyal</a> taslaklarına düşer (hesap bağlı olmalı — dry-run da olur).
+          Otomatik üretilen LinkedIn / X / YouTube metinleri ve podcast scriptleri önce burada. Toplu onayla →
+          <a href="/admin/social">Sosyal</a> taslakları; podcast MP3 için{' '}
+          <a href="/admin/media">Medya</a> veya aşağıdaki otomatik ses üretimi.
         </p>
         <div className="row">
           <span className="badge warn">{counts.pending} bekliyor</span>
@@ -383,6 +470,57 @@ export default function ReviewPage() {
         </p>
       ) : null}
 
+      {counts.pending > 0 ? (
+        <div className="bulk-bar">
+          <label className="row muted" style={{ marginBottom: 0 }}>
+            <input
+              type="checkbox"
+              className="review-check"
+              checked={allVisibleSelected}
+              onChange={toggleSelectAllVisible}
+              disabled={bulkBusy || !visiblePendingIds.length}
+            />
+            Görünenleri seç ({visiblePendingIds.length})
+          </label>
+          <span className="muted">{selectedIds.size} seçili</span>
+          <label className="row muted" style={{ marginBottom: 0 }} title="Podcast script → MP3, caption → görsel">
+            <input
+              type="checkbox"
+              className="review-check"
+              checked={autoMedia}
+              onChange={(e) => setAutoMedia(e.target.checked)}
+            />
+            Onayda otomatik medya (podcast ses + görsel)
+          </label>
+          <button
+            type="button"
+            className="ok"
+            disabled={bulkBusy || selectedIds.size === 0}
+            onClick={() => bulkAct('bulkApprove')}
+          >
+            {bulkBusy ? 'İşleniyor…' : 'Toplu onayla'}
+          </button>
+          <button
+            type="button"
+            className="danger"
+            disabled={bulkBusy || selectedIds.size === 0}
+            onClick={() => bulkAct('bulkReject')}
+          >
+            Toplu reddet
+          </button>
+          <button
+            type="button"
+            className="secondary"
+            disabled={bulkBusy}
+            onClick={() => {
+              setSelectedIds(new Set(pendingItems.map((i) => i.id)))
+            }}
+          >
+            Tüm bekleyenleri seç
+          </button>
+        </div>
+      ) : null}
+
       {showCreate ? (
         <section className="panel" style={{ marginBottom: '1rem' }}>
           <h2>Elle türev ekle</h2>
@@ -417,6 +555,16 @@ export default function ReviewPage() {
         {visibleItems.map((item) => (
           <li key={item.id} className={panelClass(item.status)} style={{ marginBottom: '0.75rem' }}>
             <div className="row">
+              {item.status === 'IN_REVIEW' ? (
+                <input
+                  type="checkbox"
+                  className="review-check"
+                  checked={selectedIds.has(item.id)}
+                  onChange={() => toggleSelect(item.id)}
+                  disabled={bulkBusy}
+                  aria-label="Seç"
+                />
+              ) : null}
               {editingId === item.id ? (
                 <input
                   value={editTitle}
@@ -457,7 +605,12 @@ export default function ReviewPage() {
                   ) : null}
                   {item.status === 'IN_REVIEW' ? (
                     <>
-                      <button type="button" className="ok" disabled={busyId === item.id} onClick={() => act(item.id, 'approve')}>
+                      <button
+                        type="button"
+                        className="ok"
+                        disabled={busyId === item.id || bulkBusy}
+                        onClick={() => act(item.id, 'approve', autoMedia)}
+                      >
                         Onayla
                       </button>
                       <button type="button" className="danger" disabled={busyId === item.id} onClick={() => act(item.id, 'reject')}>

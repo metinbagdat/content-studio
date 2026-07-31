@@ -44,6 +44,19 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
   const action = String(body.action || '')
 
+  if (action === 'bulkApprove' || action === 'bulkReject') {
+    const ids = Array.isArray(body.ids) ? body.ids.map(String).filter(Boolean) : []
+    if (!ids.length) {
+      return NextResponse.json({ error: 'ids[] required' }, { status: 400 })
+    }
+    const { bulkSetDerivedStatus } = await import('@/lib/pipeline')
+    const status = action === 'bulkApprove' ? 'APPROVED' : 'REJECTED'
+    const result = await bulkSetDerivedStatus(ids, status, {
+      autoMedia: Boolean(body.autoMedia),
+    })
+    return NextResponse.json({ result })
+  }
+
   if (action === 'create') {
     try {
       const contentType = String(body.contentType || '') as ContentType
@@ -68,6 +81,12 @@ export async function POST(req: NextRequest) {
   const id = String(body.id || '')
   if (!id || !['approve', 'reject'].includes(action)) {
     return NextResponse.json({ error: 'id and action=approve|reject|create required' }, { status: 400 })
+  }
+  if (action === 'approve' && Boolean(body.autoMedia)) {
+    const { bulkSetDerivedStatus } = await import('@/lib/pipeline')
+    const result = await bulkSetDerivedStatus([id], 'APPROVED', { autoMedia: true })
+    const derived = await prisma.derivedContent.findUnique({ where: { id } })
+    return NextResponse.json({ derived, result })
   }
   const derived = await setDerivedStatus(id, action === 'approve' ? 'APPROVED' : 'REJECTED')
   return NextResponse.json({ derived })
