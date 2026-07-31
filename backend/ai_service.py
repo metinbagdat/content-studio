@@ -3,9 +3,14 @@ import os
 import io
 import base64
 import requests
+import logging
 import edge_tts
 from PIL import Image, ImageDraw, ImageFont
-from emergentintegrations.llm.chat import LlmChat, UserMessage
+
+# emergentintegrations yorum satırı yapıldı
+# from emergentintegrations.llm.chat import LlmChat, UserMessage
+
+logger = logging.getLogger(__name__)
 
 EMERGENT_KEY = os.environ.get("EMERGENT_LLM_KEY")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
@@ -34,12 +39,13 @@ def _groq_text(system: str, prompt: str) -> str:
 
 
 async def generate_text(system: str, prompt: str, session_id: str) -> str:
-    # Prefer free Groq when configured; fall back to Emergent (Gemini).
+    # 1. Tercih: Ücretsiz Groq API
     if GROQ_API_KEY:
         return _groq_text(system, prompt)
-    chat = LlmChat(api_key=EMERGENT_KEY, session_id=session_id, system_message=system).with_model("gemini", TEXT_MODEL)
-    resp = await chat.send_message(UserMessage(text=prompt))
-    return resp if isinstance(resp, str) else str(resp)
+    
+    # 2. Fallback: Emergent kaldırıldığı için, API key yoksa sunucunun çökmemesi için mock veri döndür
+    logger.warning("GROQ_API_KEY bulunamadı. Metin üretimi için mock (sahte) yanıt döndürülüyor.")
+    return f"[MOCK YANIT] {prompt[:100]}... (Gerçek metin için .env dosyasına GROQ_API_KEY ekleyin)"
 
 
 def _hf_image(prompt: str) -> str:
