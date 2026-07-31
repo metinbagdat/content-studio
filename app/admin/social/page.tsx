@@ -366,7 +366,9 @@ export default function SocialPage() {
     <div>
       <h1>Sosyal hesaplar</h1>
       <p className="lead">
-        Gerçek OAuth veya dry-run test. Rehber: <Link href="/docs/social-setup">SM kurulum</Link>
+        LinkedIn/X taslakları burada görünür — önce <Link href="/admin/review">Onay</Link>’da türevleri
+        onayla, hesap bağla (OAuth veya dry-run), gerekirse “Taslakları senkronize et”. Rehber:{' '}
+        <Link href="/docs/social-setup">SM kurulum</Link>
       </p>
       <div className="keybar">
         <div style={{ flex: 1 }}>

@@ -85,6 +85,6 @@ export function captionPartMetadata(
     sectionHeading: part.heading,
     articleTitle,
     articleUrl,
-    platformHints: ['TWITTER', 'LINKEDIN'],
+    platformHints: ['LINKEDIN'],
   })
 }
