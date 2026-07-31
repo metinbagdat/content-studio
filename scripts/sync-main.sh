@@ -21,11 +21,17 @@ echo "==> HEAD: $(git log -1 --oneline)"
 echo "==> next: $(node -p "require('./package.json').dependencies.next")"
 
 rm -rf node_modules
+
+echo "==> npm install (WAIT — Prisma postinstall 1-3 min; do NOT Ctrl+C)"
 npm install
 
-echo "==> npm audit"
+echo "==> prisma generate (safety)"
+npx prisma generate
+
+echo "==> npm audit (info only — ignore 'npm audit fix' suggestion; never use --force)"
 npm audit || true
 
 echo ""
 echo "OK. Run: npm run dev"
-echo "Expect terminal: Next.js 15.5.22"
+echo "Expect: Next.js 15.5.22 (~90 packages audited)"
+echo "Windows PowerShell alternative: powershell -File scripts/install-clean.ps1"
