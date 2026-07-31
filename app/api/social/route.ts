@@ -6,8 +6,14 @@ import { publishPost } from '@/lib/social/publish'
 import { publishCaptionWithImages, ensureGeneratedPostImage, syncPostImagesFromCaptions, updatePostOnPlatform } from '@/lib/social/publishCaption'
 import { toImagePreviewPath } from '@/lib/social/imagePreview'
 import { readPublishMetrics } from '@/lib/social/publishFingerprint'
+import { auditSocialAccounts, repairMissingSocialAccounts } from '@/lib/social/accountAudit'
 import { getAuthUrl, upsertDryRunAccount, deactivateAccount } from '@/lib/social/oauth'
-import { oauthPlatformStatus } from '@/lib/social/config'
+import { oauthEnvCheck, oauthPlatformStatus } from '@/lib/social/config'
+import {
+  getAccountStatsFromConfig,
+  syncAllAccountStats,
+  syncAllPublishedPostAnalytics,
+} from '@/lib/social/platformStats'
 import { generatePkce, pkceCookieName } from '@/lib/social/pkce'
 
 export const dynamic = 'force-dynamic'
@@ -16,7 +22,7 @@ export async function GET(req: NextRequest) {
   if (!requireAdmin(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
-  const [accounts, posts] = await Promise.all([
+  const [accounts, posts, accountHealth] = await Promise.all([
     prisma.socialMediaAccount.findMany({ orderBy: { createdAt: 'desc' } }),
     prisma.socialMediaPost.findMany({
       orderBy: { createdAt: 'desc' },
@@ -27,25 +33,36 @@ export async function GET(req: NextRequest) {
         },
       },
     }),
+    auditSocialAccounts(),
   ])
   return NextResponse.json({
     oauth: oauthPlatformStatus(),
+    envCheck: oauthEnvCheck(),
+    accountHealth,
     accounts: accounts.map((a) => {
       const cfg = a.config && typeof a.config === 'object' ? (a.config as Record<string, unknown>) : {}
+      const stats = getAccountStatsFromConfig(a.config)
+      const username =
+        (typeof cfg.username === 'string' ? `@${cfg.username.replace(/^@/, '')}` : null) ||
+        stats?.username ||
+        (a.accountName.startsWith('@') ? a.accountName : null)
       return {
         id: a.id,
         platform: a.platform,
         accountName: a.accountName,
+        username,
         accountId: a.accountId,
         isActive: a.isActive,
         lastSyncAt: a.lastSyncAt,
         dryRun: Boolean(cfg.dryRun) || a.accountId.startsWith('dryrun_'),
         oauth: Boolean(cfg.oauth),
         tokenExpiry: a.tokenExpiry,
+        stats,
       }
     }),
     posts: posts.map((p) => {
       const m = readPublishMetrics(p.metrics)
+      const analytics = (m as { analytics?: Record<string, unknown> }).analytics
       const cfg =
         p.account.config && typeof p.account.config === 'object'
           ? (p.account.config as Record<string, unknown>)
@@ -64,6 +81,7 @@ export async function GET(req: NextRequest) {
         imagePreviewUrl: toImagePreviewPath(p.mediaUrls?.[0]),
         imageAttached: m.imageAttached ?? null,
         imageError: m.imageError || (p.status === 'FAILED' ? p.error : null),
+        analytics: analytics || null,
       }
     }),
   })
@@ -75,6 +93,19 @@ export async function POST(req: NextRequest) {
   }
   const body = await req.json()
   const action = String(body.action || '')
+
+  if (action === 'sync-stats') {
+    const accounts = await syncAllAccountStats()
+    const posts = await syncAllPublishedPostAnalytics(40)
+    const accountHealth = await auditSocialAccounts()
+    return NextResponse.json({ accounts, posts, accountHealth })
+  }
+
+  if (action === 'repair-accounts') {
+    const accountHealth = await repairMissingSocialAccounts()
+    const sync = await syncSocialDraftsFromApprovedCaptions()
+    return NextResponse.json({ accountHealth, sync })
+  }
 
   if (action === 'connect-url') {
     const platform = String(body.platform || '').toUpperCase()

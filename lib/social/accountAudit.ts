@@ -1,0 +1,147 @@
+import type { SocialPlatform } from '@prisma/client'
+import { prisma } from '../prisma'
+import { oauthPlatformStatus } from './config'
+import { upsertDryRunAccount } from './oauth'
+
+/** Platforms that produce drafts and can publish in Faz 1. */
+export const PUBLISH_PLATFORMS: SocialPlatform[] = ['TWITTER', 'LINKEDIN']
+
+export type AccountSlotStatus = 'ok' | 'missing' | 'dry_run' | 'expired' | 'oauth_ok' | 'failed_posts'
+
+export type AccountSlot = {
+  platform: SocialPlatform
+  label: string
+  status: AccountSlotStatus
+  accountName?: string
+  dbAccountId?: string
+  isOAuth: boolean
+  oauthConfigured: boolean
+  failedPosts: number
+  detail: string
+}
+
+export type AccountAudit = {
+  slots: AccountSlot[]
+  missingCount: number
+  brokenCount: number
+  repaired: string[]
+}
+
+function platformLabel(platform: SocialPlatform): string {
+  return platform === 'TWITTER' ? 'X' : platform === 'LINKEDIN' ? 'LinkedIn' : platform
+}
+
+function isDryRunAccount(accountId: string, config: unknown): boolean {
+  const cfg = config && typeof config === 'object' ? (config as Record<string, unknown>) : {}
+  return accountId.startsWith('dryrun_') || Boolean(cfg.dryRun)
+}
+
+function isOAuthAccount(config: unknown): boolean {
+  const cfg = config && typeof config === 'object' ? (config as Record<string, unknown>) : {}
+  return Boolean(cfg.oauth)
+}
+
+export async function auditSocialAccounts(): Promise<AccountAudit> {
+  const oauth = oauthPlatformStatus()
+  const accounts = await prisma.socialMediaAccount.findMany({
+    where: { platform: { in: PUBLISH_PLATFORMS }, isActive: true },
+    orderBy: { updatedAt: 'desc' },
+  })
+
+  const failedByAccount = await prisma.socialMediaPost.groupBy({
+    by: ['accountId'],
+    where: { status: 'FAILED' },
+    _count: { _all: true },
+  })
+  const failedMap = new Map(failedByAccount.map((r) => [r.accountId, r._count._all]))
+
+  const slots: AccountSlot[] = []
+  let missingCount = 0
+  let brokenCount = 0
+
+  for (const platform of PUBLISH_PLATFORMS) {
+    const oauthConfigured =
+      platform === 'TWITTER' ? oauth.twitter.configured : oauth.linkedin.configured
+    const platformAccounts = accounts.filter((a) => a.platform === platform)
+    const real = platformAccounts.find((a) => !isDryRunAccount(a.accountId, a.config))
+    const dry = platformAccounts.find((a) => isDryRunAccount(a.accountId, a.config))
+    const active = real || dry
+
+    if (!active) {
+      missingCount += 1
+      slots.push({
+        platform,
+        label: platformLabel(platform),
+        status: 'missing',
+        isOAuth: false,
+        oauthConfigured,
+        failedPosts: 0,
+        detail: oauthConfigured ? 'OAuth veya dry-run bağla' : 'Dry-run önerilir (env yok)',
+      })
+      continue
+    }
+
+    const failedPosts = failedMap.get(active.id) ?? 0
+    const dryRun = isDryRunAccount(active.accountId, active.config)
+    const oauthAccount = isOAuthAccount(active.config) || (!dryRun && Boolean(active.refreshToken))
+
+    let status: AccountSlotStatus = 'ok'
+    let detail = active.accountName
+
+    if (dryRun) {
+      status = 'dry_run'
+      detail = `${active.accountName} — gerçek SM’de görünmez`
+    } else if (
+      active.tokenExpiry &&
+      active.tokenExpiry.getTime() < Date.now() + 120_000 &&
+      !oauthAccount
+    ) {
+      status = 'expired'
+      brokenCount += 1
+      detail = 'Token süresi doldu — yeniden OAuth'
+    } else if (oauthAccount) {
+      status = 'oauth_ok'
+      detail = `${active.accountName} · OAuth bağlı`
+    }
+
+    if (failedPosts > 0) {
+      if (status === 'ok' || status === 'oauth_ok') status = 'failed_posts'
+      brokenCount += 1
+      detail += ` · ${failedPosts} başarısız post`
+    }
+
+    slots.push({
+      platform,
+      label: platformLabel(platform),
+      status,
+      accountName: active.accountName,
+      dbAccountId: active.id,
+      isOAuth: Boolean(oauthAccount && !dryRun),
+      oauthConfigured,
+      failedPosts,
+      detail,
+    })
+  }
+
+  return { slots, missingCount, brokenCount, repaired: [] }
+}
+
+/** Create dry-run accounts for missing publish platforms; sync drafts. */
+export async function repairMissingSocialAccounts(): Promise<AccountAudit> {
+  const audit = await auditSocialAccounts()
+  const repaired: string[] = []
+
+  for (const slot of audit.slots) {
+    if (slot.status !== 'missing') continue
+    await upsertDryRunAccount(slot.platform, `Dry-run ${slot.platform}`)
+    repaired.push(slot.platform)
+  }
+
+  if (repaired.length) {
+    const { syncSocialDraftsFromApprovedCaptions } = await import('../pipeline')
+    await syncSocialDraftsFromApprovedCaptions()
+  }
+
+  const refreshed = await auditSocialAccounts()
+  return { ...refreshed, repaired }
+}

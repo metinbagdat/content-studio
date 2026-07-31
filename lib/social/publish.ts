@@ -150,6 +150,13 @@ export async function publishPost(postId: string, options: PublishOptions = {}):
       data: { status: 'PUBLISHED', publishedAt: new Date() },
     })
 
+    try {
+      const { syncPostAnalytics } = await import('./platformStats')
+      await syncPostAnalytics(postId)
+    } catch {
+      /* stats optional */
+    }
+
     return {
       success: true,
       platformPostId,
