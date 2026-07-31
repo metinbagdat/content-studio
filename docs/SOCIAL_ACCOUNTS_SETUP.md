@@ -57,9 +57,21 @@ Kişisel post için `LINKEDIN_ORGANIZATION_ID` boş bırak.
 
 ## 2. X (Twitter)
 
-1. https://x.com → **@egitimtoday** (veya müsait handle)
-2. https://developer.x.com/en/portal/dashboard → Project + App
-3. **User authentication settings** → OAuth 2.0:
+**2026 portal:** https://console.x.com (Dashboard + Apps listesi - dogru yer)
+
+### OAuth 2.0 Client ID nerede?
+
+1. console.x.com -> sol menu **Apps** (veya Dashboard sagdaki app karti)
+2. Uygulama sec (ornegin egitimtoday, ID 33245535)
+3. Ust **Keys and tokens** sekmesi
+4. **OAuth 2.0 Client ID** -> `X_CLIENT_ID` | **Client Secret** -> `X_CLIENT_SECRET`
+5. **API Key / API Key Secret** (OAuth 1.0a) -> kullanmayin
+
+### User authentication (callback)
+
+1. https://x.com -> **@egitimtoday** (veya müsait handle)
+2. console.x.com -> Apps -> uygulama -> **Settings**
+3. **User authentication settings** -> OAuth 2.0:
    - Type: Web App
    - Callback: `http://localhost:3100/api/social/callback/twitter`
    - Scopes: `tweet.read`, `tweet.write`, `users.read`, `offline.access`
