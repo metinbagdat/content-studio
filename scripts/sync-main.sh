@@ -28,7 +28,7 @@ npm install
 echo "==> prisma generate (safety)"
 npx prisma generate
 
-echo "==> npm audit (info only — ignore 'npm audit fix' suggestion; never use --force)"
+echo "==> npm audit (info only - never run npm audit fix --force)"
 npm audit || true
 
 echo ""

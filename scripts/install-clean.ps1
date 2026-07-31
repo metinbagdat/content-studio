@@ -1,4 +1,4 @@
-# Clean install on Windows — run from repo root in PowerShell:
+# Clean install on Windows. From repo root in PowerShell:
 #   powershell -ExecutionPolicy Bypass -File scripts/install-clean.ps1
 
 $ErrorActionPreference = "Stop"
@@ -18,7 +18,7 @@ npm install
 Write-Host "Prisma generate..."
 npx prisma generate
 
-Write-Host "npm audit (informational only — do NOT run npm audit fix --force):"
+Write-Host "npm audit (info only - never run: npm audit fix --force)"
 npm audit
 
 $nextPkg = Get-Content node_modules\next\package.json -Raw | ConvertFrom-Json
