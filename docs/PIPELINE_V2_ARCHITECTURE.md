@@ -6,12 +6,12 @@ Canonical architecture reference for content-studio. Implementation is phased vi
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 0 | Content Discovery (sitemap/RSS scan) | Partial — `lib/discovery/` |
+| 0 | Content Discovery (sitemap/RSS scan) | Wired — worker cron + `/admin/discovery` + `/api/discovery` |
 | 1 | Analysis & Atomization Plan | Partial — `lib/atomization/` |
 | 2 | AI Content Generation | Existing Faz1 + caption series |
 | 3 | Media Production (image/audio/video) | Partial — OG cards + edge-tts |
 | 4 | Platform Formatting | Partial — `lib/platforms/` |
-| 5 | Scheduling & Distribution | Partial — `lib/scheduling/` |
+| 5 | Scheduling & Distribution | Wired — apply/preview API + `/admin/calendar` |
 | 6 | Approval Gate | Existing `/admin/review` |
 | 7 | Publishing | Existing LinkedIn/X + replace-in-place |
 | 8 | Performance Tracking | Planned |

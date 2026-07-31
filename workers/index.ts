@@ -1,5 +1,6 @@
 import { startWorkers, drainDbPipelineJobs } from '../lib/queue'
 import { drainDuePosts } from '../lib/social/publish'
+import { startDiscoveryCron } from '../lib/discovery/discoveryCron'
 
 async function main() {
   console.log('[content-studio worker] starting…')
@@ -8,6 +9,9 @@ async function main() {
   } catch (err) {
     console.warn('[worker] BullMQ start failed; using DB poll only', err)
   }
+
+  // Phase 0: daily sitemap discovery at 06:00 Europe/Istanbul
+  startDiscoveryCron()
 
   setInterval(() => {
     drainDbPipelineJobs(3).catch((e) => console.error(e))
