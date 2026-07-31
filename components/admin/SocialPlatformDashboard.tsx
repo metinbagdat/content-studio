@@ -186,9 +186,11 @@ export function SocialPlatformDashboard({
           ) : (
             <span className="badge warn">env eksik</span>
           )}
-          <button type="button" className="secondary" onClick={() => onDryConnect(platform)}>
-            Dry-run
-          </button>
+          {!envCheck?.ready ? (
+            <button type="button" className="secondary" onClick={() => onDryConnect(platform)}>
+              Dry-run
+            </button>
+          ) : null}
           {account?.isActive ? (
             <button
               type="button"
@@ -228,9 +230,9 @@ export function SocialPlatformDashboard({
             <EnvRow label="LINKEDIN_CLIENT_SECRET" ok={envCheck.LINKEDIN_CLIENT_SECRET} />
             <p className="row" style={{ marginTop: '0.65rem' }}>
               {envCheck.ready ? (
-                <span className="badge ok">OAuth env tamam — bağlanabilir</span>
+                <span className="badge ok">OAuth env tamam — kartlardan OAuth bağla</span>
               ) : (
-                <span className="badge danger">Eksik env — OAuth çalışmaz (dry-run kullan)</span>
+                <span className="badge danger">Eksik env — .env kontrol et</span>
               )}
             </p>
           </>
@@ -239,9 +241,11 @@ export function SocialPlatformDashboard({
           <button type="button" className="secondary" disabled={busyId === 'sync-stats'} onClick={onSyncStats}>
             İstatistikleri yenile
           </button>
-          <button type="button" className="secondary" disabled={busyId === 'repair'} onClick={onRepair}>
-            Eksik hesapları tamamla
-          </button>
+          {!envCheck?.ready ? (
+            <button type="button" className="secondary" disabled={busyId === 'repair'} onClick={onRepair}>
+              Eksik hesapları tamamla (dry-run)
+            </button>
+          ) : null}
         </div>
       </section>
 

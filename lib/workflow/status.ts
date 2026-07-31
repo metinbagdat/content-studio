@@ -1,7 +1,7 @@
 import { prisma } from '../prisma'
 import { socialPostPublicUrl } from '../social/postUrl'
 import { toImagePreviewPath } from '../social/imagePreview'
-import { auditSocialAccounts, repairMissingSocialAccounts, type AccountAudit } from '../social/accountAudit'
+import { auditSocialAccounts, type AccountAudit } from '../social/accountAudit'
 
 export type WorkflowStepId =
   | 'discovery'
@@ -63,14 +63,8 @@ function pickActive(steps: WorkflowStep[]): WorkflowStepId | null {
 }
 
 /** Ops dashboard: where we are in source → publish flow. */
-export async function getWorkflowSnapshot(options: { autoRepairAccounts?: boolean } = {}): Promise<WorkflowSnapshot> {
-  let accountHealth = options.autoRepairAccounts
-    ? await repairMissingSocialAccounts()
-    : await auditSocialAccounts()
-
-  if (accountHealth.missingCount > 0 && !options.autoRepairAccounts) {
-    accountHealth = await repairMissingSocialAccounts()
-  }
+export async function getWorkflowSnapshot(): Promise<WorkflowSnapshot> {
+  const accountHealth = await auditSocialAccounts()
 
   const [
     sources,
