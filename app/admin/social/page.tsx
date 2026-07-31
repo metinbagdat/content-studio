@@ -3,21 +3,56 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { socialPostPublicUrl } from '@/lib/social/postUrl'
+import { SocialPlatformDashboard } from '@/components/admin/SocialPlatformDashboard'
 import { DEFAULT_ADMIN_API_KEY } from '@/lib/adminKey'
 
 type OAuthStatus = {
-  twitter: { configured: boolean; callbackUrl: string }
-  linkedin: { configured: boolean; callbackUrl: string; organizationId: string | null }
+  twitter: { configured: boolean; callbackUrl: string; clientIdSet?: boolean; clientSecretSet?: boolean }
+  linkedin: {
+    configured: boolean
+    callbackUrl: string
+    organizationId: string | null
+    clientIdSet?: boolean
+    clientSecretSet?: boolean
+  }
+}
+
+type EnvCheck = {
+  X_CLIENT_ID: boolean
+  X_CLIENT_SECRET: boolean
+  LINKEDIN_CLIENT_ID: boolean
+  LINKEDIN_CLIENT_SECRET: boolean
+  ready: boolean
+}
+
+type AccountStats = {
+  username?: string | null
+  displayName?: string | null
+  profileUrl?: string | null
+  followers?: number | null
+  following?: number | null
+  postsCount?: number | null
+  impressions?: number | null
+  engagement?: number | null
+  likes?: number | null
+  comments?: number | null
+  shares?: number | null
+  clicks?: number | null
+  fetchedAt?: string | null
+  error?: string
 }
 
 type Account = {
   id: string
   platform: string
   accountName: string
+  username?: string | null
   isActive: boolean
   dryRun?: boolean
   oauth?: boolean
   tokenExpiry?: string | null
+  stats?: AccountStats | null
+  lastSyncAt?: string | null
 }
 
 type AccountSlot = {
@@ -74,6 +109,7 @@ function PostImagePreview({ src, alt }: { src: string; alt: string }) {
 export default function SocialPage() {
   const [adminKey, setAdminKey] = useState('')
   const [oauth, setOauth] = useState<OAuthStatus | null>(null)
+  const [envCheck, setEnvCheck] = useState<EnvCheck | null>(null)
   const [accountHealth, setAccountHealth] = useState<AccountHealth | null>(null)
   const [accounts, setAccounts] = useState<Account[]>([])
   const [posts, setPosts] = useState<any[]>([])
@@ -82,6 +118,7 @@ export default function SocialPage() {
   const [editContent, setEditContent] = useState('')
   const [editImageUrl, setEditImageUrl] = useState('')
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [statsSynced, setStatsSynced] = useState(false)
   const [imagesSynced, setImagesSynced] = useState(false)
   const [hideDryRun, setHideDryRun] = useState(true)
 
@@ -94,6 +131,7 @@ export default function SocialPage() {
     }
     const data = await res.json()
     setOauth(data.oauth || null)
+    setEnvCheck(data.envCheck || null)
     setAccountHealth(data.accountHealth || null)
     setAccounts(data.accounts || [])
     setPosts(data.posts || [])
@@ -120,6 +158,21 @@ export default function SocialPage() {
   }, [adminKey, load])
 
   useEffect(() => {
+    if (!adminKey || statsSynced) return
+    ;(async () => {
+      const res = await fetch('/api/social', {
+        method: 'POST',
+        headers: headers(adminKey, true),
+        body: JSON.stringify({ action: 'sync-stats' }),
+      })
+      if (res.ok) {
+        setStatsSynced(true)
+        await load()
+      }
+    })()
+  }, [adminKey, statsSynced, load])
+
+  useEffect(() => {
     if (!adminKey || imagesSynced) return
     ;(async () => {
       const res = await fetch('/api/social', {
@@ -133,6 +186,23 @@ export default function SocialPage() {
       }
     })()
   }, [adminKey, imagesSynced, load])
+
+  async function syncStats() {
+    setBusyId('sync-stats')
+    const res = await fetch('/api/social', {
+      method: 'POST',
+      headers: headers(adminKey, true),
+      body: JSON.stringify({ action: 'sync-stats' }),
+    })
+    const data = await parseApiJson(res)
+    setBusyId(null)
+    if (!res.ok) {
+      setMsg(String(data.error || 'İstatistik senkron başarısız'))
+      return
+    }
+    setMsg(`Hesap: ${String((data.accounts as { synced?: number })?.synced ?? 0)} · post: ${String((data.posts as { synced?: number })?.synced ?? 0)}`)
+    await load()
+  }
 
   async function repairAccounts() {
     setBusyId('repair')
@@ -426,131 +496,35 @@ export default function SocialPage() {
       </div>
       {msg ? <p className="muted">{msg}</p> : null}
 
-      {accountHealth ? (
-        <section className="panel" style={{ marginBottom: '1rem' }}>
-          <h2>Hesap durumu (X + LinkedIn)</h2>
-          <ul className="list">
-            {accountHealth.slots.map((slot) => (
-              <li key={slot.platform}>
-                <div className="row">
-                  <span className={`badge plat-${slot.platform}`}>{slot.label}</span>
-                  <span
-                    className={
-                      slot.status === 'oauth_ok' || slot.status === 'ok'
-                        ? 'badge ok'
-                        : slot.status === 'dry_run'
-                          ? 'badge warn'
-                          : 'badge danger'
-                    }
-                  >
-                    {slot.status}
-                  </span>
-                  {slot.oauthConfigured ? <span className="badge ok">env OK</span> : <span className="badge warn">env yok</span>}
-                </div>
-                <p className="muted" style={{ margin: '0.35rem 0 0' }}>{slot.detail}</p>
-              </li>
-            ))}
-          </ul>
-          <div className="row" style={{ marginTop: '0.75rem' }}>
-            <button type="button" className="ok" disabled={busyId === 'repair'} onClick={repairAccounts}>
-              Eksik hesapları tamamla (dry-run)
-            </button>
-            {accountHealth.missingCount > 0 ? (
-              <span className="badge danger">{accountHealth.missingCount} eksik</span>
-            ) : (
-              <span className="badge ok">hesaplar tamam</span>
-            )}
-            {accountHealth.brokenCount > 0 ? (
-              <span className="badge warn">{accountHealth.brokenCount} sorunlu</span>
-            ) : null}
-          </div>
-          <p className="muted" style={{ marginTop: '0.65rem', marginBottom: 0 }}>
-            YouTube / Instagram / TikTok pipeline’da metin üretir; Faz 1 yayın yalnızca X ve LinkedIn.
-            Gerçek yayın için OAuth bağla; test için dry-run yeterli.
-          </p>
-        </section>
+      <SocialPlatformDashboard
+        accounts={accounts}
+        oauth={oauth}
+        envCheck={envCheck}
+        busyId={busyId}
+        onOAuthConnect={oauthConnect}
+        onDryConnect={dryConnect}
+        onDisconnect={disconnect}
+        onSyncStats={syncStats}
+        onRepair={repairAccounts}
+      />
+
+      {accountHealth && accountHealth.brokenCount > 0 ? (
+        <p className="flash" style={{ marginBottom: '1rem' }}>
+          {accountHealth.brokenCount} hesap/post sorunu — token veya başarısız yayınları kontrol edin.
+        </p>
       ) : null}
 
-      <section className="panel" style={{ marginBottom: '1rem' }}>
-        <h2>OAuth bağlantı</h2>
-        <div className="row" style={{ marginBottom: '0.5rem' }}>
-          <span className="badge">X</span>
-          {oauth?.twitter.configured ? (
-            <span className="badge ok">env OK</span>
-          ) : (
-            <span className="badge warn">X_CLIENT_ID yok</span>
-          )}
-          <button
-            type="button"
-            className="ok"
-            disabled={!oauth?.twitter.configured || busyId === 'TWITTER'}
-            onClick={() => oauthConnect('TWITTER')}
-          >
-            OAuth ile X bağla
-          </button>
-        </div>
-        <div className="row">
-          <span className="badge">LinkedIn</span>
-          {oauth?.linkedin.configured ? (
-            <span className="badge ok">env OK</span>
-          ) : (
-            <span className="badge warn">LINKEDIN_CLIENT_ID yok</span>
-          )}
-          {oauth?.linkedin.organizationId ? (
-            <span className="badge ok">org {oauth.linkedin.organizationId}</span>
-          ) : (
-            <span className="muted">kişisel post (org ID opsiyonel)</span>
-          )}
-          <button
-            type="button"
-            className="ok"
-            disabled={!oauth?.linkedin.configured || busyId === 'LINKEDIN'}
-            onClick={() => oauthConnect('LINKEDIN')}
-          >
-            OAuth ile LinkedIn bağla
-          </button>
-        </div>
-        <p className="muted" style={{ marginTop: '0.75rem', marginBottom: 0 }}>
-          Callback: {oauth?.twitter.callbackUrl} · {oauth?.linkedin.callbackUrl}
-        </p>
-      </section>
-
       <div className="row" style={{ marginBottom: '1rem' }}>
-        <button type="button" className="secondary" onClick={() => dryConnect('TWITTER')}>
-          Dry-run X
-        </button>
-        <button type="button" className="secondary" onClick={() => dryConnect('LINKEDIN')}>
-          Dry-run LinkedIn
-        </button>
         <button type="button" className="secondary" onClick={syncDrafts}>
           Taslakları senkronize et
         </button>
         <button type="button" className="secondary" disabled={busyId === 'sync-images'} onClick={syncImages}>
           Görselleri senkronize et
         </button>
+        <button type="button" className="secondary" disabled={busyId === 'sync-stats'} onClick={syncStats}>
+          İstatistikleri yenile
+        </button>
       </div>
-
-      <section className="panel">
-        <h2>Hesaplar</h2>
-        <ul className="list">
-          {accounts.map((a) => (
-            <li key={a.id}>
-              <div className="row">
-                <span className="badge">{a.platform}</span> {a.accountName}
-                {a.isActive ? <span className="badge ok">active</span> : <span className="badge">off</span>}
-                {a.dryRun ? <span className="badge warn">dry-run</span> : null}
-                {a.oauth ? <span className="badge ok">oauth</span> : null}
-              </div>
-              {a.isActive ? (
-                <button type="button" className="secondary" style={{ marginTop: '0.35rem' }} disabled={busyId === a.id} onClick={() => disconnect(a.id)}>
-                  Bağlantıyı kes
-                </button>
-              ) : null}
-            </li>
-          ))}
-          {!accounts.length ? <li className="muted">Hesap yok — OAuth veya dry-run bağla</li> : null}
-        </ul>
-      </section>
 
       <section className="panel" style={{ marginTop: '1rem' }}>
         <h2>Post taslakları</h2>
@@ -648,12 +622,29 @@ export default function SocialPage() {
                         <p className="muted" style={{ margin: '0.25rem 0 0', fontSize: '0.8rem' }}>
                           {socialPostPublicUrl(p.platform, p.platformPostId) ? (
                             <a href={socialPostPublicUrl(p.platform, p.platformPostId)!} target="_blank" rel="noreferrer">
-                              LinkedIn&apos;de aç
+                              Paylaşımı aç
                             </a>
                           ) : (
                             <>mock: {p.platformPostId}</>
                           )}
                         </p>
+                      ) : null}
+                      {p.status === 'PUBLISHED' && p.analytics ? (
+                        <div className="sm-post-stats row" style={{ marginTop: '0.35rem', fontSize: '0.78rem' }}>
+                          {p.analytics.impressions != null ? (
+                            <span className="badge">gösterim {p.analytics.impressions}</span>
+                          ) : null}
+                          {p.analytics.likes != null ? <span className="badge">beğeni {p.analytics.likes}</span> : null}
+                          {p.analytics.comments != null ? (
+                            <span className="badge">yorum {p.analytics.comments}</span>
+                          ) : null}
+                          {p.analytics.shares != null ? (
+                            <span className="badge">paylaşım {p.analytics.shares}</span>
+                          ) : null}
+                          {p.analytics.clicks != null ? (
+                            <span className="badge">tıklama {p.analytics.clicks}</span>
+                          ) : null}
+                        </div>
                       ) : null}
                       {!editingId || editingId !== p.id ? (
                         <div className="row" style={{ marginTop: '0.35rem' }}>

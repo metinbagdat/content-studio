@@ -5,13 +5,30 @@ export function oauthPlatformStatus() {
     twitter: {
       configured: Boolean(process.env.X_CLIENT_ID && process.env.X_CLIENT_SECRET),
       callbackUrl: process.env.X_CALLBACK_URL || `${appUrl}/api/social/callback/twitter`,
+      clientIdSet: Boolean(process.env.X_CLIENT_ID),
+      clientSecretSet: Boolean(process.env.X_CLIENT_SECRET),
     },
     linkedin: {
       configured: Boolean(process.env.LINKEDIN_CLIENT_ID && process.env.LINKEDIN_CLIENT_SECRET),
       callbackUrl: process.env.LINKEDIN_CALLBACK_URL || `${appUrl}/api/social/callback/linkedin`,
       organizationId: process.env.LINKEDIN_ORGANIZATION_ID || null,
       scopes: linkedinOAuthScopes(),
+      clientIdSet: Boolean(process.env.LINKEDIN_CLIENT_ID),
+      clientSecretSet: Boolean(process.env.LINKEDIN_CLIENT_SECRET),
     },
+  }
+}
+
+/** Masked env presence check for admin UI (never exposes secret values). */
+export function oauthEnvCheck() {
+  return {
+    X_CLIENT_ID: Boolean(process.env.X_CLIENT_ID?.trim()),
+    X_CLIENT_SECRET: Boolean(process.env.X_CLIENT_SECRET?.trim()),
+    LINKEDIN_CLIENT_ID: Boolean(process.env.LINKEDIN_CLIENT_ID?.trim()),
+    LINKEDIN_CLIENT_SECRET: Boolean(process.env.LINKEDIN_CLIENT_SECRET?.trim()),
+    ready:
+      Boolean(process.env.X_CLIENT_ID?.trim() && process.env.X_CLIENT_SECRET?.trim()) &&
+      Boolean(process.env.LINKEDIN_CLIENT_ID?.trim() && process.env.LINKEDIN_CLIENT_SECRET?.trim()),
   }
 }
 
