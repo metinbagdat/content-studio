@@ -57,11 +57,11 @@ Bu uygulama e-posta/şifre login kullanmaz. Admin alanındaki **Admin API key** 
 
 ## Faz 1 flow
 
-1. Add source article (`/admin`)
+1. Add source article (`/admin`) — or run discovery (`/admin/discovery`, worker cron 06:00 IST)
 2. Start pipeline -> SOCIAL_CAPTION, VIDEO_SCRIPT, PODCAST_SCRIPT, BLOG_POST (text only)
 3. Approve on `/admin/review` (`autoPublish` always false)
 4. Connect dry-run or OAuth accounts on `/admin/social`
-5. Publish now or schedule; calendar on `/admin/calendar`
+5. Preview/apply 14-day distribution on `/admin/calendar`; publish now or wait for worker
 
 ## Faz 2a — Podcast MP3
 
