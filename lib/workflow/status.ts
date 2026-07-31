@@ -244,7 +244,7 @@ export async function getWorkflowSnapshot(options: { autoRepairAccounts?: boolea
     {
       id: 'publish',
       label: 'Yayın',
-      href: '/admin/social',
+      href: '/admin/social#published',
       state:
         failedPosts > 0
           ? 'warn'

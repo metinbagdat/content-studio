@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { DEFAULT_ADMIN_API_KEY } from '@/lib/adminKey'
 import type { WorkflowSnapshot } from '@/lib/workflow/status'
+import { PlatformIconLink } from '@/components/admin/PlatformIconLink'
 
 const NAV = [
   { href: '/admin', label: 'Pipeline', step: 'pipeline' },
@@ -125,7 +126,7 @@ export function AdminWorkflowChrome({ children }: { children: React.ReactNode })
               <ul className="workflow-account-list">
                 {workflow.accountHealth.slots.map((slot) => (
                   <li key={slot.platform}>
-                    <span className={`badge plat-${slot.platform}`}>{slot.label}</span>
+                    <PlatformIconLink platform={slot.platform} />
                     <span className={accountStatusBadge(slot.status)}>{slot.status.replace('_', ' ')}</span>
                     <span className="muted">{slot.detail}</span>
                   </li>
@@ -146,7 +147,7 @@ export function AdminWorkflowChrome({ children }: { children: React.ReactNode })
                 {workflow.publishedFeed.map((item) => (
                   <li key={item.id} className="published-feed-item">
                     <div className="published-feed-head">
-                      <span className={`badge plat-${item.platform}`}>{item.platformLabel}</span>
+                      <PlatformIconLink platform={item.platform} username={item.accountName} />
                       <time className="muted">{formatPublishedWhen(item.publishedAt)}</time>
                       {item.isDryRun || item.isMockPost ? (
                         <span className="badge warn">dry-run / mock</span>
@@ -158,8 +159,8 @@ export function AdminWorkflowChrome({ children }: { children: React.ReactNode })
                       {item.publicUrl ? (
                         <>
                           {' · '}
-                          <a href={item.publicUrl} target="_blank" rel="noreferrer">
-                            Paylaşımı aç
+                          <a href={item.publicUrl} target="_blank" rel="noopener noreferrer">
+                            Paylaşımı aç ↗
                           </a>
                         </>
                       ) : item.isMockPost ? (

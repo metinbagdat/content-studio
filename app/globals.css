@@ -810,6 +810,65 @@ button:disabled {
   margin-top: 0.65rem;
 }
 
+.sm-icon-link {
+  text-decoration: none;
+  cursor: pointer;
+  transition: filter 0.12s ease, transform 0.12s ease;
+}
+
+.sm-icon-link:hover {
+  filter: brightness(1.12);
+  transform: translateY(-1px);
+}
+
+.sm-username-link {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.sm-username-link:hover {
+  color: var(--accent);
+}
+
+.published-posts-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.published-post-card {
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius);
+  border: 1px solid rgba(62, 207, 142, 0.28);
+  background: rgba(62, 207, 142, 0.05);
+}
+
+.published-post-head {
+  margin-bottom: 0.35rem;
+}
+
+.published-post-preview {
+  margin: 0.35rem 0 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.published-post-thumb {
+  margin-top: 0.5rem;
+  max-width: 240px;
+  max-height: 130px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.published-post-actions {
+  margin-top: 0.55rem;
+}
+
 .bulk-bar {
   display: flex;
   flex-wrap: wrap;

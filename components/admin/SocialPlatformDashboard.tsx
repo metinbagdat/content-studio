@@ -1,5 +1,8 @@
 'use client'
 
+import { PlatformIconLink } from '@/components/admin/PlatformIconLink'
+import { platformProfileUrl } from '@/lib/social/platformLinks'
+
 export type PlatformAccountStats = {
   username: string | null
   displayName: string | null
@@ -112,20 +115,42 @@ export function SocialPlatformDashboard({
     return (
       <article className="sm-platform-card panel" key={platform}>
         <header className="sm-platform-head">
-          <div>
-            <span className={`badge plat-${platform}`}>{label}</span>
+          <div className="row">
+            <PlatformIconLink
+              platform={platform}
+              username={account?.username || stats?.username}
+              profileUrl={stats?.profileUrl}
+            />
             {account?.dryRun ? <span className="badge warn">dry-run</span> : null}
             {account?.oauth ? <span className="badge ok">OAuth</span> : null}
             {account?.isActive ? <span className="badge ok">aktif</span> : <span className="badge danger">yok</span>}
           </div>
           {stats?.profileUrl ? (
-            <a href={stats.profileUrl} target="_blank" rel="noreferrer" className="sm-profile-link">
-              Profil
+            <a
+              href={stats.profileUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="sm-profile-link"
+            >
+              Profil ↗
             </a>
           ) : null}
         </header>
 
-        <h3 className="sm-username">{username}</h3>
+        <h3 className="sm-username">
+          {stats?.profileUrl || platformProfileUrl(platform, username, stats?.profileUrl) ? (
+            <a
+              href={platformProfileUrl(platform, username, stats?.profileUrl) || stats?.profileUrl || '#'}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="sm-username-link"
+            >
+              {username} ↗
+            </a>
+          ) : (
+            username
+          )}
+        </h3>
         {stats?.displayName && stats.displayName !== username ? (
           <p className="muted sm-display-name">{stats.displayName}</p>
         ) : null}
@@ -225,7 +250,7 @@ export function SocialPlatformDashboard({
         {renderPublishCard('LINKEDIN', 'LinkedIn', linkedinAccount, oauth?.linkedin)}
         {PIPELINE_PLATFORMS.map((p) => (
           <article className="sm-platform-card panel sm-pipeline-only" key={p.id}>
-            <span className={`badge plat-${p.id}`}>{p.label}</span>
+            <PlatformIconLink platform={p.id} title={`${p.label} (yeni sekme)`} />
             <h3 className="sm-username">{p.short}</h3>
             <p className="muted" style={{ margin: '0.35rem 0 0' }}>{p.note}</p>
             <div className="sm-stats-grid">
