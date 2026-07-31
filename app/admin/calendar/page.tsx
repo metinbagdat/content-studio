@@ -215,7 +215,7 @@ export default function CalendarPage() {
                   <div className="row">
                     <span className="badge">{s.platform}</span>
                     <span className="badge">{s.contentKind}</span>
-                    <span className="badge">{s.schedulable ? 'ready' : 'skip'}>
+                    <span className={`badge ${s.schedulable ? 'ready' : 'skip'}`}>
                       {s.schedulable ? 'hazır' : 'atla'}
                     </span>
                     <span className="muted">+{s.dayOffset}g · {new Date(s.scheduledAt).toLocaleString()}</span>
