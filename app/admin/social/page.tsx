@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { socialPostPublicUrl } from '@/lib/social/postUrl'
+import { DEFAULT_ADMIN_API_KEY } from '@/lib/adminKey'
 
 type OAuthStatus = {
   twitter: { configured: boolean; callbackUrl: string }
@@ -83,7 +84,7 @@ export default function SocialPage() {
   useEffect(() => {
     const saved = localStorage.getItem('cs_admin_key')
     if (saved) setAdminKey(saved)
-    else setAdminKey('dev-admin-change-me')
+    else setAdminKey(DEFAULT_ADMIN_API_KEY)
 
     const params = new URLSearchParams(window.location.search)
     const connected = params.get('connected')
@@ -369,8 +370,13 @@ export default function SocialPage() {
       </p>
       <div className="keybar">
         <div style={{ flex: 1 }}>
-          <label>Admin API key</label>
-          <input type="password" value={adminKey} onChange={(e) => setAdminKey(e.target.value)} />
+          <label>Admin API key (varsayılan: {DEFAULT_ADMIN_API_KEY})</label>
+          <input
+            type="password"
+            value={adminKey}
+            onChange={(e) => setAdminKey(e.target.value)}
+            placeholder={DEFAULT_ADMIN_API_KEY}
+          />
         </div>
         <button type="button" className="secondary" onClick={load}>
           Yenile

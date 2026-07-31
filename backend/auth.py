@@ -53,7 +53,7 @@ def decode_token(token: str) -> dict:
 
 
 async def seed_admin(db):
-    email = os.environ.get("ADMIN_EMAIL", "admin@example.com")
+    email = os.environ.get("ADMIN_EMAIL", "admin@egitim.today")
     password = os.environ.get("ADMIN_PASSWORD", "admin123")
     existing = await db.users.find_one({"email": email})
     if existing is None:
