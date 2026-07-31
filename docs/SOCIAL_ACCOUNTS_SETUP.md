@@ -70,7 +70,30 @@ Kişisel post için `LINKEDIN_ORGANIZATION_ID` boş bırak.
    X_CALLBACK_URL="http://localhost:3100/api/social/callback/twitter"
    ```
 
-Content Studio X OAuth **PKCE S256** kullanır (Twitter zorunluluğu).
+Content Studio X OAuth **PKCE S256** kullanir (Twitter zorunlulugu).
+
+### X "Something went wrong" hatasi
+
+OAuth ekraninda bu mesaj genelde **Developer Portal ayari** eksik/yanlis demektir (Content Studio kodu degil):
+
+1. https://developer.x.com/en/portal/dashboard - App sec
+2. **User authentication settings** - **Set up** veya **Edit**
+3. **OAuth 2.0** acik, Type: **Web App** (Automated App degil)
+4. **Callback URI / Redirect URL** - **tam eslesme** (sonunda `/` yok):
+   ```
+   http://localhost:3100/api/social/callback/twitter
+   ```
+5. **Website URL** (zorunlu olabilir): `http://localhost:3100`
+6. **App permissions**: Read and write
+7. `.env` icinde **OAuth 2.0 Client ID** kullanin (API Key / API Secret degil)
+8. Callback degistirdikten sonra portalda **Save** - bazen Client ID yenilenir
+9. `npm run dev` yeniden baslat, `/admin/social` - tekrar OAuth
+
+Hala hata: portalda ikinci callback olarak `http://127.0.0.1:3100/api/social/callback/twitter` ekleyin ve `.env`:
+```env
+X_CALLBACK_URL="http://127.0.0.1:3100/api/social/callback/twitter"
+NEXT_PUBLIC_APP_URL="http://127.0.0.1:3100"
+```
 
 ---
 
