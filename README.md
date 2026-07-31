@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Content Studio
 
 Private ops tool for **egitim.today** social + SEO content: source article -> AI transforms -> human approval -> X / LinkedIn schedule/publish.
@@ -9,7 +8,7 @@ Private ops tool for **egitim.today** social + SEO content: source article -> AI
 
 - Next.js 15 (App Router) - admin UI + API (`:3100`)
 - Prisma + PostgreSQL
-- BullMQ + Redis (optional; DB job poll fallback works without Redis)
+- BullMQ + Redis (optional; DB job poll fallback works with DB polling)
 - OpenAI-compatible API (optional; mocks if no key)
 
 ## Quick start (local)
@@ -46,8 +45,15 @@ npm run dev               # http://localhost:3100/admin
 npm run worker            # separate terminal (optional; sync pipeline runs in API)
 ```
 
-Admin key = `ADMIN_API_KEY` in `.env`.
+### Admin giriş (Next.js `:3100/admin`)
 
+Bu uygulama e-posta/şifre login kullanmaz. Admin alanındaki **Admin API key** alanına `.env` / `.env.local` içindeki `ADMIN_API_KEY` değerini yazın.
+
+- Varsayılan (`.env.example`): `admin123`
+- Eski kopyalarda hâlâ `dev-admin-change-me` olabilir — o zaman ya o değeri kullanın ya da her iki dosyada `ADMIN_API_KEY=admin123` yapıp `npm run dev` yeniden başlatın
+- Tarayıcıda eski yanlış key kaldıysa: DevTools → Application → Local Storage → `cs_admin_key` silin
+
+(`frontend/` + `backend/` altındaki JWT login / `admin@egitim.today` + `admin123` eski Emergent stack’tir; `npm run dev` onu çalıştırmaz.)
 
 ## Faz 1 flow
 
@@ -72,6 +78,3 @@ Set `X_CLIENT_ID` / `X_CLIENT_SECRET` and LinkedIn equivalents for real publish.
 ## LearnCon
 
 Docs only: update `docs/CONTENT_STUDIO_FINAL_PLAN.md` in learncon. No SM code in learncon.
-=======
-# Here are your Instructions
->>>>>>> origin/main2

@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { DEFAULT_ADMIN_API_KEY } from '@/lib/adminKey'
 
 function headers(key: string): HeadersInit {
   return { 'x-admin-key': key }
@@ -26,6 +27,7 @@ export default function CalendarPage() {
   useEffect(() => {
     const saved = localStorage.getItem('cs_admin_key')
     if (saved) setAdminKey(saved)
+    else setAdminKey(DEFAULT_ADMIN_API_KEY)
   }, [])
 
   useEffect(() => {
@@ -38,11 +40,12 @@ export default function CalendarPage() {
       <p className="lead">Haftalık 3–5 slot hedefi — planlanan ve yayınlanan postlar.</p>
       <div className="keybar">
         <div style={{ flex: 1 }}>
-          <label>Admin API key</label>
+          <label>Admin API key (varsayılan: {DEFAULT_ADMIN_API_KEY})</label>
           <input
             type="password"
             value={adminKey}
             onChange={(e) => setAdminKey(e.target.value)}
+            placeholder={DEFAULT_ADMIN_API_KEY}
           />
         </div>
         <button type="button" className="secondary" onClick={load}>
