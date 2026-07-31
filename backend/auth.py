@@ -47,10 +47,7 @@ def decode_token(token: str) -> dict:
         raise HTTPException(status_code=401, detail="Geçersiz token")
 
 
-# ==========================================================
-# BURASI DEĞİŞTİ: MongoDB yerine Supabase kullanacak şekilde güncellendi
-# ==========================================================
-async def seed_admin(supabase):
+async def seed_admin(db):
     email = os.environ.get("ADMIN_EMAIL", "admin@egitim.today")
     password = os.environ.get("ADMIN_PASSWORD", "admin123")
     
