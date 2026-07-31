@@ -11,6 +11,7 @@ import { generateAllDerivatives } from './atomization/generateDerivatives'
 import { buildDistributionCalendar } from './scheduling/distributionCalendar'
 import { enqueuePipelineJob, enqueuePublishJob } from './queue'
 import { ensureGeneratedPostImage, publishCaptionWithImages } from './social/publishCaption'
+import { DEFAULT_PIPELINE_PLATFORMS, normalizePlatforms } from './platforms/targets'
 
 export type PipelineConfig = {
   platforms: SocialPlatform[]
@@ -25,7 +26,7 @@ export type PipelineConfig = {
 }
 
 const DEFAULT_CONFIG: PipelineConfig = {
-  platforms: ['TWITTER', 'LINKEDIN'],
+  platforms: DEFAULT_PIPELINE_PLATFORMS,
   videoStyle: 'educational',
   podcastDuration: 10,
   autoPublish: false,
@@ -36,6 +37,7 @@ export async function createPipeline(sourceId: string, config: Partial<PipelineC
   const merged: PipelineConfig = {
     ...DEFAULT_CONFIG,
     ...config,
+    platforms: normalizePlatforms(config.platforms ?? DEFAULT_CONFIG.platforms),
     autoPublish: false, // hard override — brand safety
   }
 
@@ -121,6 +123,13 @@ export async function processPipeline(pipelineId: string) {
       })
 
       const out = await generateTransform(kind, pipeline.source.title, pipeline.source.content)
+      const meta: Record<string, unknown> = {
+        ...(out.metadata && typeof out.metadata === 'object' ? out.metadata : {}),
+      }
+      if (kind === 'VIDEO_SCRIPT' && config.platforms.includes('YOUTUBE')) {
+        meta.platform = 'YOUTUBE'
+        meta.atomKind = 'long_form_video'
+      }
 
       await prisma.derivedContent.create({
         data: {
@@ -128,7 +137,7 @@ export async function processPipeline(pipelineId: string) {
           contentType: toContentType(kind),
           title: out.title,
           content: out.content,
-          metadata: out.metadata as Prisma.InputJsonValue,
+          metadata: meta as Prisma.InputJsonValue,
           status: 'IN_REVIEW',
         },
       })
@@ -140,6 +149,7 @@ export async function processPipeline(pipelineId: string) {
       article: pipeline.source.content,
       articleUrl,
       tags: pipeline.source.tags,
+      platforms: config.platforms,
     })
 
     await prisma.contentPipeline.update({

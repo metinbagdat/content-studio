@@ -3,6 +3,7 @@ import type { ContentType, SocialPlatform } from '@prisma/client'
 export type AtomKind =
   | 'twitter_post'
   | 'twitter_thread'
+  | 'long_form_video'
   | 'linkedin_post'
   | 'linkedin_carousel'
   | 'instagram_post'
@@ -44,6 +45,8 @@ export type GenerateDerivativesInput = {
   article: string
   articleUrl?: string
   tags?: string[]
+  /** When set, only generate pieces for these platforms (X/YouTube prioritized upstream). */
+  platforms?: SocialPlatform[]
 }
 
 export type GenerateDerivativesResult = {
