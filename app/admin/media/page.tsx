@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
+import { DEFAULT_ADMIN_API_KEY } from '@/lib/adminKey'
 
 type MediaItem = {
   id: string
@@ -73,7 +74,7 @@ export default function MediaPage() {
   useEffect(() => {
     const saved = localStorage.getItem('cs_admin_key')
     if (saved) setAdminKey(saved)
-    else setAdminKey('dev-admin-change-me')
+    else setAdminKey(DEFAULT_ADMIN_API_KEY)
 
     const params = new URLSearchParams(window.location.search)
     const derived = params.get('derived')
@@ -129,8 +130,13 @@ export default function MediaPage() {
 
       <div className="keybar">
         <div style={{ flex: 1 }}>
-          <label>Admin API key</label>
-          <input type="password" value={adminKey} onChange={(e) => setAdminKey(e.target.value)} />
+          <label>Admin API key (varsayılan: {DEFAULT_ADMIN_API_KEY})</label>
+          <input
+            type="password"
+            value={adminKey}
+            onChange={(e) => setAdminKey(e.target.value)}
+            placeholder={DEFAULT_ADMIN_API_KEY}
+          />
         </div>
         <button type="button" className="secondary" onClick={load}>
           Yenile

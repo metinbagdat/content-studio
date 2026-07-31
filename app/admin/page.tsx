@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { DEFAULT_ADMIN_API_KEY } from '@/lib/adminKey'
 
 type Source = { id: string; title: string; content?: string; category: string; createdAt: string }
 type Pipeline = {
@@ -39,7 +40,7 @@ export default function AdminPipelinePage() {
       fetch('/api/pipelines', { headers: adminHeaders(adminKey), cache: 'no-store' }),
     ])
     if (!sRes.ok || !pRes.ok) {
-      setMsg('Yetkisiz veya API hatası — ADMIN_API_KEY kontrol et')
+      setMsg(`Yetkisiz veya API hatası — .env ADMIN_API_KEY ile aynı olmalı (varsayılan: ${DEFAULT_ADMIN_API_KEY})`)
       return
     }
     const s = await sRes.json()
@@ -52,7 +53,7 @@ export default function AdminPipelinePage() {
   useEffect(() => {
     const saved = localStorage.getItem('cs_admin_key')
     if (saved) setAdminKey(saved)
-    else setAdminKey('dev-admin-change-me')
+    else setAdminKey(DEFAULT_ADMIN_API_KEY)
   }, [])
 
   useEffect(() => {
@@ -176,8 +177,8 @@ export default function AdminPipelinePage() {
 
       <div className="keybar">
         <div style={{ flex: 1 }}>
-          <label>Admin API key</label>
-          <input value={adminKey} onChange={(e) => setAdminKey(e.target.value)} placeholder="ADMIN_API_KEY" type="password" />
+          <label>Admin API key (`.env` → ADMIN_API_KEY, varsayılan: {DEFAULT_ADMIN_API_KEY})</label>
+          <input value={adminKey} onChange={(e) => setAdminKey(e.target.value)} placeholder={DEFAULT_ADMIN_API_KEY} type="password" />
         </div>
         <button type="button" className="secondary" onClick={load}>
           Yenile

@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { DEFAULT_ADMIN_API_KEY } from '@/lib/adminKey'
 
 type Item = {
   id: string
@@ -115,7 +116,7 @@ export default function ReviewPage() {
 
   const load = useCallback(async () => {
     if (!adminKey.trim()) {
-      setMsg('Admin API key gir — .env içindeki ADMIN_API_KEY ile aynı olmalı (varsayılan: dev-admin-change-me)')
+      setMsg(`Admin API key gir — .env içindeki ADMIN_API_KEY ile aynı olmalı (varsayılan: ${DEFAULT_ADMIN_API_KEY})`)
       setItems([])
       return
     }
@@ -153,7 +154,7 @@ export default function ReviewPage() {
   useEffect(() => {
     const saved = localStorage.getItem('cs_admin_key')
     if (saved) setAdminKey(saved)
-    else setAdminKey('dev-admin-change-me')
+    else setAdminKey(DEFAULT_ADMIN_API_KEY)
   }, [])
 
   useEffect(() => {
@@ -283,8 +284,13 @@ export default function ReviewPage() {
       <p className="lead">Düzenle, onayla, reddet veya sil — yayın öncesi tam CRUD.</p>
       <div className="keybar">
         <div style={{ flex: 1 }}>
-          <label>Admin API key</label>
-          <input type="password" value={adminKey} onChange={(e) => setAdminKey(e.target.value)} />
+          <label>Admin API key (varsayılan: {DEFAULT_ADMIN_API_KEY})</label>
+          <input
+            type="password"
+            value={adminKey}
+            onChange={(e) => setAdminKey(e.target.value)}
+            placeholder={DEFAULT_ADMIN_API_KEY}
+          />
         </div>
         <button type="button" className="secondary" onClick={load}>
           Yenile
