@@ -19,6 +19,30 @@ function adminHeaders(key: string): HeadersInit {
   return { 'x-admin-key': key }
 }
 
+function formatPublishedWhen(iso: string): string {
+  try {
+    return new Date(iso).toLocaleString('tr-TR')
+  } catch {
+    return iso
+  }
+}
+
+function accountStatusBadge(status: string): string {
+  switch (status) {
+    case 'oauth_ok':
+    case 'ok':
+      return 'badge ok'
+    case 'dry_run':
+      return 'badge warn'
+    case 'missing':
+    case 'expired':
+    case 'failed_posts':
+      return 'badge danger'
+    default:
+      return 'badge'
+  }
+}
+
 export function AdminWorkflowChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const [adminKey, setAdminKey] = useState('')
@@ -94,10 +118,72 @@ export function AdminWorkflowChrome({ children }: { children: React.ReactNode })
               </div>
             ))}
           </div>
+
+          {workflow.accountHealth?.slots?.length ? (
+            <div className="workflow-accounts">
+              <strong>SM hesapları</strong>
+              <ul className="workflow-account-list">
+                {workflow.accountHealth.slots.map((slot) => (
+                  <li key={slot.platform}>
+                    <span className={`badge plat-${slot.platform}`}>{slot.label}</span>
+                    <span className={accountStatusBadge(slot.status)}>{slot.status.replace('_', ' ')}</span>
+                    <span className="muted">{slot.detail}</span>
+                  </li>
+                ))}
+              </ul>
+              {workflow.accountHealth.repaired?.length ? (
+                <p className="muted workflow-repair-note">
+                  Otomatik eklendi: {workflow.accountHealth.repaired.join(', ')} (dry-run)
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
+          {workflow.publishedFeed?.length ? (
+            <div className="workflow-published">
+              <strong>Yayınlanan (son {workflow.publishedFeed.length})</strong>
+              <ul className="published-feed">
+                {workflow.publishedFeed.map((item) => (
+                  <li key={item.id} className="published-feed-item">
+                    <div className="published-feed-head">
+                      <span className={`badge plat-${item.platform}`}>{item.platformLabel}</span>
+                      <time className="muted">{formatPublishedWhen(item.publishedAt)}</time>
+                      {item.isDryRun || item.isMockPost ? (
+                        <span className="badge warn">dry-run / mock</span>
+                      ) : null}
+                    </div>
+                    <p className="published-feed-preview">{item.preview}</p>
+                    <div className="published-feed-meta muted">
+                      {item.accountName}
+                      {item.publicUrl ? (
+                        <>
+                          {' · '}
+                          <a href={item.publicUrl} target="_blank" rel="noreferrer">
+                            Paylaşımı aç
+                          </a>
+                        </>
+                      ) : item.isMockPost ? (
+                        ' · gerçek platformda görünmez'
+                      ) : null}
+                    </div>
+                    {item.imagePreviewUrl ? (
+                      <img
+                        className="published-feed-thumb"
+                        src={item.imagePreviewUrl}
+                        alt=""
+                        loading="lazy"
+                      />
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
           <div className="workflow-next">
             <strong>Sıradaki:</strong>
             <ul>
-              {workflow.nextActions.slice(0, 3).map((a) => (
+              {workflow.nextActions.slice(0, 4).map((a) => (
                 <li key={a}>{a}</li>
               ))}
             </ul>

@@ -610,6 +610,94 @@ button:disabled {
   line-height: 1.5;
 }
 
+.workflow-accounts,
+.workflow-published {
+  font-size: 0.88rem;
+  color: var(--muted);
+  border-top: 1px solid rgba(42, 58, 85, 0.65);
+  padding-top: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.workflow-accounts strong,
+.workflow-published strong {
+  color: var(--text);
+  display: block;
+  margin-bottom: 0.45rem;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.workflow-account-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.workflow-account-list li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.workflow-repair-note {
+  margin: 0.45rem 0 0;
+  font-size: 0.82rem;
+}
+
+.published-feed {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.published-feed-item {
+  padding: 0.65rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid rgba(42, 58, 85, 0.75);
+  background: rgba(8, 12, 22, 0.45);
+}
+
+.published-feed-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+  margin-bottom: 0.35rem;
+}
+
+.published-feed-preview {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.published-feed-meta {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+}
+
+.published-feed-meta a {
+  color: var(--accent);
+}
+
+.published-feed-thumb {
+  margin-top: 0.5rem;
+  max-width: 200px;
+  max-height: 110px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
 .bulk-bar {
   display: flex;
   flex-wrap: wrap;

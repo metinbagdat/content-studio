@@ -1,4 +1,7 @@
 import { prisma } from '../prisma'
+import { socialPostPublicUrl } from '../social/postUrl'
+import { toImagePreviewPath } from '../social/imagePreview'
+import { auditSocialAccounts, repairMissingSocialAccounts, type AccountAudit } from '../social/accountAudit'
 
 export type WorkflowStepId =
   | 'discovery'
@@ -7,6 +10,7 @@ export type WorkflowStepId =
   | 'media'
   | 'social'
   | 'calendar'
+  | 'publish'
 
 export type StepState = 'done' | 'active' | 'pending' | 'warn'
 
@@ -19,9 +23,24 @@ export type WorkflowStep = {
   count?: number
 }
 
+export type PublishedFeedItem = {
+  id: string
+  platform: string
+  platformLabel: string
+  publishedAt: string
+  publicUrl: string | null
+  preview: string
+  accountName: string
+  isDryRun: boolean
+  isMockPost: boolean
+  imagePreviewUrl: string | null
+}
+
 export type WorkflowSnapshot = {
   steps: WorkflowStep[]
   nextActions: string[]
+  publishedFeed: PublishedFeedItem[]
+  accountHealth: AccountAudit
   counts: {
     sources: number
     pipelinesCompleted: number
@@ -31,6 +50,8 @@ export type WorkflowSnapshot = {
     socialDrafts: number
     scheduledPosts: number
     linkedAccounts: number
+    publishedPosts: number
+    failedPosts: number
   }
 }
 
@@ -42,7 +63,15 @@ function pickActive(steps: WorkflowStep[]): WorkflowStepId | null {
 }
 
 /** Ops dashboard: where we are in source → publish flow. */
-export async function getWorkflowSnapshot(): Promise<WorkflowSnapshot> {
+export async function getWorkflowSnapshot(options: { autoRepairAccounts?: boolean } = {}): Promise<WorkflowSnapshot> {
+  let accountHealth = options.autoRepairAccounts
+    ? await repairMissingSocialAccounts()
+    : await auditSocialAccounts()
+
+  if (accountHealth.missingCount > 0 && !options.autoRepairAccounts) {
+    accountHealth = await repairMissingSocialAccounts()
+  }
+
   const [
     sources,
     pipelinesCompleted,
@@ -52,6 +81,9 @@ export async function getWorkflowSnapshot(): Promise<WorkflowSnapshot> {
     socialDrafts,
     scheduledPosts,
     linkedAccounts,
+    publishedPosts,
+    failedPosts,
+    recentPublished,
   ] = await Promise.all([
     prisma.contentSource.count(),
     prisma.contentPipeline.count({ where: { status: 'COMPLETED' } }),
@@ -69,7 +101,40 @@ export async function getWorkflowSnapshot(): Promise<WorkflowSnapshot> {
     prisma.socialMediaAccount.count({
       where: { isActive: true, accountId: { not: { startsWith: 'dryrun_' } } },
     }),
+    prisma.socialMediaPost.count({ where: { status: 'PUBLISHED' } }),
+    prisma.socialMediaPost.count({ where: { status: 'FAILED' } }),
+    prisma.socialMediaPost.findMany({
+      where: { status: 'PUBLISHED' },
+      orderBy: { publishedAt: 'desc' },
+      take: 10,
+      include: {
+        account: { select: { accountName: true, accountId: true, config: true } },
+      },
+    }),
   ])
+
+  const publishedFeed: PublishedFeedItem[] = recentPublished.map((p) => {
+    const cfg =
+      p.account.config && typeof p.account.config === 'object'
+        ? (p.account.config as Record<string, unknown>)
+        : {}
+    const isDryRun = Boolean(cfg.dryRun) || p.account.accountId.startsWith('dryrun_')
+    const isMockPost = Boolean(p.platformPostId?.startsWith('mock_'))
+    const platformLabel =
+      p.platform === 'TWITTER' ? 'X' : p.platform === 'LINKEDIN' ? 'LinkedIn' : p.platform
+    return {
+      id: p.id,
+      platform: p.platform,
+      platformLabel,
+      publishedAt: (p.publishedAt || p.createdAt).toISOString(),
+      publicUrl: socialPostPublicUrl(p.platform, p.platformPostId),
+      preview: p.postContent.slice(0, 140).replace(/\s+/g, ' ').trim(),
+      accountName: p.account.accountName,
+      isDryRun,
+      isMockPost,
+      imagePreviewUrl: toImagePreviewPath(p.mediaUrls?.[0]),
+    }
+  })
 
   const counts = {
     sources,
@@ -80,6 +145,8 @@ export async function getWorkflowSnapshot(): Promise<WorkflowSnapshot> {
     socialDrafts,
     scheduledPosts,
     linkedAccounts,
+    publishedPosts,
+    failedPosts,
   }
 
   const steps: WorkflowStep[] = [
@@ -140,26 +207,54 @@ export async function getWorkflowSnapshot(): Promise<WorkflowSnapshot> {
       label: 'Sosyal',
       href: '/admin/social',
       state:
-        linkedAccounts === 0
+        accountHealth.missingCount > 0
           ? 'warn'
-          : socialDrafts > 0
-            ? 'active'
-            : reviewPending === 0 && pipelinesCompleted > 0
-              ? 'done'
-              : 'pending',
+          : accountHealth.brokenCount > 0
+            ? 'warn'
+            : linkedAccounts === 0 && accountHealth.slots.every((s) => s.status === 'dry_run')
+              ? 'warn'
+              : socialDrafts > 0
+                ? 'active'
+                : reviewPending === 0 && pipelinesCompleted > 0
+                  ? 'done'
+                  : 'pending',
       detail:
-        linkedAccounts === 0
-          ? 'Hesap bağla'
-          : `${socialDrafts} taslak · ${linkedAccounts} hesap`,
+        accountHealth.missingCount > 0
+          ? 'Hesap eksik'
+          : linkedAccounts === 0
+            ? `${socialDrafts} taslak · dry-run`
+            : `${socialDrafts} taslak · ${linkedAccounts} OAuth`,
       count: socialDrafts,
     },
     {
       id: 'calendar',
       label: 'Takvim',
       href: '/admin/calendar',
-      state: scheduledPosts > 0 ? 'active' : socialDrafts > 0 ? 'warn' : 'pending',
+      state:
+        scheduledPosts > 0
+          ? 'active'
+          : socialDrafts > 0
+            ? 'warn'
+            : publishedPosts > 0
+              ? 'done'
+              : 'pending',
       detail: scheduledPosts ? `${scheduledPosts} zamanlandı` : 'Dağıtım uygula',
       count: scheduledPosts,
+    },
+    {
+      id: 'publish',
+      label: 'Yayın',
+      href: '/admin/social',
+      state:
+        failedPosts > 0
+          ? 'warn'
+          : publishedPosts > 0
+            ? 'done'
+            : scheduledPosts > 0
+              ? 'active'
+              : 'pending',
+      detail: publishedPosts ? `${publishedPosts} yayında` : 'Yayınla',
+      count: publishedPosts,
     },
   ]
 
@@ -177,11 +272,21 @@ export async function getWorkflowSnapshot(): Promise<WorkflowSnapshot> {
     nextActions.push(`${reviewPending} türev onay bekliyor → Onay ekranında toplu onayla`)
   if (podcastScripts > podcastMedia)
     nextActions.push(`${podcastScripts - podcastMedia} podcast için Medya’da ses üret (veya toplu onayda otomatik)`)
-  if (linkedAccounts === 0)
+  if (linkedAccounts === 0 && accountHealth.slots.some((s) => s.status === 'dry_run'))
+    nextActions.push('Dry-run hesaplar bağlı — gerçek yayın için Sosyal’de OAuth bağla')
+  else if (linkedAccounts === 0)
     nextActions.push('Sosyal’de LinkedIn/X OAuth veya dry-run bağla — onay sonrası taslak oluşur')
   if (socialDrafts > 0 && scheduledPosts === 0)
     nextActions.push('Takvim’de pipeline seç → Önizle → Takvime uygula')
+  if (accountHealth.missingCount > 0)
+    nextActions.push('Sosyal hesap eksik — dry-run otomatik eklendi veya OAuth bağla')
+  if (accountHealth.brokenCount > 0)
+    nextActions.push('Başarısız post veya süresi dolmuş token — Sosyal’de kontrol et')
+  if (failedPosts > 0)
+    nextActions.push(`${failedPosts} başarısız yayın — Sosyal’de yeniden dene`)
+  if (!nextActions.length && publishedPosts > 0)
+    nextActions.push(`${publishedPosts} yayınlandı — akış ağacında linkleri izle`)
   if (!nextActions.length) nextActions.push('Akış tamam — yayınlanan postları Takvim’de izle')
 
-  return { steps, nextActions, counts }
+  return { steps, nextActions, publishedFeed, accountHealth, counts }
 }

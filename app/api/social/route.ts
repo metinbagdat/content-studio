@@ -6,6 +6,7 @@ import { publishPost } from '@/lib/social/publish'
 import { publishCaptionWithImages, ensureGeneratedPostImage, syncPostImagesFromCaptions, updatePostOnPlatform } from '@/lib/social/publishCaption'
 import { toImagePreviewPath } from '@/lib/social/imagePreview'
 import { readPublishMetrics } from '@/lib/social/publishFingerprint'
+import { auditSocialAccounts, repairMissingSocialAccounts } from '@/lib/social/accountAudit'
 import { getAuthUrl, upsertDryRunAccount, deactivateAccount } from '@/lib/social/oauth'
 import { oauthPlatformStatus } from '@/lib/social/config'
 import { generatePkce, pkceCookieName } from '@/lib/social/pkce'
@@ -16,7 +17,7 @@ export async function GET(req: NextRequest) {
   if (!requireAdmin(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
-  const [accounts, posts] = await Promise.all([
+  const [accounts, posts, accountHealth] = await Promise.all([
     prisma.socialMediaAccount.findMany({ orderBy: { createdAt: 'desc' } }),
     prisma.socialMediaPost.findMany({
       orderBy: { createdAt: 'desc' },
@@ -27,9 +28,11 @@ export async function GET(req: NextRequest) {
         },
       },
     }),
+    auditSocialAccounts(),
   ])
   return NextResponse.json({
     oauth: oauthPlatformStatus(),
+    accountHealth,
     accounts: accounts.map((a) => {
       const cfg = a.config && typeof a.config === 'object' ? (a.config as Record<string, unknown>) : {}
       return {
@@ -75,6 +78,12 @@ export async function POST(req: NextRequest) {
   }
   const body = await req.json()
   const action = String(body.action || '')
+
+  if (action === 'repair-accounts') {
+    const accountHealth = await repairMissingSocialAccounts()
+    const sync = await syncSocialDraftsFromApprovedCaptions()
+    return NextResponse.json({ accountHealth, sync })
+  }
 
   if (action === 'connect-url') {
     const platform = String(body.platform || '').toUpperCase()

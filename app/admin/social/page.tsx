@@ -20,6 +20,22 @@ type Account = {
   tokenExpiry?: string | null
 }
 
+type AccountSlot = {
+  platform: string
+  label: string
+  status: string
+  detail: string
+  failedPosts: number
+  oauthConfigured: boolean
+}
+
+type AccountHealth = {
+  slots: AccountSlot[]
+  missingCount: number
+  brokenCount: number
+  repaired: string[]
+}
+
 function headers(key: string, json = false): HeadersInit {
   const h: Record<string, string> = { 'x-admin-key': key }
   if (json) h['Content-Type'] = 'application/json'
@@ -58,6 +74,7 @@ function PostImagePreview({ src, alt }: { src: string; alt: string }) {
 export default function SocialPage() {
   const [adminKey, setAdminKey] = useState('')
   const [oauth, setOauth] = useState<OAuthStatus | null>(null)
+  const [accountHealth, setAccountHealth] = useState<AccountHealth | null>(null)
   const [accounts, setAccounts] = useState<Account[]>([])
   const [posts, setPosts] = useState<any[]>([])
   const [msg, setMsg] = useState('')
@@ -77,6 +94,7 @@ export default function SocialPage() {
     }
     const data = await res.json()
     setOauth(data.oauth || null)
+    setAccountHealth(data.accountHealth || null)
     setAccounts(data.accounts || [])
     setPosts(data.posts || [])
   }, [adminKey])
@@ -115,6 +133,28 @@ export default function SocialPage() {
       }
     })()
   }, [adminKey, imagesSynced, load])
+
+  async function repairAccounts() {
+    setBusyId('repair')
+    const res = await fetch('/api/social', {
+      method: 'POST',
+      headers: headers(adminKey, true),
+      body: JSON.stringify({ action: 'repair-accounts' }),
+    })
+    const data = await res.json()
+    setBusyId(null)
+    if (!res.ok) {
+      setMsg(data.error || 'Onarım başarısız')
+      return
+    }
+    const repaired = data.accountHealth?.repaired?.join(', ') || ''
+    setMsg(
+      repaired
+        ? `Eksik hesaplar eklendi: ${repaired} · ${data.sync?.draftsCreated ?? 0} taslak`
+        : 'Tüm hesaplar tamam — eksik yok',
+    )
+    await load()
+  }
 
   async function oauthConnect(platform: 'TWITTER' | 'LINKEDIN') {
     setBusyId(platform)
@@ -385,6 +425,51 @@ export default function SocialPage() {
         </button>
       </div>
       {msg ? <p className="muted">{msg}</p> : null}
+
+      {accountHealth ? (
+        <section className="panel" style={{ marginBottom: '1rem' }}>
+          <h2>Hesap durumu (X + LinkedIn)</h2>
+          <ul className="list">
+            {accountHealth.slots.map((slot) => (
+              <li key={slot.platform}>
+                <div className="row">
+                  <span className={`badge plat-${slot.platform}`}>{slot.label}</span>
+                  <span
+                    className={
+                      slot.status === 'oauth_ok' || slot.status === 'ok'
+                        ? 'badge ok'
+                        : slot.status === 'dry_run'
+                          ? 'badge warn'
+                          : 'badge danger'
+                    }
+                  >
+                    {slot.status}
+                  </span>
+                  {slot.oauthConfigured ? <span className="badge ok">env OK</span> : <span className="badge warn">env yok</span>}
+                </div>
+                <p className="muted" style={{ margin: '0.35rem 0 0' }}>{slot.detail}</p>
+              </li>
+            ))}
+          </ul>
+          <div className="row" style={{ marginTop: '0.75rem' }}>
+            <button type="button" className="ok" disabled={busyId === 'repair'} onClick={repairAccounts}>
+              Eksik hesapları tamamla (dry-run)
+            </button>
+            {accountHealth.missingCount > 0 ? (
+              <span className="badge danger">{accountHealth.missingCount} eksik</span>
+            ) : (
+              <span className="badge ok">hesaplar tamam</span>
+            )}
+            {accountHealth.brokenCount > 0 ? (
+              <span className="badge warn">{accountHealth.brokenCount} sorunlu</span>
+            ) : null}
+          </div>
+          <p className="muted" style={{ marginTop: '0.65rem', marginBottom: 0 }}>
+            YouTube / Instagram / TikTok pipeline’da metin üretir; Faz 1 yayın yalnızca X ve LinkedIn.
+            Gerçek yayın için OAuth bağla; test için dry-run yeterli.
+          </p>
+        </section>
+      ) : null}
 
       <section className="panel" style={{ marginBottom: '1rem' }}>
         <h2>OAuth bağlantı</h2>
