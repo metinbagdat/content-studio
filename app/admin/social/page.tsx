@@ -4,6 +4,8 @@ import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { socialPostPublicUrl } from '@/lib/social/postUrl'
 import { SocialPlatformDashboard } from '@/components/admin/SocialPlatformDashboard'
+import { PublishedPostsPanel } from '@/components/admin/PublishedPostsPanel'
+import { PlatformIconLink } from '@/components/admin/PlatformIconLink'
 import { DEFAULT_ADMIN_API_KEY } from '@/lib/adminKey'
 
 type OAuthStatus = {
@@ -121,6 +123,7 @@ export default function SocialPage() {
   const [statsSynced, setStatsSynced] = useState(false)
   const [imagesSynced, setImagesSynced] = useState(false)
   const [hideDryRun, setHideDryRun] = useState(true)
+  const [postView, setPostView] = useState<'published' | 'drafts'>('published')
 
   const load = useCallback(async () => {
     if (!adminKey) return
@@ -141,6 +144,8 @@ export default function SocialPage() {
     const saved = localStorage.getItem('cs_admin_key')
     if (saved) setAdminKey(saved)
     else setAdminKey(DEFAULT_ADMIN_API_KEY)
+
+    if (window.location.hash === '#published') setPostView('published')
 
     const params = new URLSearchParams(window.location.search)
     const connected = params.get('connected')
@@ -410,6 +415,15 @@ export default function SocialPage() {
   const canDeletePost = (p: { status: string; isDryRun?: boolean; isMockPost?: boolean }) =>
     canMutate(p.status) || Boolean(p.isDryRun || p.isMockPost)
 
+  const publishedPosts = useMemo(() => {
+    const list = posts.filter((p) => p.status === 'PUBLISHED')
+    return list.sort((a, b) => {
+      const ta = a.publishedAt || a.createdAt
+      const tb = b.publishedAt || b.createdAt
+      return new Date(tb).getTime() - new Date(ta).getTime()
+    })
+  }, [posts])
+
   const visiblePosts = hideDryRun ? posts.filter((p) => !p.isDryRun) : posts
 
   const captionGroups = useMemo(() => {
@@ -476,10 +490,21 @@ export default function SocialPage() {
     <div>
       <h1>Sosyal hesaplar</h1>
       <p className="lead">
-        LinkedIn/X taslakları burada görünür — önce <Link href="/admin/review">Onay</Link>’da türevleri
-        onayla, hesap bağla (OAuth veya dry-run), gerekirse “Taslakları senkronize et”. Rehber:{' '}
+        <strong>Yayınlanan postlar</strong> ve metrikler aşağıda — üst kartlarda hesap istatistikleri.
+        Önce <Link href="/admin/review">Onay</Link>, sonra yayınla. Rehber:{' '}
         <Link href="/docs/social-setup">SM kurulum</Link>
       </p>
+      <div className="row" style={{ marginBottom: '1rem' }}>
+        <a className="btn" href="#published" onClick={() => setPostView('published')}>
+          Yayınlanan ({publishedPosts.length})
+        </a>
+        <button type="button" className="btn secondary" onClick={() => setPostView('drafts')}>
+          Taslaklar
+        </button>
+        <button type="button" className="btn secondary" disabled={busyId === 'sync-stats'} onClick={syncStats}>
+          Metrikleri yenile
+        </button>
+      </div>
       <div className="keybar">
         <div style={{ flex: 1 }}>
           <label>Admin API key (varsayılan: {DEFAULT_ADMIN_API_KEY})</label>
@@ -526,6 +551,16 @@ export default function SocialPage() {
         </button>
       </div>
 
+      <section id="published" className="panel" style={{ marginBottom: '1rem' }}>
+        <h2>Yayınlanan postlar</h2>
+        <p className="muted" style={{ marginTop: 0, fontSize: '0.88rem' }}>
+          OAuth yayınlarında <strong>Paylaşımı yeni sekmede aç ↗</strong> gerçek postu gösterir. Metrikler için
+          «Metrikleri yenile». Workflow panelinde de «Yayınlanan» listesi var.
+        </p>
+        <PublishedPostsPanel posts={publishedPosts} />
+      </section>
+
+      {postView === 'drafts' ? (
       <section className="panel" style={{ marginTop: '1rem' }}>
         <h2>Post taslakları</h2>
         <p className="muted" style={{ marginTop: 0, fontSize: '0.88rem' }}>
@@ -604,7 +639,7 @@ export default function SocialPage() {
                     <li key={p.id} style={{ borderLeft: '3px solid var(--border)', paddingLeft: '0.75rem', marginTop: '0.5rem' }}>
                       <div className="row">
                         <strong>{p.account?.accountName || 'Hesap'}</strong>
-                        <span className="badge">{p.platform}</span>
+                        <PlatformIconLink platform={p.platform} username={p.account?.accountName} />
                         {p.isDryRun ? <span className="badge warn">dry-run</span> : null}
                         {!p.account?.isActive && !p.isDryRun ? <span className="badge">off</span> : null}
                         <span className={`badge ${p.status === 'PUBLISHED' ? 'ok' : p.status === 'FAILED' ? 'danger' : 'warn'}`}>
@@ -684,6 +719,7 @@ export default function SocialPage() {
           ) : null}
         </ul>
       </section>
+      ) : null}
     </div>
   )
 }

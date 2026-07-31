@@ -126,13 +126,17 @@ export async function auditSocialAccounts(): Promise<AccountAudit> {
   return { slots, missingCount, brokenCount, repaired: [] }
 }
 
-/** Create dry-run accounts for missing publish platforms; sync drafts. */
+/** Create dry-run accounts only when OAuth env is missing; otherwise use OAuth connect. */
 export async function repairMissingSocialAccounts(): Promise<AccountAudit> {
   const audit = await auditSocialAccounts()
+  const oauth = oauthPlatformStatus()
   const repaired: string[] = []
 
   for (const slot of audit.slots) {
     if (slot.status !== 'missing') continue
+    const oauthConfigured =
+      slot.platform === 'TWITTER' ? oauth.twitter.configured : oauth.linkedin.configured
+    if (oauthConfigured) continue
     await upsertDryRunAccount(slot.platform, `Dry-run ${slot.platform}`)
     repaired.push(slot.platform)
   }

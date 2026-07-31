@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
     prisma.socialMediaAccount.findMany({ orderBy: { createdAt: 'desc' } }),
     prisma.socialMediaPost.findMany({
       orderBy: { createdAt: 'desc' },
-      take: 50,
+      take: 150,
       include: {
         account: {
           select: { accountName: true, platform: true, isActive: true, accountId: true, config: true },
