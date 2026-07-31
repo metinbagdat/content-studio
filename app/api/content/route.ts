@@ -11,13 +11,30 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   const status = req.nextUrl.searchParams.get('status')
+  const platform = req.nextUrl.searchParams.get('platform')?.toUpperCase() || ''
+  const take = Math.min(500, Math.max(50, Number(req.nextUrl.searchParams.get('take') || 300)))
   const items = await prisma.derivedContent.findMany({
     where: status ? { status: status as 'IN_REVIEW' | 'APPROVED' | 'DRAFT' } : undefined,
     orderBy: { createdAt: 'desc' },
-    take: 100,
+    take,
     include: { source: { select: { id: true, title: true } } },
   })
-  return NextResponse.json({ items })
+  const filtered = platform
+    ? items.filter((item) => {
+        const meta =
+          item.metadata && typeof item.metadata === 'object'
+            ? (item.metadata as Record<string, unknown>)
+            : {}
+        if (meta.platform === platform) return true
+        if (platform === 'LINKEDIN' && item.contentType === 'LINKEDIN_CAROUSEL') return true
+        if (platform === 'TWITTER' && item.contentType === 'TWITTER_THREAD') return true
+        if (platform === 'YOUTUBE' && (meta.atomKind === 'youtube_short' || meta.atomKind === 'long_form_video')) {
+          return true
+        }
+        return false
+      })
+    : items
+  return NextResponse.json({ items: filtered, totalFetched: items.length, platform: platform || null })
 }
 
 export async function POST(req: NextRequest) {

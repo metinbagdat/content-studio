@@ -201,13 +201,23 @@ export async function createSocialDraftsForDerived(derivedId: string, postConten
     platforms = [targetPlatform]
   }
 
-  const accounts = await prisma.socialMediaAccount.findMany({
+  // Prefer real OAuth accounts; fall back to dry-run so drafts still appear on /admin/social
+  let accounts = await prisma.socialMediaAccount.findMany({
     where: {
       isActive: true,
       platform: { in: platforms },
       accountId: { not: { startsWith: 'dryrun_' } },
     },
   })
+  if (!accounts.length) {
+    accounts = await prisma.socialMediaAccount.findMany({
+      where: {
+        isActive: true,
+        platform: { in: platforms },
+        accountId: { startsWith: 'dryrun_' },
+      },
+    })
+  }
   const mediaUrls =
     derived.contentType === 'SOCIAL_CAPTION' ? await ensureGeneratedPostImage(derivedId) : []
   const created = []

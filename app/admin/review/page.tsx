@@ -10,8 +10,11 @@ type Item = {
   contentType: string
   status: string
   approvedAt?: string | null
+  metadata?: Record<string, unknown> | null
   source?: { id: string; title: string }
 }
+
+type PlatformFilter = 'ALL' | 'LINKEDIN' | 'TWITTER' | 'YOUTUBE' | 'INSTAGRAM' | 'TIKTOK' | 'FACEBOOK'
 
 const CONTENT_TYPES = [
   'SOCIAL_CAPTION',
@@ -86,12 +89,45 @@ function sortItems(items: Item[]): Item[] {
   return [...items].sort((a, b) => (rank[a.status] ?? 9) - (rank[b.status] ?? 9))
 }
 
+function itemPlatform(item: Item): string | null {
+  const meta = item.metadata && typeof item.metadata === 'object' ? item.metadata : {}
+  if (typeof meta.platform === 'string') return meta.platform
+  if (item.contentType === 'LINKEDIN_CAROUSEL') return 'LINKEDIN'
+  if (item.contentType === 'TWITTER_THREAD') return 'TWITTER'
+  if (item.contentType === 'SHORT_VIDEO_SCRIPT' || item.contentType === 'VIDEO_SCRIPT') {
+    return typeof meta.platform === 'string' ? meta.platform : null
+  }
+  return null
+}
+
+function platformLabel(platform: string | null): string {
+  switch (platform) {
+    case 'TWITTER':
+      return 'X'
+    case 'YOUTUBE':
+      return 'YouTube'
+    case 'LINKEDIN':
+      return 'LinkedIn'
+    case 'INSTAGRAM':
+      return 'Instagram'
+    case 'TIKTOK':
+      return 'TikTok'
+    case 'FACEBOOK':
+      return 'Facebook'
+    case 'PINTEREST':
+      return 'Pinterest'
+    default:
+      return platform || '—'
+  }
+}
+
 export default function ReviewPage() {
   const [adminKey, setAdminKey] = useState('')
   const [items, setItems] = useState<Item[]>([])
   const [sources, setSources] = useState<{ id: string; title: string }[]>([])
   const [msg, setMsg] = useState('')
   const [showAll, setShowAll] = useState(false)
+  const [platformFilter, setPlatformFilter] = useState<PlatformFilter>('ALL')
   const [busyId, setBusyId] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editTitle, setEditTitle] = useState('')
@@ -106,13 +142,17 @@ export default function ReviewPage() {
     const pending = items.filter((i) => i.status === 'IN_REVIEW').length
     const approved = items.filter((i) => i.status === 'APPROVED' || i.status === 'PUBLISHED').length
     const rejected = items.filter((i) => i.status === 'REJECTED').length
-    return { pending, approved, rejected }
+    const linkedin = items.filter((i) => itemPlatform(i) === 'LINKEDIN').length
+    return { pending, approved, rejected, linkedin }
   }, [items])
 
   const visibleItems = useMemo(() => {
-    const filtered = showAll ? items : items.filter((i) => i.status === 'IN_REVIEW')
+    let filtered = showAll ? items : items.filter((i) => i.status === 'IN_REVIEW')
+    if (platformFilter !== 'ALL') {
+      filtered = filtered.filter((i) => itemPlatform(i) === platformFilter)
+    }
     return sortItems(filtered)
-  }, [items, showAll])
+  }, [items, showAll, platformFilter])
 
   const load = useCallback(async () => {
     if (!adminKey.trim()) {
@@ -120,8 +160,10 @@ export default function ReviewPage() {
       setItems([])
       return
     }
+    const q = new URLSearchParams({ take: '300' })
+    if (platformFilter !== 'ALL') q.set('platform', platformFilter)
     const [cRes, sRes] = await Promise.all([
-      fetch('/api/content', { headers: adminHeaders(adminKey), cache: 'no-store' }),
+      fetch(`/api/content?${q}`, { headers: adminHeaders(adminKey), cache: 'no-store' }),
       fetch('/api/sources', { headers: adminHeaders(adminKey), cache: 'no-store' }),
     ])
     if (!cRes.ok) {
@@ -140,16 +182,17 @@ export default function ReviewPage() {
     const pending = all.filter((i) => i.status === 'IN_REVIEW').length
     const approved = all.filter((i) => i.status === 'APPROVED' || i.status === 'PUBLISHED').length
     const rejected = all.filter((i) => i.status === 'REJECTED').length
+    const linkedin = all.filter((i) => itemPlatform(i) === 'LINKEDIN').length
     if (!all.length) {
-      setMsg('Kayıt yok — pipeline çalıştır veya elle türev ekle')
+      setMsg('Kayıt yok — Pipeline’da LinkedIn seçili çalıştır veya Discovery ile kaynak ekle')
     } else if (showAll) {
-      setMsg(`${pending} onay bekliyor · ${approved} onaylı · ${rejected} reddedildi`)
+      setMsg(`${pending} onay bekliyor · ${approved} onaylı · ${rejected} reddedildi · ${linkedin} LinkedIn`)
     } else if (pending) {
-      setMsg(`${pending} onay bekliyor`)
+      setMsg(`${pending} onay bekliyor · ${linkedin} LinkedIn türev (filtre: ${platformFilter})`)
     } else {
-      setMsg('Onay bekleyen yok — geçmiş için "Tümünü göster"i aç')
+      setMsg('Onay bekleyen yok — "Tümünü göster" veya LinkedIn filtresi ile geçmişe bak')
     }
-  }, [adminKey, showAll])
+  }, [adminKey, showAll, platformFilter])
 
   useEffect(() => {
     const saved = localStorage.getItem('cs_admin_key')
@@ -162,7 +205,7 @@ export default function ReviewPage() {
       localStorage.setItem('cs_admin_key', adminKey)
       load()
     }
-  }, [adminKey, showAll, load])
+  }, [adminKey, showAll, platformFilter, load])
 
   function startEdit(item: Item) {
     setEditingId(item.id)
@@ -280,8 +323,22 @@ export default function ReviewPage() {
 
   return (
     <div>
-      <h1>Onay kuyruğu</h1>
-      <p className="lead">Düzenle, onayla, reddet veya sil — yayın öncesi tam CRUD.</p>
+      <section className="hero-panel">
+        <h1>Onay kuyruğu</h1>
+        <p className="lead" style={{ marginBottom: '0.65rem' }}>
+          Otomatik üretilen LinkedIn / X / YouTube metinleri önce burada. Onaylayınca{' '}
+          <a href="/admin/social">Sosyal</a> taslaklarına düşer (hesap bağlı olmalı — dry-run da olur).
+        </p>
+        <div className="row">
+          <span className="badge warn">{counts.pending} bekliyor</span>
+          <span className="badge plat-TWITTER">X</span>
+          <span className="badge" style={{ borderColor: 'rgba(10,102,194,0.5)' }}>
+            LinkedIn · {counts.linkedin}
+          </span>
+          <span className="badge plat-YOUTUBE">YouTube</span>
+        </div>
+      </section>
+
       <div className="keybar">
         <div style={{ flex: 1 }}>
           <label>Admin API key (varsayılan: {DEFAULT_ADMIN_API_KEY})</label>
@@ -291,6 +348,22 @@ export default function ReviewPage() {
             onChange={(e) => setAdminKey(e.target.value)}
             placeholder={DEFAULT_ADMIN_API_KEY}
           />
+        </div>
+        <div>
+          <label>Platform</label>
+          <select
+            value={platformFilter}
+            onChange={(e) => setPlatformFilter(e.target.value as PlatformFilter)}
+            style={{ marginBottom: 0, minWidth: '9rem' }}
+          >
+            <option value="ALL">Tümü</option>
+            <option value="LINKEDIN">LinkedIn</option>
+            <option value="TWITTER">X</option>
+            <option value="YOUTUBE">YouTube</option>
+            <option value="INSTAGRAM">Instagram</option>
+            <option value="TIKTOK">TikTok</option>
+            <option value="FACEBOOK">Facebook</option>
+          </select>
         </div>
         <button type="button" className="secondary" onClick={load}>
           Yenile
@@ -303,7 +376,7 @@ export default function ReviewPage() {
           Tümünü göster
         </label>
       </div>
-      {msg ? <p className="muted">{msg}</p> : null}
+      {msg ? <p className="flash">{msg}</p> : null}
       {!showAll && counts.approved + counts.rejected > 0 ? (
         <p className="muted" style={{ marginTop: '-0.5rem' }}>
           {counts.approved} onaylı, {counts.rejected} reddedildi — geçmiş için &quot;Tümünü göster&quot;
@@ -353,6 +426,9 @@ export default function ReviewPage() {
               ) : (
                 <strong>{item.title}</strong>
               )}
+              <span className={`badge plat-${itemPlatform(item) || 'NONE'}`}>
+                {platformLabel(itemPlatform(item))}
+              </span>
               <span className="badge">{item.contentType}</span>
               <span className={statusBadgeClass(item.status)}>{statusLabel(item.status)}</span>
               <span className="muted">{item.source?.title}</span>

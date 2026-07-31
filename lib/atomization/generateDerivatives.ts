@@ -327,11 +327,15 @@ export async function generateAllDerivatives(
     drafts.push(...(await generatePinterestPins(p.pinterestPins, title, article, plan)))
   }
 
-  // Social cards = reuse first N twitter/linkedin posts metadata flag
-  for (let i = 0; i < p.socialCards && i < drafts.length; i++) {
-    if (drafts[i].contentType === 'SOCIAL_CAPTION') {
-      drafts[i].metadata.atomKind = 'social_card'
-      drafts[i].metadata.autoGenerateImage = true
+  // Mark first N captions for auto image — do NOT overwrite atomKind/platform
+  // (overwriting linkedin_post → social_card broke calendar matching + LI visibility)
+  let cardsMarked = 0
+  for (const d of drafts) {
+    if (cardsMarked >= p.socialCards) break
+    if (d.contentType === 'SOCIAL_CAPTION' && d.metadata.platform) {
+      d.metadata.autoGenerateImage = true
+      d.metadata.socialCard = true
+      cardsMarked += 1
     }
   }
 
