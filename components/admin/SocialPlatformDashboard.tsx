@@ -38,6 +38,7 @@ type OAuthSlot = {
   clientSecretSet?: boolean
   callbackUrl: string
   organizationId?: string | null
+  orgPostEnabled?: boolean
 }
 
 type EnvCheck = {
@@ -205,9 +206,18 @@ export function SocialPlatformDashboard({
 
         {platform === 'LINKEDIN' && oauth?.linkedin ? (
           <p className="muted" style={{ margin: '0.5rem 0 0', fontSize: '0.78rem' }}>
-            {oauth.linkedin.organizationId
-              ? `Org ID: ${oauth.linkedin.organizationId}`
-              : 'Kişisel hesap modu'}
+            {oauth.linkedin.organizationId ? (
+              oauth.linkedin.orgPostEnabled ? (
+                `Şirket sayfasından paylaşır — Org ID: ${oauth.linkedin.organizationId}`
+              ) : (
+                <>
+                  <strong style={{ color: 'var(--warn)' }}>Dikkat:</strong> Org ID tanımlı ({oauth.linkedin.organizationId}) ama{' '}
+                  <code>LINKEDIN_ORG_POST=true</code> değil → postlar <strong>kişisel profilden</strong> gider.
+                </>
+              )
+            ) : (
+              'Kişisel hesap modu — takipçi sayısı LinkedIn API ile alınamaz (izin gerektirir)'
+            )}
           </p>
         ) : null}
       </article>

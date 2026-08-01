@@ -36,6 +36,19 @@ function cfgOf(config: unknown): Record<string, unknown> {
   return config && typeof config === 'object' ? (config as Record<string, unknown>) : {}
 }
 
+function xApiErrorMessage(status: number): string {
+  if (status === 402) {
+    return 'X API bu uç nokta için ücretli plan istiyor (Basic ~$200/ay) — takipçi/gösterim burada görünmez. Paylaşım (tweet.write) etkilenmez.'
+  }
+  if (status === 429) {
+    return 'X API rate limit — birkaç dakika sonra "İstatistikleri yenile" ile tekrar deneyin.'
+  }
+  if (status === 401 || status === 403) {
+    return 'X yetkilendirme hatası — OAuth ile X bağla işlemini tekrarlayın.'
+  }
+  return `X API ${status}`
+}
+
 function isDryRun(account: SocialMediaAccount): boolean {
   const cfg = cfgOf(account.config)
   return account.accountId.startsWith('dryrun_') || Boolean(cfg.dryRun)
@@ -75,10 +88,11 @@ async function fetchTwitterAccountStats(
     { headers: { Authorization: `Bearer ${accessToken}` } },
   )
   if (!res.ok) {
+    const username = cfgOf(account.config).username as string | null | undefined
     return {
-      username: null,
+      username: username ? `@${username}` : null,
       displayName: account.accountName,
-      profileUrl: null,
+      profileUrl: username ? `https://twitter.com/${username}` : null,
       followers: null,
       following: null,
       postsCount: null,
@@ -89,7 +103,7 @@ async function fetchTwitterAccountStats(
       shares: null,
       clicks: null,
       fetchedAt: new Date().toISOString(),
-      error: `X API ${res.status}`,
+      error: xApiErrorMessage(res.status),
     }
   }
 

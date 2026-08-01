@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { socialPostPublicUrl } from '@/lib/social/postUrl'
 import { SocialPlatformDashboard } from '@/components/admin/SocialPlatformDashboard'
 import { PublishedPostsPanel } from '@/components/admin/PublishedPostsPanel'
+import { DraftDiagnosticsPanel, type DraftDiagnostics } from '@/components/admin/DraftDiagnosticsPanel'
 import { PlatformIconLink } from '@/components/admin/PlatformIconLink'
 import { DEFAULT_ADMIN_API_KEY } from '@/lib/adminKey'
 
@@ -124,6 +125,8 @@ export default function SocialPage() {
   const [imagesSynced, setImagesSynced] = useState(false)
   const [hideDryRun, setHideDryRun] = useState(true)
   const [postView, setPostView] = useState<'published' | 'drafts'>('published')
+  const [diagnostics, setDiagnostics] = useState<DraftDiagnostics | null>(null)
+  const [bulkPublishBusy, setBulkPublishBusy] = useState(false)
 
   const load = useCallback(async () => {
     if (!adminKey) return
@@ -136,9 +139,33 @@ export default function SocialPage() {
     setOauth(data.oauth || null)
     setEnvCheck(data.envCheck || null)
     setAccountHealth(data.accountHealth || null)
+    setDiagnostics(data.diagnostics || null)
     setAccounts(data.accounts || [])
     setPosts(data.posts || [])
   }, [adminKey])
+
+  async function bulkPublish(includeDryRun: boolean) {
+    setBulkPublishBusy(true)
+    setMsg('Toplu yayınlama çalışıyor…')
+    const res = await fetch('/api/social', {
+      method: 'POST',
+      headers: headers(adminKey, true),
+      body: JSON.stringify({ action: 'bulk-publish', includeDryRun }),
+    })
+    const data = await parseApiJson(res)
+    setBulkPublishBusy(false)
+    if (!res.ok) {
+      setMsg(String(data.error || 'Toplu yayın başarısız'))
+      return
+    }
+    const r = data.result as { attempted: number; published: number; skipped: number; failed: number; errors: string[] } | undefined
+    setMsg(
+      `Toplu yayın: ${r?.published ?? 0} yayınlandı · ${r?.skipped ?? 0} atlandı · ${r?.failed ?? 0} başarısız` +
+        (r?.errors?.length ? ` — ${r.errors[0]}` : ''),
+    )
+    setDiagnostics((data.diagnostics as DraftDiagnostics) || null)
+    await load()
+  }
 
   useEffect(() => {
     const saved = localStorage.getItem('cs_admin_key')
@@ -550,6 +577,8 @@ export default function SocialPage() {
           İstatistikleri yenile
         </button>
       </div>
+
+      <DraftDiagnosticsPanel diagnostics={diagnostics} onBulkPublish={bulkPublish} bulkBusy={bulkPublishBusy} />
 
       <section id="published" className="panel" style={{ marginBottom: '1rem' }}>
         <h2>Yayınlanan postlar</h2>

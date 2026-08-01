@@ -356,6 +356,64 @@ export async function bulkSetDerivedStatus(
   return result
 }
 
+export type BulkPublishResult = {
+  attempted: number
+  published: number
+  skipped: number
+  failed: number
+  errors: string[]
+}
+
+/** Publish every DRAFT/FAILED social post now. Dry-run accounts skipped by default (mock IDs only). */
+export async function bulkPublishDraftPosts(
+  options: { includeDryRun?: boolean } = {},
+): Promise<BulkPublishResult> {
+  const posts = await prisma.socialMediaPost.findMany({
+    where: { status: { in: ['DRAFT', 'FAILED'] } },
+    include: { account: true },
+    orderBy: { createdAt: 'asc' },
+  })
+
+  const result: BulkPublishResult = { attempted: 0, published: 0, skipped: 0, failed: 0, errors: [] }
+  const { publishPost } = await import('./social/publish')
+
+  for (const post of posts) {
+    const cfg =
+      post.account.config && typeof post.account.config === 'object'
+        ? (post.account.config as Record<string, unknown>)
+        : {}
+    const isDryRun = Boolean(cfg.dryRun) || post.account.accountId.startsWith('dryrun_')
+    if (isDryRun && !options.includeDryRun) {
+      result.skipped += 1
+      continue
+    }
+    if (!post.account.isActive) {
+      result.skipped += 1
+      continue
+    }
+
+    result.attempted += 1
+    try {
+      const mediaUrls = await ensureGeneratedPostImage(post.derivedContentId)
+      if (mediaUrls.length) {
+        await prisma.socialMediaPost.update({ where: { id: post.id }, data: { mediaUrls } })
+      }
+      const r = await publishPost(post.id, { requireImage: true })
+      if (r.skipped) {
+        result.skipped += 1
+      } else {
+        result.published += 1
+      }
+    } catch (err) {
+      result.failed += 1
+      const msg = err instanceof Error ? err.message : String(err)
+      result.errors.push(`${post.platform} ${post.id.slice(0, 8)}: ${msg}`)
+    }
+  }
+
+  return result
+}
+
 export async function schedulePost(postId: string, scheduledAt: Date) {
   const post = await prisma.socialMediaPost.update({
     where: { id: postId },

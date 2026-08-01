@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/auth'
-import { schedulePost, syncSocialDraftsFromApprovedCaptions } from '@/lib/pipeline'
+import { schedulePost, syncSocialDraftsFromApprovedCaptions, bulkPublishDraftPosts } from '@/lib/pipeline'
+import { getDraftDiagnostics } from '@/lib/social/draftDiagnostics'
 import { publishPost } from '@/lib/social/publish'
 import { publishCaptionWithImages, ensureGeneratedPostImage, syncPostImagesFromCaptions, updatePostOnPlatform } from '@/lib/social/publishCaption'
 import { toImagePreviewPath } from '@/lib/social/imagePreview'
@@ -22,7 +23,7 @@ export async function GET(req: NextRequest) {
   if (!requireAdmin(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
-  const [accounts, posts, accountHealth] = await Promise.all([
+  const [accounts, posts, accountHealth, diagnostics] = await Promise.all([
     prisma.socialMediaAccount.findMany({ orderBy: { createdAt: 'desc' } }),
     prisma.socialMediaPost.findMany({
       orderBy: { createdAt: 'desc' },
@@ -34,11 +35,13 @@ export async function GET(req: NextRequest) {
       },
     }),
     auditSocialAccounts(),
+    getDraftDiagnostics(),
   ])
   return NextResponse.json({
     oauth: oauthPlatformStatus(),
     envCheck: oauthEnvCheck(),
     accountHealth,
+    diagnostics,
     accounts: accounts.map((a) => {
       const cfg = a.config && typeof a.config === 'object' ? (a.config as Record<string, unknown>) : {}
       const stats = getAccountStatsFromConfig(a.config)
@@ -158,12 +161,20 @@ export async function POST(req: NextRequest) {
   if (action === 'sync-drafts') {
     const sync = await syncSocialDraftsFromApprovedCaptions()
     const images = await syncPostImagesFromCaptions()
-    return NextResponse.json({ ...sync, ...images })
+    const diagnostics = await getDraftDiagnostics()
+    return NextResponse.json({ ...sync, ...images, diagnostics })
   }
 
   if (action === 'sync-images') {
     const result = await syncPostImagesFromCaptions()
     return NextResponse.json(result)
+  }
+
+  if (action === 'bulk-publish') {
+    const includeDryRun = Boolean(body.includeDryRun)
+    const result = await bulkPublishDraftPosts({ includeDryRun })
+    const diagnostics = await getDraftDiagnostics()
+    return NextResponse.json({ result, diagnostics })
   }
 
   if (action === 'schedule') {

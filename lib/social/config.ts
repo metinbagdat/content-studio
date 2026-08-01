@@ -12,6 +12,7 @@ export function oauthPlatformStatus() {
       configured: Boolean(process.env.LINKEDIN_CLIENT_ID && process.env.LINKEDIN_CLIENT_SECRET),
       callbackUrl: process.env.LINKEDIN_CALLBACK_URL || `${appUrl}/api/social/callback/linkedin`,
       organizationId: process.env.LINKEDIN_ORGANIZATION_ID || null,
+      orgPostEnabled: process.env.LINKEDIN_ORG_POST === 'true',
       scopes: linkedinOAuthScopes(),
       clientIdSet: Boolean(process.env.LINKEDIN_CLIENT_ID),
       clientSecretSet: Boolean(process.env.LINKEDIN_CLIENT_SECRET),
