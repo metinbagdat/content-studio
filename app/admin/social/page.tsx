@@ -56,6 +56,8 @@ type Account = {
   tokenExpiry?: string | null
   stats?: AccountStats | null
   lastSyncAt?: string | null
+  organizationId?: string | null
+  linkedinAuthorUrn?: string | null
 }
 
 type AccountSlot = {
@@ -221,57 +223,77 @@ export default function SocialPage() {
 
   async function syncStats() {
     setBusyId('sync-stats')
-    const res = await fetch('/api/social', {
-      method: 'POST',
-      headers: headers(adminKey, true),
-      body: JSON.stringify({ action: 'sync-stats' }),
-    })
-    const data = await parseApiJson(res)
-    setBusyId(null)
-    if (!res.ok) {
-      setMsg(String(data.error || 'İstatistik senkron başarısız'))
-      return
+    try {
+      const res = await fetch('/api/social', {
+        method: 'POST',
+        headers: headers(adminKey, true),
+        body: JSON.stringify({ action: 'sync-stats' }),
+      })
+      const data = await parseApiJson(res)
+      if (!res.ok) {
+        setMsg(String(data.error || 'İstatistik senkron başarısız'))
+        return
+      }
+      const accSynced = (data.accounts as { synced?: number; errors?: string[] })?.synced ?? 0
+      const postSynced = (data.posts as { synced?: number; errors?: string[] })?.synced ?? 0
+      const accErrors = (data.accounts as { errors?: string[] })?.errors || []
+      setMsg(
+        `Hesap: ${accSynced} · post: ${postSynced}` +
+          (accErrors.length ? ` · ${accErrors[0]}` : ''),
+      )
+      await load()
+    } catch (err) {
+      setMsg(`İstatistik hatası: ${err instanceof Error ? err.message : String(err)}`)
+    } finally {
+      setBusyId(null)
     }
-    setMsg(`Hesap: ${String((data.accounts as { synced?: number })?.synced ?? 0)} · post: ${String((data.posts as { synced?: number })?.synced ?? 0)}`)
-    await load()
   }
 
   async function repairAccounts() {
     setBusyId('repair')
-    const res = await fetch('/api/social', {
-      method: 'POST',
-      headers: headers(adminKey, true),
-      body: JSON.stringify({ action: 'repair-accounts' }),
-    })
-    const data = await res.json()
-    setBusyId(null)
-    if (!res.ok) {
-      setMsg(data.error || 'Onarım başarısız')
-      return
+    try {
+      const res = await fetch('/api/social', {
+        method: 'POST',
+        headers: headers(adminKey, true),
+        body: JSON.stringify({ action: 'repair-accounts' }),
+      })
+      const data = await parseApiJson(res)
+      if (!res.ok) {
+        setMsg(String(data.error || 'Onarım başarısız'))
+        return
+      }
+      const repaired = (data.accountHealth as { repaired?: string[] })?.repaired?.join(', ') || ''
+      setMsg(
+        repaired
+          ? `Eksik hesaplar eklendi: ${repaired} · ${(data.sync as { draftsCreated?: number })?.draftsCreated ?? 0} taslak`
+          : 'Tüm hesaplar tamam — eksik yok',
+      )
+      await load()
+    } catch (err) {
+      setMsg(`Onarım hatası: ${err instanceof Error ? err.message : String(err)}`)
+    } finally {
+      setBusyId(null)
     }
-    const repaired = data.accountHealth?.repaired?.join(', ') || ''
-    setMsg(
-      repaired
-        ? `Eksik hesaplar eklendi: ${repaired} · ${data.sync?.draftsCreated ?? 0} taslak`
-        : 'Tüm hesaplar tamam — eksik yok',
-    )
-    await load()
   }
 
   async function oauthConnect(platform: 'TWITTER' | 'LINKEDIN') {
     setBusyId(platform)
-    const res = await fetch('/api/social', {
-      method: 'POST',
-      headers: headers(adminKey, true),
-      body: JSON.stringify({ action: 'connect-url', platform }),
-    })
-    const data = await res.json()
-    setBusyId(null)
-    if (!res.ok || !data.url) {
-      setMsg(data.error || 'OAuth URL alınamadı — .env client ID/secret kontrol et')
-      return
+    try {
+      const res = await fetch('/api/social', {
+        method: 'POST',
+        headers: headers(adminKey, true),
+        body: JSON.stringify({ action: 'connect-url', platform }),
+      })
+      const data = await parseApiJson(res)
+      if (!res.ok || !data.url) {
+        setMsg(String(data.error || 'OAuth URL alınamadı — .env client ID/secret kontrol et'))
+        return
+      }
+      window.location.href = String(data.url)
+    } catch (err) {
+      setBusyId(null)
+      setMsg(`OAuth başlatılamadı: ${err instanceof Error ? err.message : String(err)}`)
     }
-    window.location.href = data.url
   }
 
   async function syncImages() {
@@ -292,33 +314,49 @@ export default function SocialPage() {
   }
 
   async function syncDrafts() {
-    const res = await fetch('/api/social', {
-      method: 'POST',
-      headers: headers(adminKey, true),
-      body: JSON.stringify({ action: 'sync-drafts' }),
-    })
-    const data = await res.json()
-    if (!res.ok) {
-      setMsg(data.error || 'Senkron başarısız')
-      return
+    setBusyId('sync-drafts')
+    try {
+      const res = await fetch('/api/social', {
+        method: 'POST',
+        headers: headers(adminKey, true),
+        body: JSON.stringify({ action: 'sync-drafts' }),
+      })
+      const data = await parseApiJson(res)
+      if (!res.ok) {
+        setMsg(String(data.error || 'Senkron başarısız'))
+        return
+      }
+      setMsg(`${String(data.draftsCreated ?? 0)} taslak oluşturuldu (${String(data.captions ?? 0)} onaylı caption)`)
+      if (data.diagnostics) setDiagnostics(data.diagnostics as DraftDiagnostics)
+      await load()
+    } catch (err) {
+      setMsg(`Senkron hatası: ${err instanceof Error ? err.message : String(err)}`)
+    } finally {
+      setBusyId(null)
     }
-    setMsg(`${data.draftsCreated} taslak oluşturuldu (${data.captions} onaylı caption)`)
-    await load()
   }
 
-  async function dryConnect(platform: 'TWITTER' | 'LINKEDIN') {
-    const res = await fetch('/api/social', {
-      method: 'POST',
-      headers: headers(adminKey, true),
-      body: JSON.stringify({ action: 'dry-run-connect', platform }),
-    })
-    const data = await res.json()
-    if (!res.ok) {
-      setMsg(data.error || 'fail')
-      return
+  async function dryConnect(platform: string) {
+    setBusyId(`dry-${platform}`)
+    try {
+      const res = await fetch('/api/social', {
+        method: 'POST',
+        headers: headers(adminKey, true),
+        body: JSON.stringify({ action: 'dry-run-connect', platform }),
+      })
+      const data = await parseApiJson(res)
+      if (!res.ok) {
+        setMsg(String(data.error || 'fail'))
+        return
+      }
+      setMsg(`${platform} dry-run bağlı · ${(data.sync as { draftsCreated?: number })?.draftsCreated ?? 0} taslak`)
+      if (data.diagnostics) setDiagnostics(data.diagnostics as DraftDiagnostics)
+      await load()
+    } catch (err) {
+      setMsg(`Dry-run hatası: ${err instanceof Error ? err.message : String(err)}`)
+    } finally {
+      setBusyId(null)
     }
-    setMsg(`${platform} dry-run bağlı · ${data.sync?.draftsCreated ?? 0} taslak`)
-    await load()
   }
 
   async function disconnect(accountId: string) {
@@ -451,6 +489,36 @@ export default function SocialPage() {
     })
   }, [posts])
 
+  const readyDraftsByPlatform = useMemo(() => {
+    const map: Record<string, Array<{ id: string; preview: string; accountName: string; isDryRun: boolean }>> = {}
+    for (const p of posts) {
+      if (p.status !== 'DRAFT' && p.status !== 'FAILED') continue
+      if (!map[p.platform]) map[p.platform] = []
+      map[p.platform].push({
+        id: p.id,
+        preview: String(p.postContent || '').slice(0, 90),
+        accountName: p.account?.accountName || 'Hesap',
+        isDryRun: Boolean(p.isDryRun),
+      })
+    }
+    return map
+  }, [posts])
+
+  const recentPublishedByPlatform = useMemo(() => {
+    const map: Record<string, Array<{ id: string; preview: string; publishedAt: string; url: string | null }>> = {}
+    for (const p of publishedPosts) {
+      if (!map[p.platform]) map[p.platform] = []
+      if (map[p.platform].length >= 3) continue
+      map[p.platform].push({
+        id: p.id,
+        preview: String(p.postContent || '').slice(0, 90),
+        publishedAt: p.publishedAt || p.createdAt,
+        url: socialPostPublicUrl(p.platform, p.platformPostId),
+      })
+    }
+    return map
+  }, [publishedPosts])
+
   const visiblePosts = hideDryRun ? posts.filter((p) => !p.isDryRun) : posts
 
   const captionGroups = useMemo(() => {
@@ -553,11 +621,14 @@ export default function SocialPage() {
         oauth={oauth}
         envCheck={envCheck}
         busyId={busyId}
+        readyDraftsByPlatform={readyDraftsByPlatform}
+        recentPublishedByPlatform={recentPublishedByPlatform}
         onOAuthConnect={oauthConnect}
         onDryConnect={dryConnect}
         onDisconnect={disconnect}
         onSyncStats={syncStats}
         onRepair={repairAccounts}
+        onPublishDraft={(id) => publishNow(id)}
       />
 
       {accountHealth && accountHealth.brokenCount > 0 ? (

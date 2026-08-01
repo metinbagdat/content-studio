@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import type { SocialPlatform } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/auth'
 import { schedulePost, syncSocialDraftsFromApprovedCaptions, bulkPublishDraftPosts } from '@/lib/pipeline'
@@ -23,6 +24,16 @@ export async function GET(req: NextRequest) {
   if (!requireAdmin(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+  try {
+    return await handleGet()
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.error('[GET /api/social]', message)
+    return NextResponse.json({ error: `Sunucu hatası: ${message}` }, { status: 500 })
+  }
+}
+
+async function handleGet() {
   const [accounts, posts, accountHealth, diagnostics] = await Promise.all([
     prisma.socialMediaAccount.findMany({ orderBy: { createdAt: 'desc' } }),
     prisma.socialMediaPost.findMany({
@@ -61,6 +72,8 @@ export async function GET(req: NextRequest) {
         oauth: Boolean(cfg.oauth),
         tokenExpiry: a.tokenExpiry,
         stats,
+        organizationId: typeof cfg.organizationId === 'string' ? cfg.organizationId : null,
+        linkedinAuthorUrn: typeof cfg.linkedinAuthorUrn === 'string' ? cfg.linkedinAuthorUrn : null,
       }
     }),
     posts: posts.map((p) => {
@@ -97,6 +110,16 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
   const action = String(body.action || '')
 
+  try {
+    return await handleAction(action, body)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.error(`[POST /api/social] action=${action}`, message)
+    return NextResponse.json({ error: `Sunucu hatası (${action}): ${message}` }, { status: 500 })
+  }
+}
+
+async function handleAction(action: string, body: Record<string, unknown>) {
   if (action === 'sync-stats') {
     const accounts = await syncAllAccountStats()
     const posts = await syncAllPublishedPostAnalytics(40)
@@ -147,15 +170,14 @@ export async function POST(req: NextRequest) {
 
   if (action === 'dry-run-connect') {
     const platform = String(body.platform || '').toUpperCase()
-    if (platform !== 'TWITTER' && platform !== 'LINKEDIN') {
-      return NextResponse.json({ error: 'platform TWITTER|LINKEDIN' }, { status: 400 })
+    const ALL_PLATFORMS = ['TWITTER', 'LINKEDIN', 'YOUTUBE', 'INSTAGRAM', 'TIKTOK', 'FACEBOOK']
+    if (!ALL_PLATFORMS.includes(platform)) {
+      return NextResponse.json({ error: `platform ${ALL_PLATFORMS.join('|')}` }, { status: 400 })
     }
-    const account = await upsertDryRunAccount(
-      platform as 'TWITTER' | 'LINKEDIN',
-      `Dry-run ${platform}`,
-    )
+    const account = await upsertDryRunAccount(platform as SocialPlatform, `Dry-run ${platform}`)
     const sync = await syncSocialDraftsFromApprovedCaptions()
-    return NextResponse.json({ account, sync })
+    const diagnostics = await getDraftDiagnostics()
+    return NextResponse.json({ account, sync, diagnostics })
   }
 
   if (action === 'sync-drafts') {
@@ -179,7 +201,7 @@ export async function POST(req: NextRequest) {
 
   if (action === 'schedule') {
     const postId = String(body.postId || '')
-    const when = body.scheduledAt ? new Date(body.scheduledAt) : new Date(Date.now() + 60_000)
+    const when = body.scheduledAt ? new Date(body.scheduledAt as string | number) : new Date(Date.now() + 60_000)
     if (!postId) return NextResponse.json({ error: 'postId required' }, { status: 400 })
     const post = await schedulePost(postId, when)
     return NextResponse.json({ post })

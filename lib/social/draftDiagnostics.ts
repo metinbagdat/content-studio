@@ -91,7 +91,9 @@ export async function getDraftDiagnostics(): Promise<DraftDiagnostics> {
 
     let reason: string
     if (!isPublishable) {
-      reason = 'Faz 1 yayın API yok (sadece X + LinkedIn) — bu platform için taslak/post oluşmaz'
+      reason = hasAccount
+        ? 'Dry-run taslak oluşur ama gerçek yayın API\'si yok (Faz 2) — publish denemesi hata verir'
+        : 'Hesap yok — Faz 2\'ye kadar sadece dry-run altyapı testi mümkün'
     } else if (!hasAccount) {
       reason = 'Hesap bağlı değil — OAuth veya dry-run bağlanınca taslak oluşur'
     } else if ((draftByPlatform.get(platform) || 0) + (publishedByPlatform.get(platform) || 0) === 0) {

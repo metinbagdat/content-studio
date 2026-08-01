@@ -459,19 +459,24 @@ export async function syncPostAnalytics(postId: string): Promise<PostAnalytics |
   return analytics
 }
 
-export async function syncAllPublishedPostAnalytics(limit = 30): Promise<{ synced: number }> {
+export async function syncAllPublishedPostAnalytics(limit = 30): Promise<{ synced: number; errors: string[] }> {
   const posts = await prisma.socialMediaPost.findMany({
     where: { status: 'PUBLISHED', platform: { in: ['TWITTER', 'LINKEDIN'] } },
     orderBy: { publishedAt: 'desc' },
     take: limit,
-    select: { id: true },
+    select: { id: true, platform: true },
   })
   let synced = 0
+  const errors: string[] = []
   for (const p of posts) {
-    const a = await syncPostAnalytics(p.id)
-    if (a) synced += 1
+    try {
+      const a = await syncPostAnalytics(p.id)
+      if (a) synced += 1
+    } catch (err) {
+      errors.push(`${p.platform} ${p.id.slice(0, 8)}: ${err instanceof Error ? err.message : String(err)}`)
+    }
   }
-  return { synced }
+  return { synced, errors }
 }
 
 export function getAccountStatsFromConfig(config: unknown): PlatformAccountStats | null {

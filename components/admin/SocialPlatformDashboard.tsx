@@ -1,7 +1,7 @@
 'use client'
 
 import { PlatformIconLink } from '@/components/admin/PlatformIconLink'
-import { platformProfileUrl } from '@/lib/social/platformLinks'
+import { platformLabel, platformProfileUrl } from '@/lib/social/platformLinks'
 
 export type PlatformAccountStats = {
   username: string | null
@@ -30,7 +30,12 @@ export type PlatformCardAccount = {
   oauth?: boolean
   stats?: Partial<PlatformAccountStats> | null
   lastSyncAt?: string | null
+  organizationId?: string | null
+  linkedinAuthorUrn?: string | null
 }
+
+export type ReadyDraft = { id: string; preview: string; accountName: string; isDryRun: boolean }
+export type RecentPublished = { id: string; preview: string; publishedAt: string; url: string | null }
 
 type OAuthSlot = {
   configured: boolean
@@ -49,17 +54,16 @@ type EnvCheck = {
   ready: boolean
 }
 
-type PipelineOnlyPlatform = {
+type PipelinePlatformDef = {
   id: string
-  label: string
-  short: string
   note: string
 }
 
-const PIPELINE_PLATFORMS: PipelineOnlyPlatform[] = [
-  { id: 'YOUTUBE', label: 'YouTube', short: 'YT', note: 'Pipeline video script — yayın API yakında' },
-  { id: 'INSTAGRAM', label: 'Instagram', short: 'IG', note: 'Pipeline caption — yayın API yakında' },
-  { id: 'TIKTOK', label: 'TikTok', short: 'TT', note: 'Pipeline kısa video script — yayın API yakında' },
+const PIPELINE_PLATFORMS: PipelinePlatformDef[] = [
+  { id: 'YOUTUBE', note: 'Pipeline video script üretir. Yayın için Google/YouTube OAuth entegrasyonu Faz 2.' },
+  { id: 'INSTAGRAM', note: 'Pipeline caption üretir. Yayın için Meta Graph API entegrasyonu Faz 2.' },
+  { id: 'TIKTOK', note: 'Pipeline kısa video script üretir. Yayın için TikTok API entegrasyonu Faz 2.' },
+  { id: 'FACEBOOK', note: 'Pipeline caption üretir. Yayın için Meta Graph API entegrasyonu Faz 2.' },
 ]
 
 function StatCell({ label, value }: { label: string; value: string | number | null | undefined }) {
@@ -81,29 +85,112 @@ function EnvRow({ label, ok }: { label: string; ok: boolean }) {
   )
 }
 
+function formatWhen(iso: string): string {
+  try {
+    return new Date(iso).toLocaleString('tr-TR')
+  } catch {
+    return iso
+  }
+}
+
+function ReadyDraftsList({
+  drafts,
+  busyId,
+  onPublish,
+}: {
+  drafts: ReadyDraft[]
+  busyId: string | null
+  onPublish: (id: string) => void
+}) {
+  if (!drafts.length) return null
+  return (
+    <div className="sm-mini-list">
+      <strong className="sm-mini-heading">Hazır taslaklar ({drafts.length})</strong>
+      <ul className="sm-mini-items">
+        {drafts.slice(0, 4).map((d) => (
+          <li key={d.id} className="sm-mini-item">
+            <span className="sm-mini-preview">{d.preview || '(içerik yok)'}</span>
+            <div className="row" style={{ marginTop: '0.3rem' }}>
+              {d.isDryRun ? <span className="badge warn">dry-run</span> : null}
+              <button
+                type="button"
+                className="ok sm-mini-btn"
+                disabled={busyId === d.id}
+                onClick={() => onPublish(d.id)}
+              >
+                Yayınla
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+function RecentPublishedList({ items }: { items: RecentPublished[] }) {
+  if (!items.length) return null
+  return (
+    <div className="sm-mini-list">
+      <strong className="sm-mini-heading">Son yayınlar</strong>
+      <ul className="sm-mini-items">
+        {items.map((p) => (
+          <li key={p.id} className="sm-mini-item">
+            <span className="sm-mini-preview">{p.preview || '(içerik yok)'}</span>
+            <div className="row muted" style={{ marginTop: '0.25rem', fontSize: '0.76rem' }}>
+              <time>{formatWhen(p.publishedAt)}</time>
+              {p.url ? (
+                <a href={p.url} target="_blank" rel="noopener noreferrer">
+                  Aç ↗
+                </a>
+              ) : (
+                <span>mock — gerçek linki yok</span>
+              )}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 export function SocialPlatformDashboard({
   accounts,
   oauth,
   envCheck,
   busyId,
+  readyDraftsByPlatform,
+  recentPublishedByPlatform,
   onOAuthConnect,
   onDryConnect,
   onDisconnect,
   onSyncStats,
   onRepair,
+  onPublishDraft,
 }: {
   accounts: PlatformCardAccount[]
   oauth: { twitter: OAuthSlot; linkedin: OAuthSlot } | null
   envCheck: EnvCheck | null
   busyId: string | null
+  readyDraftsByPlatform: Record<string, ReadyDraft[]>
+  recentPublishedByPlatform: Record<string, RecentPublished[]>
   onOAuthConnect: (p: 'TWITTER' | 'LINKEDIN') => void
-  onDryConnect: (p: 'TWITTER' | 'LINKEDIN') => void
+  onDryConnect: (p: string) => void
   onDisconnect: (id: string) => void
   onSyncStats: () => void
   onRepair: () => void
+  onPublishDraft: (id: string) => void
 }) {
   const twitterAccount = accounts.find((a) => a.platform === 'TWITTER' && a.isActive)
   const linkedinAccount = accounts.find((a) => a.platform === 'LINKEDIN' && a.isActive)
+
+  const linkedinWantsOrg = Boolean(oauth?.linkedin.orgPostEnabled && oauth?.linkedin.organizationId)
+  const linkedinIsOnOrg =
+    linkedinAccount?.organizationId === oauth?.linkedin.organizationId ||
+    linkedinAccount?.linkedinAuthorUrn?.startsWith('urn:li:organization:')
+  const linkedinNeedsReconnect = Boolean(
+    linkedinAccount && !linkedinAccount.dryRun && linkedinWantsOrg && !linkedinIsOnOrg,
+  )
 
   function renderPublishCard(
     platform: 'TWITTER' | 'LINKEDIN',
@@ -113,6 +200,8 @@ export function SocialPlatformDashboard({
   ) {
     const stats = account?.stats
     const username = account?.username || account?.accountName || '—'
+    const drafts = readyDraftsByPlatform[platform] || []
+    const published = recentPublishedByPlatform[platform] || []
     return (
       <article className="sm-platform-card panel" key={platform}>
         <header className="sm-platform-head">
@@ -127,12 +216,7 @@ export function SocialPlatformDashboard({
             {account?.isActive ? <span className="badge ok">aktif</span> : <span className="badge danger">yok</span>}
           </div>
           {stats?.profileUrl ? (
-            <a
-              href={stats.profileUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="sm-profile-link"
-            >
+            <a href={stats.profileUrl} target="_blank" rel="noopener noreferrer" className="sm-profile-link">
               Profil ↗
             </a>
           ) : null}
@@ -168,37 +252,25 @@ export function SocialPlatformDashboard({
         </div>
 
         {stats?.fetchedAt ? (
-          <p className="muted sm-sync-time">
-            Son senkron: {new Date(stats.fetchedAt).toLocaleString('tr-TR')}
-          </p>
+          <p className="muted sm-sync-time">Son senkron: {formatWhen(stats.fetchedAt)}</p>
         ) : null}
         {stats?.error ? <p className="muted sm-sync-error">{stats.error}</p> : null}
 
         <div className="sm-platform-actions row">
           {oauthSlot?.configured ? (
-            <button
-              type="button"
-              className="ok"
-              disabled={busyId === platform}
-              onClick={() => onOAuthConnect(platform)}
-            >
+            <button type="button" className="ok" disabled={busyId === platform} onClick={() => onOAuthConnect(platform)}>
               OAuth bağla
             </button>
           ) : (
             <span className="badge warn">env eksik</span>
           )}
           {!envCheck?.ready ? (
-            <button type="button" className="secondary" onClick={() => onDryConnect(platform)}>
+            <button type="button" className="secondary" disabled={busyId === `dry-${platform}`} onClick={() => onDryConnect(platform)}>
               Dry-run
             </button>
           ) : null}
           {account?.isActive ? (
-            <button
-              type="button"
-              className="secondary"
-              disabled={busyId === account.id}
-              onClick={() => onDisconnect(account.id)}
-            >
+            <button type="button" className="secondary" disabled={busyId === account.id} onClick={() => onDisconnect(account.id)}>
               Kes
             </button>
           ) : null}
@@ -208,11 +280,20 @@ export function SocialPlatformDashboard({
           <p className="muted" style={{ margin: '0.5rem 0 0', fontSize: '0.78rem' }}>
             {oauth.linkedin.organizationId ? (
               oauth.linkedin.orgPostEnabled ? (
-                `Şirket sayfasından paylaşır — Org ID: ${oauth.linkedin.organizationId}`
+                linkedinNeedsReconnect ? (
+                  <>
+                    <strong style={{ color: 'var(--warn)' }}>Yeniden bağlan gerekiyor:</strong> LINKEDIN_ORG_POST
+                    sonradan açıldı — bağlı hesap hâlâ kişisel izinlerle çalışıyor. <strong>Kes</strong> sonra{' '}
+                    <strong>OAuth bağla</strong> ile şirket sayfası iznini onaylayın.
+                  </>
+                ) : (
+                  `Şirket sayfasından paylaşır — Org ID: ${oauth.linkedin.organizationId}`
+                )
               ) : (
                 <>
-                  <strong style={{ color: 'var(--warn)' }}>Dikkat:</strong> Org ID tanımlı ({oauth.linkedin.organizationId}) ama{' '}
-                  <code>LINKEDIN_ORG_POST=true</code> değil → postlar <strong>kişisel profilden</strong> gider.
+                  <strong style={{ color: 'var(--warn)' }}>Dikkat:</strong> Org ID tanımlı (
+                  {oauth.linkedin.organizationId}) ama <code>LINKEDIN_ORG_POST=true</code> değil → postlar{' '}
+                  <strong>kişisel profilden</strong> gider.
                 </>
               )
             ) : (
@@ -220,6 +301,9 @@ export function SocialPlatformDashboard({
             )}
           </p>
         ) : null}
+
+        <ReadyDraftsList drafts={drafts} busyId={busyId} onPublish={onPublishDraft} />
+        <RecentPublishedList items={published} />
       </article>
     )
   }
@@ -262,18 +346,46 @@ export function SocialPlatformDashboard({
       <div className="sm-platform-grid">
         {renderPublishCard('TWITTER', 'X', twitterAccount, oauth?.twitter)}
         {renderPublishCard('LINKEDIN', 'LinkedIn', linkedinAccount, oauth?.linkedin)}
-        {PIPELINE_PLATFORMS.map((p) => (
-          <article className="sm-platform-card panel sm-pipeline-only" key={p.id}>
-            <PlatformIconLink platform={p.id} title={`${p.label} (yeni sekme)`} />
-            <h3 className="sm-username">{p.short}</h3>
-            <p className="muted" style={{ margin: '0.35rem 0 0' }}>{p.note}</p>
-            <div className="sm-stats-grid">
-              <StatCell label="Takipçi" value={null} />
-              <StatCell label="Gösterim" value={null} />
-              <StatCell label="Etkileşim" value={null} />
-            </div>
-          </article>
-        ))}
+        {PIPELINE_PLATFORMS.map((p) => {
+          const account = accounts.find((a) => a.platform === p.id && a.isActive)
+          const drafts = readyDraftsByPlatform[p.id] || []
+          const published = recentPublishedByPlatform[p.id] || []
+          return (
+            <article className="sm-platform-card panel sm-pipeline-only" key={p.id}>
+              <header className="sm-platform-head">
+                <div className="row">
+                  <PlatformIconLink platform={p.id} title={`${platformLabel(p.id)} (yeni sekme)`} />
+                  {account?.dryRun ? <span className="badge warn">dry-run</span> : null}
+                  {account?.isActive ? <span className="badge ok">aktif</span> : <span className="badge">bağlı değil</span>}
+                </div>
+              </header>
+              <h3 className="sm-username">{account?.accountName || platformLabel(p.id)}</h3>
+              <p className="muted" style={{ margin: '0.35rem 0 0.65rem' }}>{p.note}</p>
+              <div className="sm-stats-grid">
+                <StatCell label="Takipçi" value={null} />
+                <StatCell label="Gösterim" value={null} />
+                <StatCell label="Etkileşim" value={null} />
+              </div>
+              <div className="sm-platform-actions row">
+                <button
+                  type="button"
+                  className="secondary"
+                  disabled={busyId === `dry-${p.id}`}
+                  onClick={() => onDryConnect(p.id)}
+                >
+                  {account?.isActive ? 'Dry-run yenile' : 'Dry-run bağla (altyapı testi)'}
+                </button>
+                {account?.isActive ? (
+                  <button type="button" className="secondary" disabled={busyId === account.id} onClick={() => onDisconnect(account.id)}>
+                    Kes
+                  </button>
+                ) : null}
+              </div>
+              <ReadyDraftsList drafts={drafts} busyId={busyId} onPublish={onPublishDraft} />
+              <RecentPublishedList items={published} />
+            </article>
+          )
+        })}
       </div>
     </div>
   )

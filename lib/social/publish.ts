@@ -120,7 +120,10 @@ export async function publishPost(postId: string, options: PublishOptions = {}):
         throw new Error(imageError)
       }
     } else {
-      throw new Error(`Platform not implemented in Faz 1: ${post.platform}`)
+      throw new Error(
+        `${post.platform} için gerçek yayın API'si Faz 2'de eklenecek — altyapı (hesap, taslak, otomasyon) hazır, ` +
+          'sadece OAuth entegrasyonu bekleniyor. Şimdilik dry-run ile test edilebilir.',
+      )
     }
 
     const metrics: PostPublishMetrics = {

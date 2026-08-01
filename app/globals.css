@@ -762,6 +762,21 @@ button:disabled {
   color: #7eb8ff;
 }
 
+.badge.plat-FACEBOOK {
+  background: rgba(24, 119, 242, 0.18);
+  color: #7fb2ff;
+}
+
+.badge.plat-INSTAGRAM {
+  background: linear-gradient(135deg, rgba(214, 69, 148, 0.2), rgba(240, 148, 51, 0.18));
+  color: #f3a6c9;
+}
+
+.badge.plat-TIKTOK {
+  background: rgba(37, 244, 238, 0.12);
+  color: #7cf1ec;
+}
+
 .sm-dashboard {
   margin-bottom: 1rem;
 }
@@ -867,6 +882,49 @@ button:disabled {
 
 .sm-platform-actions {
   margin-top: 0.65rem;
+}
+
+.sm-mini-list {
+  margin-top: 0.85rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--border);
+}
+
+.sm-mini-heading {
+  display: block;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+  margin-bottom: 0.4rem;
+}
+
+.sm-mini-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.sm-mini-item {
+  padding: 0.4rem 0.5rem;
+  border-radius: 8px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+}
+
+.sm-mini-preview {
+  font-size: 0.78rem;
+  color: var(--text);
+  display: block;
+  line-height: 1.4;
+}
+
+.sm-mini-btn {
+  padding: 0.3rem 0.7rem;
+  font-size: 0.78rem;
 }
 
 .sm-icon-link {
