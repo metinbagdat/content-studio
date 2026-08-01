@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { EnvStatusCheck } from '@/components/EnvStatusCheck'
 
 export default function SocialSetupDocPage() {
   return (
@@ -7,7 +8,11 @@ export default function SocialSetupDocPage() {
       <p className="lead">egitim.today — gerçek OAuth kurulumu (X + LinkedIn).</p>
 
       <section className="panel">
-        <h2>1. .env doldur</h2>
+        <h2>1. .env doldur (örnek şablon)</h2>
+        <p className="muted" style={{ marginTop: 0, fontSize: '0.85rem' }}>
+          Aşağıdaki blok <strong>sabit metin</strong> — sizin gerçek <code>.env</code> dosyanızı okumuyor.
+          Gerçek durumu görmek için bu sayfanın altındaki &quot;Gerçek .env durumu&quot; bölümüne bakın.
+        </p>
         <pre className="pre">
           {`X_CLIENT_ID="..."
 X_CLIENT_SECRET="..."
@@ -20,6 +25,8 @@ LINKEDIN_ORGANIZATION_ID=""   # şirket sayfası Page ID (opsiyonel)`}
         </pre>
         <p className="muted">Kaynak: <code>.env.example</code> · Sonra <code>npm run dev</code> restart</p>
       </section>
+
+      <EnvStatusCheck />
 
       <section className="panel" style={{ marginTop: '1rem' }}>
         <h2>2. Developer portalları</h2>
