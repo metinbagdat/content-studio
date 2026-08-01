@@ -133,9 +133,20 @@ export default function SocialPage() {
 
   const load = useCallback(async () => {
     if (!adminKey) return
-    const res = await fetch('/api/social', { headers: headers(adminKey), cache: 'no-store' })
+    let res: Response
+    try {
+      res = await fetch('/api/social', { headers: headers(adminKey), cache: 'no-store' })
+    } catch (err) {
+      setMsgType('error')
+      setMsg(
+        `Sunucuya ulaşılamadı — dev sunucu yeniden başlıyor olabilir, birkaç saniye sonra "Yenile" deneyin. (${err instanceof Error ? err.message : String(err)})`,
+      )
+      return
+    }
     if (!res.ok) {
-      setMsg('Yetkisiz')
+      const errData = await parseApiJson(res)
+      setMsgType('error')
+      setMsg(res.status === 401 ? 'Yetkisiz — admin key kontrol et' : String(errData.error || `API hatası (${res.status})`))
       return
     }
     const data = await res.json()
@@ -198,14 +209,18 @@ export default function SocialPage() {
   useEffect(() => {
     if (!adminKey || statsSynced) return
     ;(async () => {
-      const res = await fetch('/api/social', {
-        method: 'POST',
-        headers: headers(adminKey, true),
-        body: JSON.stringify({ action: 'sync-stats' }),
-      })
-      if (res.ok) {
-        setStatsSynced(true)
-        await load()
+      try {
+        const res = await fetch('/api/social', {
+          method: 'POST',
+          headers: headers(adminKey, true),
+          body: JSON.stringify({ action: 'sync-stats' }),
+        })
+        if (res.ok) {
+          setStatsSynced(true)
+          await load()
+        }
+      } catch (err) {
+        console.warn('[auto sync-stats]', err)
       }
     })()
   }, [adminKey, statsSynced, load])
@@ -213,14 +228,18 @@ export default function SocialPage() {
   useEffect(() => {
     if (!adminKey || imagesSynced) return
     ;(async () => {
-      const res = await fetch('/api/social', {
-        method: 'POST',
-        headers: headers(adminKey, true),
-        body: JSON.stringify({ action: 'sync-images' }),
-      })
-      if (res.ok) {
-        setImagesSynced(true)
-        await load()
+      try {
+        const res = await fetch('/api/social', {
+          method: 'POST',
+          headers: headers(adminKey, true),
+          body: JSON.stringify({ action: 'sync-images' }),
+        })
+        if (res.ok) {
+          setImagesSynced(true)
+          await load()
+        }
+      } catch (err) {
+        console.warn('[auto sync-images]', err)
       }
     })()
   }, [adminKey, imagesSynced, load])
@@ -310,21 +329,27 @@ export default function SocialPage() {
 
   async function syncImages() {
     setBusyId('sync-images')
-    const res = await fetch('/api/social', {
-      method: 'POST',
-      headers: headers(adminKey, true),
-      body: JSON.stringify({ action: 'sync-images' }),
-    })
-    const data = await parseApiJson(res)
-    setBusyId(null)
-    if (!res.ok) {
+    try {
+      const res = await fetch('/api/social', {
+        method: 'POST',
+        headers: headers(adminKey, true),
+        body: JSON.stringify({ action: 'sync-images' }),
+      })
+      const data = await parseApiJson(res)
+      if (!res.ok) {
+        setMsgType('error')
+        setMsg(String(data.error || 'Görsel senkron başarısız'))
+        return
+      }
+      setMsgType('ok')
+      setMsg(`${String(data.postsUpdated ?? 0)} posta görsel bağlandı`)
+      await load()
+    } catch (err) {
       setMsgType('error')
-      setMsg(String(data.error || 'Görsel senkron başarısız'))
-      return
+      setMsg(`Bağlantı hatası: ${err instanceof Error ? err.message : String(err)}`)
+    } finally {
+      setBusyId(null)
     }
-    setMsgType('ok')
-    setMsg(`${String(data.postsUpdated ?? 0)} posta görsel bağlandı`)
-    await load()
   }
 
   async function syncDrafts() {
@@ -382,63 +407,82 @@ export default function SocialPage() {
   async function disconnect(accountId: string) {
     if (!confirm('Hesap bağlantısı kapatılsın mı?')) return
     setBusyId(accountId)
-    const res = await fetch('/api/social', {
-      method: 'POST',
-      headers: headers(adminKey, true),
-      body: JSON.stringify({ action: 'disconnect', accountId }),
-    })
-    setBusyId(null)
-    if (!res.ok) {
+    try {
+      const res = await fetch('/api/social', {
+        method: 'POST',
+        headers: headers(adminKey, true),
+        body: JSON.stringify({ action: 'disconnect', accountId }),
+      })
+      if (!res.ok) {
+        setMsgType('error')
+        setMsg('Bağlantı kesilemedi')
+        return
+      }
+      setMsgType('info')
+      setMsg('Hesap devre dışı')
+      await load()
+    } catch (err) {
       setMsgType('error')
-      setMsg('Bağlantı kesilemedi')
-      return
+      setMsg(`Bağlantı hatası: ${err instanceof Error ? err.message : String(err)}`)
+    } finally {
+      setBusyId(null)
     }
-    setMsgType('info')
-    setMsg('Hesap devre dışı')
-    await load()
   }
 
   async function publishNow(postId: string, replace = false) {
     setBusyId(postId)
-    const res = await fetch('/api/social', {
-      method: 'POST',
-      headers: headers(adminKey, true),
-      body: JSON.stringify({ action: 'publish-now', postId, replace, force: replace }),
-    })
-    const data = await parseApiJson(res)
-    setBusyId(null)
-    if (res.ok) {
-      if (data.skipped) {
-        setMsgType('info')
-        setMsg(String(data.reason || 'Değişiklik yok — çift paylaşım engellendi'))
-      } else if (data.imageError) {
-        setMsgType('error')
-        setMsg(`Yayınlandı ama görsel hatası: ${String(data.imageError)}`)
-      } else if (data.replaced) {
-        setMsgType('ok')
-        setMsg(`Platformda güncellendi (eski silindi): ${String(data.platformPostId || 'ok')}`)
+    try {
+      const res = await fetch('/api/social', {
+        method: 'POST',
+        headers: headers(adminKey, true),
+        body: JSON.stringify({ action: 'publish-now', postId, replace, force: replace }),
+      })
+      const data = await parseApiJson(res)
+      if (res.ok) {
+        if (data.skipped) {
+          setMsgType('info')
+          setMsg(String(data.reason || 'Değişiklik yok — çift paylaşım engellendi'))
+        } else if (data.imageError) {
+          setMsgType('error')
+          setMsg(`Yayınlandı ama görsel hatası: ${String(data.imageError)}`)
+        } else if (data.replaced) {
+          setMsgType('ok')
+          setMsg(`Platformda güncellendi (eski silindi): ${String(data.platformPostId || 'ok')}`)
+        } else {
+          setMsgType('ok')
+          setMsg(`✓ Yayınlandı — "Yayınlanan postlar" bölümünde görünecek: ${String(data.platformPostId || 'ok')}`)
+        }
       } else {
-        setMsgType('ok')
-        setMsg(`✓ Yayınlandı — "Yayınlanan postlar" bölümünde görünecek: ${String(data.platformPostId || 'ok')}`)
+        setMsgType('error')
+        setMsg(`✗ Yayın başarısız: ${String(data.error || `HTTP ${res.status}`)}`)
       }
-    } else {
+      await load()
+    } catch (err) {
       setMsgType('error')
-      setMsg(`✗ Yayın başarısız: ${String(data.error || `HTTP ${res.status}`)}`)
+      setMsg(`✗ Bağlantı hatası: ${err instanceof Error ? err.message : String(err)}`)
+    } finally {
+      setBusyId(null)
     }
-    await load()
   }
 
   async function schedule(postId: string) {
     const when = new Date(Date.now() + 5 * 60_000).toISOString()
     setBusyId(postId)
-    const res = await fetch('/api/social', {
-      method: 'POST',
-      headers: headers(adminKey, true),
-      body: JSON.stringify({ action: 'schedule', postId, scheduledAt: when }),
-    })
-    setBusyId(null)
-    setMsg(res.ok ? `Scheduled ${when}` : 'schedule fail')
-    await load()
+    try {
+      const res = await fetch('/api/social', {
+        method: 'POST',
+        headers: headers(adminKey, true),
+        body: JSON.stringify({ action: 'schedule', postId, scheduledAt: when }),
+      })
+      setMsgType(res.ok ? 'ok' : 'error')
+      setMsg(res.ok ? `Scheduled ${when}` : 'schedule fail')
+      await load()
+    } catch (err) {
+      setMsgType('error')
+      setMsg(`Bağlantı hatası: ${err instanceof Error ? err.message : String(err)}`)
+    } finally {
+      setBusyId(null)
+    }
   }
 
   function startEdit(post: { id: string; postContent: string; mediaUrls?: string[] }) {
@@ -456,51 +500,75 @@ export default function SocialPage() {
   async function saveEdit(postId: string) {
     setBusyId(postId)
     const mediaUrls = editImageUrl.trim() ? [editImageUrl.trim()] : []
-    const res = await fetch(`/api/social/posts/${postId}`, {
-      method: 'PATCH',
-      headers: headers(adminKey, true),
-      body: JSON.stringify({ postContent: editContent, mediaUrls }),
-    })
-    setBusyId(null)
-    const data = await res.json().catch(() => ({}))
-    if (!res.ok) {
-      setMsg(data.error || 'Kaydetme başarısız')
-      return
+    try {
+      const res = await fetch(`/api/social/posts/${postId}`, {
+        method: 'PATCH',
+        headers: headers(adminKey, true),
+        body: JSON.stringify({ postContent: editContent, mediaUrls }),
+      })
+      const data = await parseApiJson(res)
+      if (!res.ok) {
+        setMsgType('error')
+        setMsg(String(data.error || 'Kaydetme başarısız'))
+        return
+      }
+      setMsgType('ok')
+      setMsg('Post güncellendi (caption ile senkron)')
+      cancelEdit()
+      await load()
+    } catch (err) {
+      setMsgType('error')
+      setMsg(`Bağlantı hatası: ${err instanceof Error ? err.message : String(err)}`)
+    } finally {
+      setBusyId(null)
     }
-    setMsg('Post güncellendi (caption ile senkron)')
-    cancelEdit()
-    await load()
   }
 
   async function cancelSchedule(postId: string) {
     setBusyId(postId)
-    const res = await fetch(`/api/social/posts/${postId}`, {
-      method: 'PATCH',
-      headers: headers(adminKey, true),
-      body: JSON.stringify({ cancelSchedule: true }),
-    })
-    setBusyId(null)
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}))
-      setMsg(data.error || 'İptal başarısız')
-      return
+    try {
+      const res = await fetch(`/api/social/posts/${postId}`, {
+        method: 'PATCH',
+        headers: headers(adminKey, true),
+        body: JSON.stringify({ cancelSchedule: true }),
+      })
+      const data = await parseApiJson(res)
+      if (!res.ok) {
+        setMsgType('error')
+        setMsg(String(data.error || 'İptal başarısız'))
+        return
+      }
+      setMsgType('info')
+      setMsg('Zamanlama iptal — taslak')
+      await load()
+    } catch (err) {
+      setMsgType('error')
+      setMsg(`Bağlantı hatası: ${err instanceof Error ? err.message : String(err)}`)
+    } finally {
+      setBusyId(null)
     }
-    setMsg('Zamanlama iptal — taslak')
-    await load()
   }
 
   async function removePost(postId: string) {
     if (!confirm('Post taslağı silinsin mi?')) return
     setBusyId(postId)
-    const res = await fetch(`/api/social/posts/${postId}`, { method: 'DELETE', headers: headers(adminKey) })
-    setBusyId(null)
-    const data = await res.json().catch(() => ({}))
-    if (!res.ok) {
-      setMsg(data.error || 'Silme başarısız')
-      return
+    try {
+      const res = await fetch(`/api/social/posts/${postId}`, { method: 'DELETE', headers: headers(adminKey) })
+      const data = await parseApiJson(res)
+      if (!res.ok) {
+        setMsgType('error')
+        setMsg(String(data.error || 'Silme başarısız'))
+        return
+      }
+      setMsgType('info')
+      setMsg('Post silindi')
+      await load()
+    } catch (err) {
+      setMsgType('error')
+      setMsg(`Bağlantı hatası: ${err instanceof Error ? err.message : String(err)}`)
+    } finally {
+      setBusyId(null)
     }
-    setMsg('Post silindi')
-    await load()
   }
 
   const canMutate = (status: string) => ['DRAFT', 'SCHEDULED', 'FAILED'].includes(status)
@@ -561,42 +629,59 @@ export default function SocialPage() {
   async function updateOnPlatform(postId: string) {
     if (!confirm('Eski paylaşım platformdan silinir, güncel içerik+görsel ile tek post kalır. Devam?')) return
     setBusyId(postId)
-    const res = await fetch('/api/social', {
-      method: 'POST',
-      headers: headers(adminKey, true),
-      body: JSON.stringify({ action: 'update-on-platform', postId }),
-    })
-    const data = await parseApiJson(res)
-    setBusyId(null)
-    if (!res.ok) {
-      setMsg(String(data.error || 'Güncelleme başarısız'))
-      return
+    try {
+      const res = await fetch('/api/social', {
+        method: 'POST',
+        headers: headers(adminKey, true),
+        body: JSON.stringify({ action: 'update-on-platform', postId }),
+      })
+      const data = await parseApiJson(res)
+      if (!res.ok) {
+        setMsgType('error')
+        setMsg(String(data.error || 'Güncelleme başarısız'))
+        return
+      }
+      if (data.imageError) {
+        setMsgType('error')
+        setMsg(`Güncellendi ama görsel hatası: ${String(data.imageError)}`)
+      } else {
+        setMsgType('ok')
+        setMsg(`Platformda güncellendi: ${String(data.platformPostId || 'ok')}`)
+      }
+      await load()
+    } catch (err) {
+      setMsgType('error')
+      setMsg(`Bağlantı hatası: ${err instanceof Error ? err.message : String(err)}`)
+    } finally {
+      setBusyId(null)
     }
-    if (data.imageError) {
-      setMsg(`Güncellendi ama görsel hatası: ${String(data.imageError)}`)
-    } else {
-      setMsg(`Platformda güncellendi: ${String(data.platformPostId || 'ok')}`)
-    }
-    await load()
   }
 
   async function publishCaptionAll(derivedContentId: string) {
     setBusyId(derivedContentId)
-    const res = await fetch('/api/social', {
-      method: 'POST',
-      headers: headers(adminKey, true),
-      body: JSON.stringify({ action: 'publish-caption', derivedContentId }),
-    })
-    const data = await parseApiJson(res)
-    setBusyId(null)
-    if (!res.ok) {
-      setMsg(String(data.error || 'Yayın başarısız'))
-      return
+    try {
+      const res = await fetch('/api/social', {
+        method: 'POST',
+        headers: headers(adminKey, true),
+        body: JSON.stringify({ action: 'publish-caption', derivedContentId }),
+      })
+      const data = await parseApiJson(res)
+      if (!res.ok) {
+        setMsgType('error')
+        setMsg(String(data.error || 'Yayın başarısız'))
+        return
+      }
+      setMsgType('ok')
+      setMsg(
+        `Görsel + ${String(data.published ?? 0)} yayın, ${String(data.skipped ?? 0)} atlandı (değişmedi)`,
+      )
+      await load()
+    } catch (err) {
+      setMsgType('error')
+      setMsg(`Bağlantı hatası: ${err instanceof Error ? err.message : String(err)}`)
+    } finally {
+      setBusyId(null)
     }
-    setMsg(
-      `Görsel + ${String(data.published ?? 0)} yayın, ${String(data.skipped ?? 0)} atlandı (değişmedi)`,
-    )
-    await load()
   }
 
   const draftCaptionIds = [
