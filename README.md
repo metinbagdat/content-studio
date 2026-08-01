@@ -4,7 +4,7 @@ Private ops monorepo for **egitim.today** social + SEO content: source article �
 
 **Not** LearnCon (`metinbagdat/learncon`). Do not deploy this on the LearnCon Vercel Hobby project.
 
-Tracking: [docs/ROADMAP.md](docs/ROADMAP.md) · Monorepo plan: [docs/MONOREPO.md](docs/MONOREPO.md) · Issues: [.github/ISSUE_INDEX.md](.github/ISSUE_INDEX.md)
+Tracking: [docs/ROADMAP.md](docs/ROADMAP.md) · Monorepo plan: [docs/MONOREPO.md](docs/MONOREPO.md) · Issues: [.github/ISSUE_INDEX.md](.github/ISSUE_INDEX.md) · DB changes: [docs/DATABASE.md](docs/DATABASE.md)
 
 ## Layout
 

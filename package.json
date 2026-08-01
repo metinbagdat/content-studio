@@ -18,6 +18,7 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
+    "db:exec": "powershell -ExecutionPolicy Bypass -File scripts/db-execute.ps1",
     "db:studio": "prisma studio",
     "worker": "tsx --env-file=.env workers/index.ts",
     "discovery:scan": "tsx --env-file=.env scripts/run-content-discovery.ts",
