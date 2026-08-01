@@ -127,6 +127,7 @@ export default function SocialPage() {
   const [imagesSynced, setImagesSynced] = useState(false)
   const [hideDryRun, setHideDryRun] = useState(true)
   const [postView, setPostView] = useState<'published' | 'drafts'>('published')
+  const [msgType, setMsgType] = useState<'info' | 'ok' | 'error'>('info')
   const [diagnostics, setDiagnostics] = useState<DraftDiagnostics | null>(null)
   const [bulkPublishBusy, setBulkPublishBusy] = useState(false)
 
@@ -148,6 +149,7 @@ export default function SocialPage() {
 
   async function bulkPublish(includeDryRun: boolean) {
     setBulkPublishBusy(true)
+    setMsgType('info')
     setMsg('Toplu yayınlama çalışıyor…')
     const res = await fetch('/api/social', {
       method: 'POST',
@@ -157,10 +159,12 @@ export default function SocialPage() {
     const data = await parseApiJson(res)
     setBulkPublishBusy(false)
     if (!res.ok) {
+      setMsgType('error')
       setMsg(String(data.error || 'Toplu yayın başarısız'))
       return
     }
     const r = data.result as { attempted: number; published: number; skipped: number; failed: number; errors: string[] } | undefined
+    setMsgType(r?.failed ? 'error' : 'ok')
     setMsg(
       `Toplu yayın: ${r?.published ?? 0} yayınlandı · ${r?.skipped ?? 0} atlandı · ${r?.failed ?? 0} başarısız` +
         (r?.errors?.length ? ` — ${r.errors[0]}` : ''),
@@ -231,18 +235,21 @@ export default function SocialPage() {
       })
       const data = await parseApiJson(res)
       if (!res.ok) {
+        setMsgType('error')
         setMsg(String(data.error || 'İstatistik senkron başarısız'))
         return
       }
       const accSynced = (data.accounts as { synced?: number; errors?: string[] })?.synced ?? 0
       const postSynced = (data.posts as { synced?: number; errors?: string[] })?.synced ?? 0
       const accErrors = (data.accounts as { errors?: string[] })?.errors || []
+      setMsgType(accErrors.length ? 'error' : 'ok')
       setMsg(
         `Hesap: ${accSynced} · post: ${postSynced}` +
           (accErrors.length ? ` · ${accErrors[0]}` : ''),
       )
       await load()
     } catch (err) {
+      setMsgType('error')
       setMsg(`İstatistik hatası: ${err instanceof Error ? err.message : String(err)}`)
     } finally {
       setBusyId(null)
@@ -259,10 +266,12 @@ export default function SocialPage() {
       })
       const data = await parseApiJson(res)
       if (!res.ok) {
+        setMsgType('error')
         setMsg(String(data.error || 'Onarım başarısız'))
         return
       }
       const repaired = (data.accountHealth as { repaired?: string[] })?.repaired?.join(', ') || ''
+      setMsgType('ok')
       setMsg(
         repaired
           ? `Eksik hesaplar eklendi: ${repaired} · ${(data.sync as { draftsCreated?: number })?.draftsCreated ?? 0} taslak`
@@ -270,6 +279,7 @@ export default function SocialPage() {
       )
       await load()
     } catch (err) {
+      setMsgType('error')
       setMsg(`Onarım hatası: ${err instanceof Error ? err.message : String(err)}`)
     } finally {
       setBusyId(null)
@@ -286,12 +296,14 @@ export default function SocialPage() {
       })
       const data = await parseApiJson(res)
       if (!res.ok || !data.url) {
+        setMsgType('error')
         setMsg(String(data.error || 'OAuth URL alınamadı — .env client ID/secret kontrol et'))
         return
       }
       window.location.href = String(data.url)
     } catch (err) {
       setBusyId(null)
+      setMsgType('error')
       setMsg(`OAuth başlatılamadı: ${err instanceof Error ? err.message : String(err)}`)
     }
   }
@@ -306,9 +318,11 @@ export default function SocialPage() {
     const data = await parseApiJson(res)
     setBusyId(null)
     if (!res.ok) {
+      setMsgType('error')
       setMsg(String(data.error || 'Görsel senkron başarısız'))
       return
     }
+    setMsgType('ok')
     setMsg(`${String(data.postsUpdated ?? 0)} posta görsel bağlandı`)
     await load()
   }
@@ -323,13 +337,16 @@ export default function SocialPage() {
       })
       const data = await parseApiJson(res)
       if (!res.ok) {
+        setMsgType('error')
         setMsg(String(data.error || 'Senkron başarısız'))
         return
       }
+      setMsgType('ok')
       setMsg(`${String(data.draftsCreated ?? 0)} taslak oluşturuldu (${String(data.captions ?? 0)} onaylı caption)`)
       if (data.diagnostics) setDiagnostics(data.diagnostics as DraftDiagnostics)
       await load()
     } catch (err) {
+      setMsgType('error')
       setMsg(`Senkron hatası: ${err instanceof Error ? err.message : String(err)}`)
     } finally {
       setBusyId(null)
@@ -346,13 +363,16 @@ export default function SocialPage() {
       })
       const data = await parseApiJson(res)
       if (!res.ok) {
+        setMsgType('error')
         setMsg(String(data.error || 'fail'))
         return
       }
+      setMsgType('ok')
       setMsg(`${platform} dry-run bağlı · ${(data.sync as { draftsCreated?: number })?.draftsCreated ?? 0} taslak`)
       if (data.diagnostics) setDiagnostics(data.diagnostics as DraftDiagnostics)
       await load()
     } catch (err) {
+      setMsgType('error')
       setMsg(`Dry-run hatası: ${err instanceof Error ? err.message : String(err)}`)
     } finally {
       setBusyId(null)
@@ -369,9 +389,11 @@ export default function SocialPage() {
     })
     setBusyId(null)
     if (!res.ok) {
+      setMsgType('error')
       setMsg('Bağlantı kesilemedi')
       return
     }
+    setMsgType('info')
     setMsg('Hesap devre dışı')
     await load()
   }
@@ -387,16 +409,21 @@ export default function SocialPage() {
     setBusyId(null)
     if (res.ok) {
       if (data.skipped) {
+        setMsgType('info')
         setMsg(String(data.reason || 'Değişiklik yok — çift paylaşım engellendi'))
       } else if (data.imageError) {
+        setMsgType('error')
         setMsg(`Yayınlandı ama görsel hatası: ${String(data.imageError)}`)
       } else if (data.replaced) {
+        setMsgType('ok')
         setMsg(`Platformda güncellendi (eski silindi): ${String(data.platformPostId || 'ok')}`)
       } else {
-        setMsg(`Yayınlandı: ${String(data.platformPostId || 'ok')}`)
+        setMsgType('ok')
+        setMsg(`✓ Yayınlandı — "Yayınlanan postlar" bölümünde görünecek: ${String(data.platformPostId || 'ok')}`)
       }
     } else {
-      setMsg(String(data.error || `Yayın başarısız (${res.status})`))
+      setMsgType('error')
+      setMsg(`✗ Yayın başarısız: ${String(data.error || `HTTP ${res.status}`)}`)
     }
     await load()
   }
@@ -614,7 +641,7 @@ export default function SocialPage() {
           Yenile
         </button>
       </div>
-      {msg ? <p className="muted">{msg}</p> : null}
+      {msg ? <p className={`sm-status-bar sm-status-${msgType}`}>{msg}</p> : null}
 
       <SocialPlatformDashboard
         accounts={accounts}

@@ -1,5 +1,6 @@
 import { prisma } from '../prisma'
 import { generatePostImage, readPostImageBuffer } from '../media/generatePostImage'
+import { verifyImageUrl } from './imageUrlCheck'
 
 const FALLBACK = 'https://www.egitim.today/opengraph-image.png'
 
@@ -39,7 +40,11 @@ export async function resolvePostMediaUrls(derivedContentId: string): Promise<st
   const slug = derived.source?.tags?.find((t) => t.startsWith('blog:'))
   if (slug) {
     const path = slug.replace('blog:', '')
-    return [`https://www.egitim.today/blog/${path}/opengraph-image`]
+    const blogOgImage = `https://www.egitim.today/blog/${path}/opengraph-image`
+    if (await verifyImageUrl(blogOgImage)) {
+      return [blogOgImage]
+    }
+    console.warn('[resolvePostMediaUrls] blog og-image 404, falling back', blogOgImage)
   }
 
   if (derived.contentType === 'SOCIAL_CAPTION') {

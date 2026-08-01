@@ -1,6 +1,7 @@
 import { prisma } from '../prisma'
 import { generatePostImage } from '../media/generatePostImage'
 import { defaultPostImageUrl } from './brandImage'
+import { verifyImageUrl } from './imageUrlCheck'
 import type { PublishResult } from './publish'
 
 function isCustomUrl(url: string): boolean {
@@ -33,7 +34,11 @@ export async function ensureGeneratedPostImage(derivedContentId: string): Promis
   const slug = derived.source?.tags?.find((t) => t.startsWith('blog:'))
   if (slug && !existingUrl) {
     const path = slug.replace('blog:', '')
-    return [`https://www.egitim.today/blog/${path}/opengraph-image`]
+    const blogOgImage = `https://www.egitim.today/blog/${path}/opengraph-image`
+    if (await verifyImageUrl(blogOgImage)) {
+      return [blogOgImage]
+    }
+    console.warn('[ensureGeneratedPostImage] blog og-image 404, falling back to AI card', blogOgImage)
   }
 
   try {
