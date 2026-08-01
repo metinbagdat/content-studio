@@ -7,6 +7,62 @@ import { publicMediaImageUrl, writeImageFile, readImageFile } from './imageStora
 
 export { getMediaFile, listMedia } from './mediaDb'
 
+/** Brand watermark — LEARNCONNECT.NET / egitim.today lockup, used on every generated post image. */
+function BrandWatermark({ align = 'end' }: { align?: 'start' | 'end' }) {
+  return React.createElement(
+    'div',
+    {
+      style: {
+        position: 'absolute',
+        right: align === 'end' ? 44 : undefined,
+        left: align === 'start' ? 44 : undefined,
+        bottom: 40,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: align === 'end' ? 'flex-end' : 'flex-start',
+      },
+    },
+    React.createElement(
+      'div',
+      {
+        style: {
+          fontSize: 13,
+          fontWeight: 700,
+          letterSpacing: 3,
+          color: '#94a3b8',
+          textTransform: 'uppercase',
+        },
+      },
+      'LEARNCONNECT.NET',
+    ),
+    React.createElement(
+      'div',
+      { style: { display: 'flex', alignItems: 'center', gap: 7, marginTop: 3 } },
+      React.createElement(
+        'div',
+        {
+          style: {
+            fontSize: 27,
+            fontWeight: 800,
+            color: '#0f172a',
+            fontFamily: 'Georgia, "Times New Roman", serif',
+            letterSpacing: -0.5,
+          },
+        },
+        'egitim.today',
+      ),
+      React.createElement('div', {
+        style: {
+          width: 10,
+          height: 10,
+          borderRadius: 999,
+          background: '#22c55e',
+        },
+      }),
+    ),
+  )
+}
+
 function PostCard({ design }: { design: PostImageDesign }) {
   return React.createElement(
     'div',
@@ -26,6 +82,7 @@ function PostCard({ design }: { design: PostImageDesign }) {
       'div',
       {
         style: {
+          position: 'relative',
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
@@ -33,6 +90,7 @@ function PostCard({ design }: { design: PostImageDesign }) {
           background: 'rgba(255,255,255,0.96)',
           borderRadius: 28,
           padding: '56px 64px',
+          paddingBottom: 100,
           boxShadow: '0 16px 48px rgba(0,0,0,0.18)',
         },
       },
@@ -51,20 +109,7 @@ function PostCard({ design }: { design: PostImageDesign }) {
         { style: { fontSize: 28, color: '#475569', marginTop: 28, lineHeight: 1.35, maxHeight: 120 } },
         design.subtitle,
       ),
-      React.createElement(
-        'div',
-        { style: { display: 'flex', gap: 20, alignItems: 'baseline', marginTop: 36 } },
-        React.createElement(
-          'div',
-          { style: { fontSize: 28, fontWeight: 700, color: design.accent } },
-          'egitim.today',
-        ),
-        React.createElement(
-          'div',
-          { style: { fontSize: 22, color: '#64748b' } },
-          'Öğren · Büyü · Hedefe ulaş',
-        ),
-      ),
+      React.createElement(BrandWatermark, { align: 'end' }),
     ),
   )
 }
