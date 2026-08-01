@@ -19,6 +19,11 @@ function hashContent(content: string): string {
 /** Category / index pages from sitemap — not full articles. */
 export function isLikelyHubPage(slug: string, title: string, content: string): boolean {
   const s = slug.toLowerCase()
+  // Real egitim.today articles are flat slugs (/blog/{article-slug}). Any nested path
+  // (e.g. /blog/konu/tyt, /blog/konu/motivasyon — sitemap-confirmed topic index pages)
+  // is a category/listing page, never an individual article. Check this first — it's
+  // authoritative and doesn't depend on fragile title/content-length heuristics.
+  if (s.includes('/')) return true
   if (/(^|-)(rehberleri|rehber|hazirlik|hazırlık)(-|$)/i.test(s) && content.length < 1200) return true
   if (/hazirlik-rehberleri$/i.test(s) || /-rehberleri$/i.test(s)) return true
   if (content.trim().length < 450) return true

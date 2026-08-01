@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { socialPostPublicUrl } from '@/lib/social/postUrl'
 import { SocialPlatformDashboard } from '@/components/admin/SocialPlatformDashboard'
 import { PublishedPostsPanel } from '@/components/admin/PublishedPostsPanel'
@@ -130,6 +130,12 @@ export default function SocialPage() {
   const [msgType, setMsgType] = useState<'info' | 'ok' | 'error'>('info')
   const [diagnostics, setDiagnostics] = useState<DraftDiagnostics | null>(null)
   const [bulkPublishBusy, setBulkPublishBusy] = useState(false)
+  const statusRef = useRef<HTMLParagraphElement>(null)
+
+  // Any action can run from deep inside a platform card — always bring the result into view.
+  useEffect(() => {
+    if (msg) statusRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [msg])
 
   const load = useCallback(async () => {
     if (!adminKey) return
@@ -726,7 +732,7 @@ export default function SocialPage() {
           Yenile
         </button>
       </div>
-      {msg ? <p className={`sm-status-bar sm-status-${msgType}`}>{msg}</p> : null}
+      {msg ? <p ref={statusRef} className={`sm-status-bar sm-status-${msgType}`}>{msg}</p> : null}
 
       <SocialPlatformDashboard
         accounts={accounts}

@@ -928,9 +928,6 @@ button:disabled {
 }
 
 .sm-status-bar {
-  position: sticky;
-  top: 0;
-  z-index: 15;
   margin: 0 0 1rem;
   padding: 0.7rem 1rem;
   border-radius: 10px;
@@ -939,6 +936,12 @@ button:disabled {
   border: 1px solid var(--border);
   background: var(--surface-2);
   box-shadow: var(--panel-shadow);
+  animation: sm-status-pulse 0.4s ease;
+}
+
+@keyframes sm-status-pulse {
+  0% { transform: scale(0.98); opacity: 0.6; }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 .sm-status-ok {
