@@ -246,6 +246,60 @@ async function generateShortVideos(
   return drafts
 }
 
+async function generateInfographicText(
+  count: number,
+  title: string,
+  article: string,
+  plan: AtomizationPlan,
+  articleUrl?: string,
+): Promise<DerivativeDraft[]> {
+  if (count <= 0) return []
+  const sections = splitArticleSections(article)
+  const drafts: DerivativeDraft[] = []
+
+  for (let i = 0; i < count; i++) {
+    const pointCount = 5
+    const fallback = {
+      headline: title.slice(0, 60),
+      subhead: plan.emotionalTone || 'egitim.today',
+      points: sections.slice(0, pointCount).map((s) => ({
+        label: s.heading,
+        stat: '',
+        detail: s.body.slice(0, 100),
+      })),
+      source: 'egitim.today',
+    }
+
+    const batch = await llmJsonBatch<typeof fallback>(
+      'Design Turkish infographic copy for egitim.today. Short, scannable, numbers/stats where possible.',
+      `Article: ${title}\nKey concepts: ${plan.keyConcepts.join(', ')}\nMain arguments: ${plan.mainArguments.join('; ')}\nExcerpt:\n${articleExcerpt(article, 1500)}\n\nJSON schema: {"headline":"...","subhead":"...","points":[{"label":"...","stat":"...","detail":"..."}]} with exactly ${pointCount} points. "stat" is a short number/percentage when relevant, else empty string.`,
+      fallback,
+    )
+
+    const points = (batch.points || fallback.points).slice(0, pointCount)
+    const content = [
+      `# ${batch.headline || fallback.headline}`,
+      batch.subhead || fallback.subhead,
+      '',
+      ...points.map((p, idx) => `${idx + 1}. ${p.label}${p.stat ? ` — ${p.stat}` : ''}\n   ${p.detail}`),
+      '',
+      `Kaynak: ${batch.source || 'egitim.today'}`,
+    ].join('\n')
+
+    drafts.push({
+      contentType: 'INFOGRAPHIC_TEXT',
+      title: `Infografik ${i + 1}/${count}: ${title.slice(0, 50)}`,
+      content,
+      metadata: baseMetadata('infographic', title, articleUrl, {
+        partIndex: i + 1,
+        partTotal: count,
+        pointCount: points.length,
+      }),
+    })
+  }
+  return drafts
+}
+
 function linkedinCaptionSeries(
   title: string,
   article: string,
@@ -326,6 +380,9 @@ export async function generateAllDerivatives(
   if (!platforms?.length || platforms.some((x) => ['TWITTER', 'INSTAGRAM', 'FACEBOOK'].includes(x))) {
     drafts.push(...(await generatePinterestPins(p.pinterestPins, title, article, plan)))
   }
+
+  // Infographic copy: design-ready text, not tied to a single publish platform
+  drafts.push(...(await generateInfographicText(p.infographicSlides, title, article, plan, articleUrl)))
 
   // Mark first N captions for auto image — do NOT overwrite atomKind/platform
   // (overwriting linkedin_post → social_card broke calendar matching + LI visibility)

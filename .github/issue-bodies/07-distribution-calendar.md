@@ -1,6 +1,6 @@
 ## Meta
 - **ID:** CS-07
-- **Status:** done (daily platform limits still open)
+- **Status:** done
 - **Repo:** content-studio
 
 ## Summary
@@ -16,7 +16,8 @@ Turn atomization plan into scheduled `SocialMediaPost` rows spread over 14 days.
 - [x] `buildDistributionCalendar()` (`lib/scheduling/distributionCalendar.ts`)
 - [x] IST optimal times (`lib/scheduling/postingTimes.ts`)
 - [x] Admin UI: calendar preview + bulk schedule (`/admin/calendar` + `/api/scheduling`)
-- [ ] Respect daily limits per platform
+- [x] Respect daily limits per platform (`maxPostsPerDay` check in placement loop)
+- [x] Weekday-preferred placement + reduced weekend cadence/time windows ("hafta sonu daha az paylaşım")
 - [x] Worker: `drainDuePosts` polls scheduled posts
 
 ## Reference

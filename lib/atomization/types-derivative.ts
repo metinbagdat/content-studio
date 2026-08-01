@@ -15,6 +15,7 @@ export type AtomKind =
   | 'social_card'
   | 'short_video'
   | 'long_video'
+  | 'infographic'
 
 export type AtomMetadata = {
   atomKind: AtomKind

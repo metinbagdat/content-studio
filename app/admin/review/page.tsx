@@ -26,6 +26,7 @@ const CONTENT_TYPES = [
   'PODCAST_SCRIPT',
   'MARCH_LYRICS',
   'SONG_LYRICS',
+  'INFOGRAPHIC_TEXT',
 ] as const
 
 function adminHeaders(key: string, json = false): HeadersInit {

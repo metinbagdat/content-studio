@@ -54,6 +54,7 @@ enum ContentType {
   TWITTER_THREAD
   LINKEDIN_CAROUSEL
   SHORT_VIDEO_SCRIPT
+  INFOGRAPHIC_TEXT
 }
 
 enum ContentStatus {

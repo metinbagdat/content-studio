@@ -21,18 +21,19 @@ Status legend: `todo` · `doing` · `done` · `blocked` · `learncon` (tracked i
 | CS-M1 | Move Next app → `apps/web`, worker → `apps/worker` | todo | CS-M0 merged | Single workspace install; README paths updated; local smoke OK |
 | CS-M2 | Shared packages (`packages/db`, `packages/core`) | todo | CS-M1 done | Prisma + shared lib imported via workspace packages |
 | CS-00 | Discovery cron + admin UI | done | — | `/admin/discovery` + worker 06:00 IST |
-| CS-01 | Atomization → ~50 derivatives | todo | Pipeline v2 plan in config | Counts match plan; THREAD/CAROUSEL/SHORT_VIDEO stored |
-| CS-02 | Platform captions (X, LI, IG, TT, YT, FB, Pin) | todo | CS-01 partial | Formatters + limits per platform |
-| CS-03 | Image generation (cards / thumbs) | todo | CS-02 | Derived images on approve path |
-| CS-04 | Audio / music (TTS, march/song) | todo | CS-03 | Podcast MP3 + lyrics path stable |
+| CS-01 | Atomization → ~50 derivatives | done | — | Counts match plan; THREAD/CAROUSEL/SHORT_VIDEO/INFOGRAPHIC stored |
+| CS-02 | Platform captions (X, LI, IG, TT, YT, FB, Pin) | done | — | Formatters + limits per platform, reviewable with platform badge |
+| CS-03 | Image generation (cards / thumbs) | todo | CS-02 | Derived images on approve path (OG card only today, no DALL-E variety) |
+| CS-04 | Audio / music (TTS, march/song) | doing | CS-03 | Podcast MP3 via edge-tts/OpenAI works; lyrics text-only, no Suno/Udio audio |
 | CS-05 | Podcast packaging | todo | CS-04 | Intro/outro + normalize (see FAZ2) |
-| CS-06 | Publishers: IG / TikTok / YT / FB / Pinterest | todo | OAuth apps ready | Publish adapters beyond X+LinkedIn |
-| CS-07 | Distribution calendar apply | done | — | `/admin/calendar` preview + apply |
-| CS-08 | Performance feedback loop | todo | Metrics API access | Views/likes stored; calendar bias optional |
-| CS-09 | FFmpeg short video | todo | Media storage ready | 9:16 export path |
+| CS-06 | Publishers: IG / TikTok / YT / FB / Pinterest | doing | OAuth apps ready | Dry-run account/draft infra ready for all platforms; real OAuth+publish still open |
+| CS-07 | Distribution calendar apply | done | — | `/admin/calendar` preview + apply; weekday-preferred, weekend-reduced cadence |
+| CS-08 | Performance feedback loop | doing | Metrics API access | X/LinkedIn stats synced to UI; no cron job or posting-time auto-tuning yet |
+| CS-09 | FFmpeg short video | todo | Media storage ready | 9:16 export path — scripts exist, no rendered video file yet |
 | CS-10 | Image resize per platform | todo | CS-03 | Aspect ratios via `platformSizes` |
+| CS-11 | Infographic text format | doing | CS-01 | Bullet/stat copy generated + reviewable; image rendering waits on CS-03/CS-10 |
 
-Detail files: `01-discovery-cron.md` … `10-image-resize.md`, plus `M0-monorepo.md`, `M1-apps-layout.md`.
+Detail files: `01-discovery-cron.md` … `12-infographic-format.md`, plus `M0-monorepo.md`, `M1-apps-layout.md`.
 
 ---
 

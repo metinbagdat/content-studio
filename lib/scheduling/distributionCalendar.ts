@@ -2,7 +2,7 @@ import type { SocialPlatform } from '@prisma/client'
 import type { AtomizationPlan } from '../atomization/types'
 import { maxPostsPerDay } from '../platforms/limits'
 import { DEFAULT_PIPELINE_PLATFORMS } from '../platforms/targets'
-import { pickPostingSlot } from './postingTimes'
+import { isWeekendOffset, pickPostingSlot } from './postingTimes'
 
 export type CalendarSlot = {
   platform: SocialPlatform
@@ -60,26 +60,45 @@ export function buildDistributionCalendar(input: BuildCalendarInput): Distributi
   let day = 0
   let slotIdx = 0
 
+  const canPlace = (item: { platform: SocialPlatform }, d: number): boolean => {
+    const key = `${item.platform}:${d}`
+    const used = dailyCount[key] || 0
+    return used < maxPostsPerDay(item.platform, isWeekendOffset(d, startDate))
+  }
+
+  const place = (item: { platform: SocialPlatform; kind: string }, d: number) => {
+    const key = `${item.platform}:${d}`
+    dailyCount[key] = (dailyCount[key] || 0) + 1
+    slots.push({
+      platform: item.platform,
+      dayOffset: d,
+      scheduledAt: pickPostingSlot(item.platform, d, slotIdx, startDate),
+      contentKind: item.kind,
+      slotIndex: slotIdx,
+    })
+    slotIdx += 1
+    day = d + 1
+  }
+
   for (const item of queue) {
     if (!platforms.includes(item.platform)) continue
 
     let placed = false
+
+    // Pass 1: prefer weekdays ("hafta sonu daha az paylaşım")
     for (let attempt = 0; attempt < days && !placed; attempt++) {
       const d = (day + attempt) % days
-      const key = `${item.platform}:${d}`
-      const used = dailyCount[key] || 0
-      if (used >= maxPostsPerDay(item.platform)) continue
+      if (isWeekendOffset(d, startDate)) continue
+      if (!canPlace(item, d)) continue
+      place(item, d)
+      placed = true
+    }
 
-      dailyCount[key] = used + 1
-      slots.push({
-        platform: item.platform,
-        dayOffset: d,
-        scheduledAt: pickPostingSlot(item.platform, d, slotIdx, startDate),
-        contentKind: item.kind,
-        slotIndex: slotIdx,
-      })
-      slotIdx += 1
-      day = d + 1
+    // Pass 2: weekend fallback if no weekday slot was free
+    for (let attempt = 0; attempt < days && !placed; attempt++) {
+      const d = (day + attempt) % days
+      if (!canPlace(item, d)) continue
+      place(item, d)
       placed = true
     }
   }

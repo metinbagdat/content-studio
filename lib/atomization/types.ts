@@ -17,6 +17,7 @@ export type ContentPieceCounts = {
   youtubeShorts: number
   facebookPosts: number
   pinterestPins: number
+  infographicSlides: number
 }
 
 export type AtomizationPlan = {
@@ -49,6 +50,7 @@ export const DEFAULT_PIECE_COUNTS: ContentPieceCounts = {
   youtubeShorts: 2,
   facebookPosts: 3,
   pinterestPins: 5,
+  infographicSlides: 2,
 }
 
 export function totalPlannedPieces(counts: ContentPieceCounts): number {

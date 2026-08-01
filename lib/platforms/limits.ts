@@ -22,9 +22,11 @@ export const PINTEREST_LIMITS: PlatformRateLimit = {
   window: 'day',
 }
 
-/** Max posts per platform per calendar day (conservative). */
-export function maxPostsPerDay(platform: SocialPlatform): number {
-  return PLATFORM_LIMITS[platform].daily
+/** Max posts per platform per calendar day (conservative). Halved on weekends ("hafta sonu daha az paylaşım"). */
+export function maxPostsPerDay(platform: SocialPlatform, isWeekend = false): number {
+  const daily = PLATFORM_LIMITS[platform].daily
+  if (!isWeekend) return daily
+  return Math.max(1, Math.round(daily / 2))
 }
 
 /** Remaining quota for a day given already scheduled count. */

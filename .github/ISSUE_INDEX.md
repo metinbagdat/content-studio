@@ -18,5 +18,6 @@ Open GitHub issues from bodies below when the Issues API is available. Until the
 | [09-ffmpeg-video.md](./issue-bodies/09-ffmpeg-video.md) | CS-09 | Short video |
 | [10-image-resize.md](./issue-bodies/10-image-resize.md) | CS-10 | Resize |
 | [11-platform-captions.md](./issue-bodies/11-platform-captions.md) | CS-02 | All-platform captions |
+| [12-infographic-format.md](./issue-bodies/12-infographic-format.md) | CS-11 | Infographic text format |
 
 LearnCon growth (referral, onboarding, SEO site, payments): **not** opened here — see `docs/ROADMAP.md` section B → `metinbagdat/learncon`.

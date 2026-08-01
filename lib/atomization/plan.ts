@@ -85,7 +85,8 @@ JSON schema:
     "tiktokVideos": 3,
     "youtubeShorts": 2,
     "facebookPosts": 3,
-    "pinterestPins": 5
+    "pinterestPins": 5,
+    "infographicSlides": 2
   },
   "distributionDays": 14,
   "platformPriority": ["twitter", "linkedin", "instagram", "tiktok", "youtube", "facebook", "pinterest"]
