@@ -962,6 +962,44 @@ button:disabled {
   color: var(--text);
 }
 
+.top-performers-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.top-performer-item {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+}
+
+.top-performer-rank {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--accent);
+  min-width: 1.8rem;
+}
+
+.top-performer-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.top-performer-preview {
+  margin: 0 0 0.4rem;
+  font-size: 0.86rem;
+  color: var(--text);
+  line-height: 1.4;
+}
+
 .sm-icon-link {
   text-decoration: none;
   cursor: pointer;

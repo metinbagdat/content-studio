@@ -1,6 +1,7 @@
 import { startWorkers, drainDbPipelineJobs } from '../lib/queue'
 import { drainDuePosts } from '../lib/social/publish'
 import { startDiscoveryCron } from '../lib/discovery/discoveryCron'
+import { startAnalyticsSyncCron } from '../lib/social/analyticsCron'
 
 async function main() {
   console.log('[content-studio worker] starting…')
@@ -12,6 +13,9 @@ async function main() {
 
   // Phase 0: daily sitemap discovery at 06:00 Europe/Istanbul
   startDiscoveryCron()
+
+  // CS-08: periodic X/LinkedIn stats refresh (default every 3h)
+  startAnalyticsSyncCron()
 
   setInterval(() => {
     drainDbPipelineJobs(3).catch((e) => console.error(e))

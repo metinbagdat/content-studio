@@ -28,7 +28,7 @@ Status legend: `todo` · `doing` · `done` · `blocked` · `learncon` (tracked i
 | CS-05 | Podcast packaging | todo | CS-04 | Intro/outro + normalize (see FAZ2) |
 | CS-06 | Publishers: IG / TikTok / YT / FB / Pinterest | doing | OAuth apps ready | Dry-run account/draft infra ready for all platforms; real OAuth+publish still open |
 | CS-07 | Distribution calendar apply | done | — | `/admin/calendar` preview + apply; weekday-preferred, weekend-reduced cadence |
-| CS-08 | Performance feedback loop | doing | Metrics API access | X/LinkedIn stats synced to UI; no cron job or posting-time auto-tuning yet |
+| CS-08 | Performance feedback loop | doing | Metrics API access | X/LinkedIn stats + top-performers leaderboard, worker cron every 3h; posting-time auto-tuning still needs more data |
 | CS-09 | FFmpeg short video | todo | Media storage ready | 9:16 export path — scripts exist, no rendered video file yet |
 | CS-10 | Image resize per platform | todo | CS-03 | Aspect ratios via `platformSizes` |
 | CS-11 | Infographic text format | doing | CS-01 | Bullet/stat copy generated + reviewable; image rendering waits on CS-03/CS-10 |

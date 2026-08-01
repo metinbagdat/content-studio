@@ -6,6 +6,7 @@ import { socialPostPublicUrl } from '@/lib/social/postUrl'
 import { SocialPlatformDashboard } from '@/components/admin/SocialPlatformDashboard'
 import { PublishedPostsPanel } from '@/components/admin/PublishedPostsPanel'
 import { DraftDiagnosticsPanel, type DraftDiagnostics } from '@/components/admin/DraftDiagnosticsPanel'
+import { TopPerformersPanel, type TopPerformingPost } from '@/components/admin/TopPerformersPanel'
 import { PlatformIconLink } from '@/components/admin/PlatformIconLink'
 import { DEFAULT_ADMIN_API_KEY } from '@/lib/adminKey'
 
@@ -129,6 +130,7 @@ export default function SocialPage() {
   const [postView, setPostView] = useState<'published' | 'drafts'>('published')
   const [msgType, setMsgType] = useState<'info' | 'ok' | 'error'>('info')
   const [diagnostics, setDiagnostics] = useState<DraftDiagnostics | null>(null)
+  const [topPerformers, setTopPerformers] = useState<TopPerformingPost[]>([])
   const [bulkPublishBusy, setBulkPublishBusy] = useState(false)
   const statusRef = useRef<HTMLParagraphElement>(null)
 
@@ -160,6 +162,7 @@ export default function SocialPage() {
     setEnvCheck(data.envCheck || null)
     setAccountHealth(data.accountHealth || null)
     setDiagnostics(data.diagnostics || null)
+    setTopPerformers(data.topPerformers || [])
     setAccounts(data.accounts || [])
     setPosts(data.posts || [])
   }, [adminKey])
@@ -776,6 +779,14 @@ export default function SocialPage() {
           «Metrikleri yenile». Workflow panelinde de «Yayınlanan» listesi var.
         </p>
         <PublishedPostsPanel posts={publishedPosts} />
+      </section>
+
+      <section className="panel" style={{ marginBottom: '1rem' }}>
+        <h2>En çok etkileşim alanlar</h2>
+        <p className="muted" style={{ marginTop: 0, fontSize: '0.88rem' }}>
+          Hangi formatın işe yaradığını görüp sonraki içerikte ona ağırlık verin.
+        </p>
+        <TopPerformersPanel posts={topPerformers} />
       </section>
 
       {postView === 'drafts' ? (

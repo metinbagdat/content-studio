@@ -479,6 +479,59 @@ export async function syncAllPublishedPostAnalytics(limit = 30): Promise<{ synce
   return { synced, errors }
 }
 
+export type TopPerformingPost = {
+  id: string
+  platform: string
+  postContent: string
+  publishedAt: string
+  platformPostId: string | null
+  engagement: number
+  impressions: number | null
+  likes: number | null
+  comments: number | null
+  shares: number | null
+}
+
+/** Best published posts by stored engagement — CS-08 leaderboard. */
+export async function getTopPerformingPosts(limit = 5): Promise<TopPerformingPost[]> {
+  const posts = await prisma.socialMediaPost.findMany({
+    where: { status: 'PUBLISHED' },
+    orderBy: { publishedAt: 'desc' },
+    take: 100,
+    select: {
+      id: true,
+      platform: true,
+      postContent: true,
+      publishedAt: true,
+      createdAt: true,
+      platformPostId: true,
+      metrics: true,
+    },
+  })
+
+  const withAnalytics = posts
+    .map((p) => {
+      const analytics = readPostAnalytics(p.metrics)
+      return { post: p, analytics }
+    })
+    .filter((x): x is { post: (typeof posts)[number]; analytics: PostAnalytics } => Boolean(x.analytics))
+
+  withAnalytics.sort((a, b) => (b.analytics.engagement ?? 0) - (a.analytics.engagement ?? 0))
+
+  return withAnalytics.slice(0, limit).map(({ post, analytics }) => ({
+    id: post.id,
+    platform: post.platform,
+    postContent: post.postContent,
+    publishedAt: (post.publishedAt || post.createdAt).toISOString(),
+    platformPostId: post.platformPostId,
+    engagement: analytics.engagement ?? 0,
+    impressions: analytics.impressions ?? null,
+    likes: analytics.likes ?? null,
+    comments: analytics.comments ?? null,
+    shares: analytics.shares ?? null,
+  }))
+}
+
 export function getAccountStatsFromConfig(config: unknown): PlatformAccountStats | null {
   return readStoredStats(config)
 }

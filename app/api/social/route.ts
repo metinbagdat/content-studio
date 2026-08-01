@@ -13,6 +13,7 @@ import { getAuthUrl, upsertDryRunAccount, deactivateAccount } from '@/lib/social
 import { oauthEnvCheck, oauthPlatformStatus } from '@/lib/social/config'
 import {
   getAccountStatsFromConfig,
+  getTopPerformingPosts,
   syncAllAccountStats,
   syncAllPublishedPostAnalytics,
 } from '@/lib/social/platformStats'
@@ -34,7 +35,7 @@ export async function GET(req: NextRequest) {
 }
 
 async function handleGet() {
-  const [accounts, posts, accountHealth, diagnostics] = await Promise.all([
+  const [accounts, posts, accountHealth, diagnostics, topPerformers] = await Promise.all([
     prisma.socialMediaAccount.findMany({ orderBy: { createdAt: 'desc' } }),
     prisma.socialMediaPost.findMany({
       orderBy: { createdAt: 'desc' },
@@ -47,12 +48,14 @@ async function handleGet() {
     }),
     auditSocialAccounts(),
     getDraftDiagnostics(),
+    getTopPerformingPosts(5),
   ])
   return NextResponse.json({
     oauth: oauthPlatformStatus(),
     envCheck: oauthEnvCheck(),
     accountHealth,
     diagnostics,
+    topPerformers,
     accounts: accounts.map((a) => {
       const cfg = a.config && typeof a.config === 'object' ? (a.config as Record<string, unknown>) : {}
       const stats = getAccountStatsFromConfig(a.config)
