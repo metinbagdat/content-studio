@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import { ThemeToggle, themeInitScript } from '@/components/ThemeToggle'
 
 export const metadata: Metadata = {
   title: 'Content Studio · egitim.today',
@@ -9,6 +10,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="tr">
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body>
         <header className="topbar">
           <a href="/admin" className="brand">
@@ -18,6 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <nav>
             <a href="/admin">Admin</a>
             <a href="/docs/social-setup" className="muted">SM rehber</a>
+            <ThemeToggle />
           </nav>
         </header>
         <main className="main">{children}</main>
