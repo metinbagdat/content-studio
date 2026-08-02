@@ -80,7 +80,7 @@ function formatWhen(iso?: string | null): string | null {
   }
 }
 
-function sortItems(items: Item[]): Item[] {
+function sortItems(items: Item[], prioritySourceId?: string): Item[] {
   const rank: Record<string, number> = {
     IN_REVIEW: 0,
     APPROVED: 1,
@@ -88,7 +88,16 @@ function sortItems(items: Item[]): Item[] {
     REJECTED: 2,
     DRAFT: 3,
   }
-  return [...items].sort((a, b) => (rank[a.status] ?? 9) - (rank[b.status] ?? 9))
+  return [...items].sort((a, b) => {
+    const statusDiff = (rank[a.status] ?? 9) - (rank[b.status] ?? 9)
+    if (statusDiff !== 0) return statusDiff
+    if (prioritySourceId) {
+      const aPriority = a.source?.id === prioritySourceId ? 0 : 1
+      const bPriority = b.source?.id === prioritySourceId ? 0 : 1
+      if (aPriority !== bPriority) return aPriority - bPriority
+    }
+    return 0
+  })
 }
 
 function itemPlatform(item: Item): string | null {
@@ -142,6 +151,7 @@ export default function ReviewPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [autoMedia, setAutoMedia] = useState(true)
   const [bulkBusy, setBulkBusy] = useState(false)
+  const [prioritySourceId, setPrioritySourceId] = useState('')
 
   const pendingItems = useMemo(() => items.filter((i) => i.status === 'IN_REVIEW'), [items])
 
@@ -158,8 +168,8 @@ export default function ReviewPage() {
     if (platformFilter !== 'ALL') {
       filtered = filtered.filter((i) => itemPlatform(i) === platformFilter)
     }
-    return sortItems(filtered)
-  }, [items, showAll, platformFilter])
+    return sortItems(filtered, prioritySourceId)
+  }, [items, showAll, platformFilter, prioritySourceId])
 
   const visiblePendingIds = useMemo(
     () => visibleItems.filter((i) => i.status === 'IN_REVIEW').map((i) => i.id),
@@ -213,7 +223,16 @@ export default function ReviewPage() {
     const saved = localStorage.getItem('cs_admin_key')
     if (saved) setAdminKey(saved)
     else setAdminKey(DEFAULT_ADMIN_API_KEY)
+
+    const savedPriority = localStorage.getItem('cs_review_priority_source')
+    if (savedPriority) setPrioritySourceId(savedPriority)
   }, [])
+
+  function updatePrioritySource(id: string) {
+    setPrioritySourceId(id)
+    if (id) localStorage.setItem('cs_review_priority_source', id)
+    else localStorage.removeItem('cs_review_priority_source')
+  }
 
   useEffect(() => {
     if (adminKey) {
@@ -454,6 +473,21 @@ export default function ReviewPage() {
             <option value="FACEBOOK">Facebook</option>
           </select>
         </div>
+        <div>
+          <label>Öne çıkar</label>
+          <select
+            value={prioritySourceId}
+            onChange={(e) => updatePrioritySource(e.target.value)}
+            style={{ marginBottom: 0, minWidth: '11rem' }}
+          >
+            <option value="">Yok (varsayılan sıra)</option>
+            {sources.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.title}
+              </option>
+            ))}
+          </select>
+        </div>
         <button type="button" className="secondary" onClick={load}>
           Yenile
         </button>
@@ -581,6 +615,9 @@ export default function ReviewPage() {
               </span>
               <span className="badge">{item.contentType}</span>
               <span className={statusBadgeClass(item.status)}>{statusLabel(item.status)}</span>
+              {prioritySourceId && item.source?.id === prioritySourceId ? (
+                <span className="badge ok">↑ öncelikli</span>
+              ) : null}
               <span className="muted">{item.source?.title}</span>
             </div>
             {editingId === item.id ? (
