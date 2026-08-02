@@ -2,7 +2,7 @@
 # bypassing `prisma db push`'s full-schema diff (which can prompt to drop unrelated
 # tables like a leftover `users` table from the legacy app).
 #
-# RECOMMENDED usage — write SQL to a file with a here-string first (no quoting problems
+# RECOMMENDED usage - write SQL to a file with a here-string first (no quoting problems
 # at all), then pass the file. Run this directly in PowerShell, NOT via "npm run db:exec --"
 # (npm invokes scripts through cmd.exe on Windows, which mangles single quotes and breaks
 # -Sql inline strings):
@@ -20,7 +20,7 @@
 # prisma/schema.prisma and will offer to DROP any table it doesn't recognize (e.g. an
 # old `users` table from the quarantined legacy app). Never accept that prompt blindly.
 # Small additive changes (new enum value, new column with default, new index) should go
-# through this script instead — one targeted statement, no destructive diff.
+# through this script instead - one targeted statement, no destructive diff.
 
 param(
   [string]$Sql,
@@ -35,10 +35,10 @@ if (-not $Sql -and -not $File) {
   exit 1
 }
 
-# Prisma CLI reads .env by default; this project's real DB lives in .env.local — override for this run only.
+# Prisma CLI reads .env by default; this project's real DB lives in .env.local - override for this run only.
 $envLocalLine = Get-Content .env.local -ErrorAction SilentlyContinue | Select-String '^DATABASE_URL='
 if (-not $envLocalLine) {
-  Write-Host "DATABASE_URL not found in .env.local — falling back to .env" -ForegroundColor Yellow
+  Write-Host "DATABASE_URL not found in .env.local - falling back to .env" -ForegroundColor Yellow
 } else {
   $env:DATABASE_URL = ($envLocalLine.ToString() -replace '^DATABASE_URL=', '').Trim('"')
 }
@@ -54,7 +54,8 @@ try {
     $targetFile = $File
   }
 
-  Write-Host "==> Executing against: $($env:DATABASE_URL -replace '://[^@]+@', '://***@')" -ForegroundColor Cyan
+  $maskedUrl = $env:DATABASE_URL -replace '://[^@]+@', '://***@'
+  Write-Host "==> Executing against: $maskedUrl" -ForegroundColor Cyan
   npx prisma db execute --file $targetFile --schema .\prisma\schema.prisma
   Write-Host "==> Done." -ForegroundColor Green
 } finally {
