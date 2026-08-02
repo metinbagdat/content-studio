@@ -44,6 +44,22 @@ export async function createPipeline(sourceId: string, config: Partial<PipelineC
   const source = await prisma.contentSource.findUnique({ where: { id: sourceId } })
   if (!source) throw new Error('Source not found')
 
+  // Never let two pipelines for the same source be in-flight at once — a double click,
+  // an overlapping discovery trigger, or a stuck worker queue would otherwise pile up
+  // duplicate PENDING/RUNNING rows for the same article.
+  const inFlight = await prisma.contentPipeline.findFirst({
+    where: { sourceId, status: { in: ['PENDING', 'RUNNING'] } },
+    orderBy: { createdAt: 'desc' },
+  })
+  if (inFlight?.status === 'RUNNING') {
+    throw new Error('Bu kaynak için pipeline zaten çalışıyor — bitmesini bekleyin.')
+  }
+  if (inFlight) {
+    // PENDING and not yet started — reuse it instead of creating a duplicate row.
+    // Whoever called createPipeline() will still call processPipeline() on this id as usual.
+    return inFlight
+  }
+
   const pipeline = await prisma.contentPipeline.create({
     data: {
       sourceId,
@@ -152,6 +168,11 @@ export async function processPipeline(pipelineId: string) {
       platforms: config.platforms,
     })
 
+    // A handful of failed items (e.g. a not-yet-migrated ContentType enum value) shouldn't
+    // sink the whole run when dozens of other pieces were generated fine — surface them as
+    // warnings on a COMPLETED pipeline instead of a hard FAILED status.
+    const allErrors = [...pipeline.errors, ...atomized.errors]
+
     await prisma.contentPipeline.update({
       where: { id: pipelineId },
       data: {
@@ -159,6 +180,7 @@ export async function processPipeline(pipelineId: string) {
         completedAt: new Date(),
         currentStep: kinds.length + 1,
         totalSteps: kinds.length + 1,
+        errors: allErrors,
         config: {
           ...config,
           atomizationPlan,
@@ -166,6 +188,7 @@ export async function processPipeline(pipelineId: string) {
           plannedPieces: totalPlannedPieces(atomizationPlan.contentPieces),
           atomizedCreated: atomized.created,
           atomizedByType: atomized.byType,
+          atomizedErrors: atomized.errors,
         } as Prisma.InputJsonValue,
       },
     })

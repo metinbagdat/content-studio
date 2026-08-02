@@ -53,4 +53,7 @@ export type GenerateDerivativesInput = {
 export type GenerateDerivativesResult = {
   created: number
   byType: Record<string, number>
+  /** Individual items that failed to persist (e.g. enum not yet migrated in DB) — the
+   * rest of the batch still gets saved instead of the whole pipeline failing. */
+  errors: string[]
 }

@@ -397,21 +397,35 @@ export async function generateAllDerivatives(
   }
 
   const byType: Record<string, number> = {}
+  const errors: string[] = []
+  let savedCount = 0
   for (const batch of chunk(drafts, 25)) {
     for (const d of batch) {
-      byType[d.contentType] = (byType[d.contentType] || 0) + 1
-      await prisma.derivedContent.create({
-        data: {
-          sourceId,
-          contentType: d.contentType,
-          title: d.title,
-          content: d.content,
-          metadata: { ...d.metadata, planGeneratedAt: plan.generatedAt } as Prisma.InputJsonValue,
-          status: 'IN_REVIEW',
-        },
-      })
+      // One bad item (e.g. a ContentType enum value not yet migrated on this DB) must not
+      // take down the other ~49 already-generated pieces — persist what we can, report the rest.
+      try {
+        await prisma.derivedContent.create({
+          data: {
+            sourceId,
+            contentType: d.contentType,
+            title: d.title,
+            content: d.content,
+            metadata: { ...d.metadata, planGeneratedAt: plan.generatedAt } as Prisma.InputJsonValue,
+            status: 'IN_REVIEW',
+          },
+        })
+        byType[d.contentType] = (byType[d.contentType] || 0) + 1
+        savedCount += 1
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        errors.push(`${d.contentType} "${d.title.slice(0, 40)}": ${message}`)
+      }
     }
   }
 
-  return { created: drafts.length, byType }
+  if (errors.length) {
+    console.warn('[generateAllDerivatives] partial failures', { errors: errors.length, saved: savedCount })
+  }
+
+  return { created: savedCount, byType, errors }
 }

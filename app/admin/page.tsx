@@ -22,6 +22,8 @@ type Pipeline = {
   status: string
   currentStep: number
   totalSteps: number
+  createdAt: string
+  errors?: string[]
   source?: { id: string; title: string }
 }
 
@@ -132,6 +134,15 @@ export default function AdminPipelinePage() {
       setMsg('En az bir platform seç (X veya YouTube önerilir)')
       return
     }
+    const existing = pipelines.find(
+      (p) => p.source?.id === sourceId && ['PENDING', 'RUNNING', 'COMPLETED'].includes(p.status),
+    )
+    if (existing) {
+      const ok = confirm(
+        `Bu kaynak için zaten bir pipeline var (durum: ${existing.status}). Yine de yeni bir pipeline başlatılsın mı? Aynı içerik tekrar üretilecek.`,
+      )
+      if (!ok) return
+    }
     setBusy(true)
     setMsgError(false)
     setMsg('Pipeline çalışıyor… X / YouTube türevleri üretiliyor')
@@ -150,6 +161,48 @@ export default function AdminPipelinePage() {
       if (!res.ok) throw new Error(data.error || 'pipeline fail')
       setMsgError(false)
       setMsg(`Pipeline ${data.pipeline?.status} · ${selectedLabels} · id ${data.pipeline?.id}`)
+      await load()
+    } catch (e) {
+      setMsgError(true)
+      setMsg(e instanceof Error ? e.message : 'Hata')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function processPipelineNow(pipelineId: string) {
+    setBusy(true)
+    try {
+      const res = await fetch(`/api/pipelines/${pipelineId}`, {
+        method: 'POST',
+        headers: adminHeaders(adminKey, true),
+        body: JSON.stringify({ action: 'process-now' }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'İşlenemedi')
+      setMsgError(false)
+      setMsg('Pipeline işlendi')
+      await load()
+    } catch (e) {
+      setMsgError(true)
+      setMsg(e instanceof Error ? e.message : 'Hata')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function deletePipeline(pipelineId: string) {
+    if (!confirm('Bu pipeline kaydı silinsin mi? (Üretilmiş içerikler etkilenmez)')) return
+    setBusy(true)
+    try {
+      const res = await fetch(`/api/pipelines/${pipelineId}`, {
+        method: 'DELETE',
+        headers: adminHeaders(adminKey),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Silinemedi')
+      setMsgError(false)
+      setMsg('Pipeline silindi')
       await load()
     } catch (e) {
       setMsgError(true)
@@ -392,17 +445,53 @@ export default function AdminPipelinePage() {
       <section className="panel" style={{ marginTop: '1rem' }}>
         <h2>Son pipeline’lar</h2>
         <ul className="list">
-          {pipelines.map((p) => (
-            <li key={p.id}>
-              <div className="row">
-                <strong>{p.source?.title || p.name}</strong>
-                <span className={`badge ${p.status === 'COMPLETED' ? 'ok' : 'warn'}`}>{p.status}</span>
-              </div>
-              <div className="muted">
-                adım {p.currentStep}/{p.totalSteps}
-              </div>
-            </li>
-          ))}
+          {pipelines.map((p) => {
+            const stuckPending =
+              p.status === 'PENDING' && Date.now() - new Date(p.createdAt).getTime() > 2 * 60_000
+            return (
+              <li key={p.id}>
+                <div className="row">
+                  <strong>{p.source?.title || p.name}</strong>
+                  <span
+                    className={`badge ${
+                      p.status === 'COMPLETED' ? 'ok' : p.status === 'FAILED' ? 'danger' : 'warn'
+                    }`}
+                  >
+                    {p.status}
+                  </span>
+                </div>
+                <div className="muted">
+                  adım {p.currentStep}/{p.totalSteps}
+                </div>
+                {p.errors?.length ? (
+                  <p className="muted" style={{ color: 'var(--danger)', fontSize: '0.8rem', margin: '0.3rem 0 0' }}>
+                    {p.errors[p.errors.length - 1].slice(0, 200)}
+                  </p>
+                ) : null}
+                {stuckPending ? (
+                  <p className="muted" style={{ color: 'var(--warn)', fontSize: '0.8rem', margin: '0.3rem 0 0' }}>
+                    2 dakikadan uzun süredir PENDING — worker çalışmıyor olabilir (
+                    <code>npm run worker</code>) veya aşağıdan elle işleyin.
+                  </p>
+                ) : null}
+                <div className="row" style={{ marginTop: '0.4rem' }}>
+                  {p.status === 'PENDING' || p.status === 'FAILED' ? (
+                    <button
+                      type="button"
+                      className="secondary"
+                      disabled={busy}
+                      onClick={() => processPipelineNow(p.id)}
+                    >
+                      Şimdi işle
+                    </button>
+                  ) : null}
+                  <button type="button" className="danger" disabled={busy} onClick={() => deletePipeline(p.id)}>
+                    Sil
+                  </button>
+                </div>
+              </li>
+            )
+          })}
           {!pipelines.length ? (
             <li className="empty-state">
               <strong>Pipeline yok</strong>
