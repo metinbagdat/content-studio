@@ -23,3 +23,21 @@ export type PlatformImageKey = keyof typeof PLATFORM_IMAGE_SIZES
 export function getImageSpec(key: PlatformImageKey): ImageSpec {
   return PLATFORM_IMAGE_SIZES[key]
 }
+
+/** Map a derived content's target platform to the right card size. */
+export function pickImageSpecKey(platform?: string | null): PlatformImageKey {
+  switch (platform) {
+    case 'TWITTER':
+      return 'twitterPost'
+    case 'LINKEDIN':
+      return 'linkedinPost'
+    case 'INSTAGRAM':
+      return 'instagramPost'
+    case 'FACEBOOK':
+      return 'facebookPost'
+    case 'PINTEREST':
+      return 'pinterestPin'
+    default:
+      return 'ogDefault'
+  }
+}

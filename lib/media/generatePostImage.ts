@@ -4,19 +4,27 @@ import { prisma } from '../prisma'
 import type { Prisma } from '@prisma/client'
 import { extractPostImageDesign, type PostImageDesign } from './postImageDesign'
 import { publicMediaImageUrl, writeImageFile, readImageFile } from './imageStorage'
+import { getImageSpec, pickImageSpecKey, type ImageSpec } from '../image/platformSizes'
 
 export { getMediaFile, listMedia } from './mediaDb'
 
+/** Scale every hand-tuned pixel value against the 1200x630 baseline so square/portrait
+ * platform sizes (Instagram 1:1, Pinterest 2:3, etc.) don't inherit landscape-only spacing. */
+function scaleFactor(spec: ImageSpec): number {
+  const raw = Math.min(spec.width, spec.height) / 630
+  return Math.max(0.62, Math.min(raw, 1.85))
+}
+
 /** Brand watermark — LEARNCONNECT.NET / egitim.today lockup, used on every generated post image. */
-function BrandWatermark({ align = 'end' }: { align?: 'start' | 'end' }) {
+function BrandWatermark({ scale, align = 'end' }: { scale: number; align?: 'start' | 'end' }) {
   return React.createElement(
     'div',
     {
       style: {
         position: 'absolute',
-        right: align === 'end' ? 44 : undefined,
-        left: align === 'start' ? 44 : undefined,
-        bottom: 40,
+        right: align === 'end' ? 44 * scale : undefined,
+        left: align === 'start' ? 44 * scale : undefined,
+        bottom: 40 * scale,
         display: 'flex',
         flexDirection: 'column',
         alignItems: align === 'end' ? 'flex-end' : 'flex-start',
@@ -26,7 +34,7 @@ function BrandWatermark({ align = 'end' }: { align?: 'start' | 'end' }) {
       'div',
       {
         style: {
-          fontSize: 13,
+          fontSize: 13 * scale,
           fontWeight: 700,
           letterSpacing: 3,
           color: '#94a3b8',
@@ -42,7 +50,7 @@ function BrandWatermark({ align = 'end' }: { align?: 'start' | 'end' }) {
         'div',
         {
           style: {
-            fontSize: 27,
+            fontSize: 27 * scale,
             fontWeight: 800,
             color: '#0f172a',
             fontFamily: 'Georgia, "Times New Roman", serif',
@@ -53,8 +61,8 @@ function BrandWatermark({ align = 'end' }: { align?: 'start' | 'end' }) {
       ),
       React.createElement('div', {
         style: {
-          width: 10,
-          height: 10,
+          width: 10 * scale,
+          height: 10 * scale,
           borderRadius: 999,
           background: '#22c55e',
         },
@@ -63,7 +71,11 @@ function BrandWatermark({ align = 'end' }: { align?: 'start' | 'end' }) {
   )
 }
 
-function PostCard({ design }: { design: PostImageDesign }) {
+function PostCard({ design, spec }: { design: PostImageDesign; spec: ImageSpec }) {
+  const s = scaleFactor(spec)
+  const outerPad = Math.round(56 * s)
+  const innerPadX = Math.round(64 * s)
+  const innerPadY = Math.round(56 * s)
   return React.createElement(
     'div',
     {
@@ -74,7 +86,7 @@ function PostCard({ design }: { design: PostImageDesign }) {
         flexDirection: 'column',
         justifyContent: 'center',
         background: `linear-gradient(135deg, ${design.accent} 0%, #0f172a 72%)`,
-        padding: 56,
+        padding: outerPad,
         fontFamily: 'Segoe UI, system-ui, sans-serif',
       },
     },
@@ -89,35 +101,51 @@ function PostCard({ design }: { design: PostImageDesign }) {
           justifyContent: 'center',
           background: 'rgba(255,255,255,0.96)',
           borderRadius: 28,
-          padding: '56px 64px',
-          paddingBottom: 100,
+          padding: `${innerPadY}px ${innerPadX}px`,
+          paddingBottom: Math.round(100 * s),
           boxShadow: '0 16px 48px rgba(0,0,0,0.18)',
         },
       },
       React.createElement(
         'div',
-        { style: { fontSize: 22, fontWeight: 600, color: design.accent, marginBottom: 20 } },
+        { style: { fontSize: Math.round(22 * s), fontWeight: 600, color: design.accent, marginBottom: Math.round(20 * s) } },
         `#${design.tag}`,
       ),
       React.createElement(
         'div',
-        { style: { fontSize: 50, fontWeight: 700, color: '#0f172a', lineHeight: 1.12, maxHeight: 220 } },
+        {
+          style: {
+            fontSize: Math.round(50 * s),
+            fontWeight: 700,
+            color: '#0f172a',
+            lineHeight: 1.12,
+            maxHeight: Math.round(220 * s),
+          },
+        },
         design.headline,
       ),
       React.createElement(
         'div',
-        { style: { fontSize: 28, color: '#475569', marginTop: 28, lineHeight: 1.35, maxHeight: 120 } },
+        {
+          style: {
+            fontSize: Math.round(28 * s),
+            color: '#475569',
+            marginTop: Math.round(28 * s),
+            lineHeight: 1.35,
+            maxHeight: Math.round(120 * s),
+          },
+        },
         design.subtitle,
       ),
-      React.createElement(BrandWatermark, { align: 'end' }),
+      React.createElement(BrandWatermark, { scale: s, align: 'end' }),
     ),
   )
 }
 
-async function designToPng(design: PostImageDesign): Promise<Buffer> {
-  const res = new ImageResponse(React.createElement(PostCard, { design }), {
-    width: 1200,
-    height: 630,
+async function designToPng(design: PostImageDesign, spec: ImageSpec): Promise<Buffer> {
+  const res = new ImageResponse(React.createElement(PostCard, { design, spec }), {
+    width: spec.width,
+    height: spec.height,
   })
   return Buffer.from(await res.arrayBuffer())
 }
@@ -197,8 +225,12 @@ export async function generatePostImage(derivedContentId: string) {
     }
   }
 
+  const targetPlatform = typeof meta.platform === 'string' ? meta.platform : null
+  const specKey = pickImageSpecKey(targetPlatform)
+  const spec = getImageSpec(specKey)
+
   const design = await extractPostImageDesign(articleTitle, derived.content)
-  const png = await designToPng(design)
+  const png = await designToPng(design, spec)
 
   const media = await prisma.mediaFile.create({
     data: {
@@ -229,6 +261,9 @@ export async function generatePostImage(derivedContentId: string) {
     meta.imageUrl = publicUrl
     meta.generatedMediaId = media.id
     meta.imageDesign = design
+    meta.imageSpecKey = specKey
+    meta.imageWidth = spec.width
+    meta.imageHeight = spec.height
 
     await prisma.derivedContent.update({
       where: { id: derivedContentId },
