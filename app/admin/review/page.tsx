@@ -80,7 +80,7 @@ function formatWhen(iso?: string | null): string | null {
   }
 }
 
-function sortItems(items: Item[], prioritySourceId?: string): Item[] {
+function sortItems(items: Item[], prioritySourceId?: string, customOrder?: string[]): Item[] {
   const rank: Record<string, number> = {
     IN_REVIEW: 0,
     APPROVED: 1,
@@ -88,9 +88,15 @@ function sortItems(items: Item[], prioritySourceId?: string): Item[] {
     REJECTED: 2,
     DRAFT: 3,
   }
+  const orderIndex = new Map((customOrder || []).map((id, idx) => [id, idx]))
   return [...items].sort((a, b) => {
     const statusDiff = (rank[a.status] ?? 9) - (rank[b.status] ?? 9)
     if (statusDiff !== 0) return statusDiff
+    // Manual per-item reordering (drag-free: up/down/to-top buttons) wins over the
+    // bulk "bring this source to front" dropdown.
+    const aIdx = orderIndex.has(a.id) ? orderIndex.get(a.id)! : Infinity
+    const bIdx = orderIndex.has(b.id) ? orderIndex.get(b.id)! : Infinity
+    if (aIdx !== bIdx) return aIdx - bIdx
     if (prioritySourceId) {
       const aPriority = a.source?.id === prioritySourceId ? 0 : 1
       const bPriority = b.source?.id === prioritySourceId ? 0 : 1
@@ -152,6 +158,7 @@ export default function ReviewPage() {
   const [autoMedia, setAutoMedia] = useState(true)
   const [bulkBusy, setBulkBusy] = useState(false)
   const [prioritySourceId, setPrioritySourceId] = useState('')
+  const [customOrder, setCustomOrder] = useState<string[]>([])
 
   const pendingItems = useMemo(() => items.filter((i) => i.status === 'IN_REVIEW'), [items])
 
@@ -168,8 +175,8 @@ export default function ReviewPage() {
     if (platformFilter !== 'ALL') {
       filtered = filtered.filter((i) => itemPlatform(i) === platformFilter)
     }
-    return sortItems(filtered, prioritySourceId)
-  }, [items, showAll, platformFilter, prioritySourceId])
+    return sortItems(filtered, prioritySourceId, customOrder)
+  }, [items, showAll, platformFilter, prioritySourceId, customOrder])
 
   const visiblePendingIds = useMemo(
     () => visibleItems.filter((i) => i.status === 'IN_REVIEW').map((i) => i.id),
@@ -226,12 +233,47 @@ export default function ReviewPage() {
 
     const savedPriority = localStorage.getItem('cs_review_priority_source')
     if (savedPriority) setPrioritySourceId(savedPriority)
+
+    const savedOrder = localStorage.getItem('cs_review_custom_order')
+    if (savedOrder) {
+      try {
+        const parsed = JSON.parse(savedOrder)
+        if (Array.isArray(parsed)) setCustomOrder(parsed.map(String))
+      } catch {
+        /* ignore */
+      }
+    }
   }, [])
 
   function updatePrioritySource(id: string) {
     setPrioritySourceId(id)
     if (id) localStorage.setItem('cs_review_priority_source', id)
     else localStorage.removeItem('cs_review_priority_source')
+  }
+
+  function persistCustomOrder(order: string[]) {
+    setCustomOrder(order)
+    localStorage.setItem('cs_review_custom_order', JSON.stringify(order))
+  }
+
+  function moveToTop(id: string) {
+    const current = visibleItems.map((i) => i.id)
+    persistCustomOrder([id, ...current.filter((x) => x !== id)])
+  }
+
+  function moveBy(id: string, delta: -1 | 1) {
+    const current = visibleItems.map((i) => i.id)
+    const idx = current.indexOf(id)
+    const target = idx + delta
+    if (idx < 0 || target < 0 || target >= current.length) return
+    const next = [...current]
+    ;[next[idx], next[target]] = [next[target], next[idx]]
+    persistCustomOrder(next)
+  }
+
+  function resetCustomOrder() {
+    setCustomOrder([])
+    localStorage.removeItem('cs_review_custom_order')
   }
 
   useEffect(() => {
@@ -491,6 +533,11 @@ export default function ReviewPage() {
         <button type="button" className="secondary" onClick={load}>
           Yenile
         </button>
+        {customOrder.length ? (
+          <button type="button" className="secondary" onClick={resetCustomOrder} title="Elle yapılan sıralamayı temizle">
+            Sırayı sıfırla
+          </button>
+        ) : null}
         <button type="button" className="secondary" onClick={() => setShowCreate((v) => !v)}>
           {showCreate ? 'İptal' : '+ Elle ekle'}
         </button>
@@ -588,18 +635,50 @@ export default function ReviewPage() {
       ) : null}
 
       <ul className="list">
-        {visibleItems.map((item) => (
+        {visibleItems.map((item, index) => (
           <li key={item.id} className={panelClass(item.status)} style={{ marginBottom: '0.75rem' }}>
             <div className="row">
+              <span className="badge seq-badge" title="Listedeki sırası">#{index + 1}</span>
               {item.status === 'IN_REVIEW' ? (
-                <input
-                  type="checkbox"
-                  className="review-check"
-                  checked={selectedIds.has(item.id)}
-                  onChange={() => toggleSelect(item.id)}
-                  disabled={bulkBusy}
-                  aria-label="Seç"
-                />
+                <>
+                  <input
+                    type="checkbox"
+                    className="review-check"
+                    checked={selectedIds.has(item.id)}
+                    onChange={() => toggleSelect(item.id)}
+                    disabled={bulkBusy}
+                    aria-label="Seç"
+                  />
+                  <span className="row reorder-controls">
+                    <button
+                      type="button"
+                      className="secondary reorder-btn"
+                      title="Yukarı taşı"
+                      disabled={index === 0}
+                      onClick={() => moveBy(item.id, -1)}
+                    >
+                      ▲
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary reorder-btn"
+                      title="Aşağı taşı"
+                      disabled={index === visibleItems.length - 1}
+                      onClick={() => moveBy(item.id, 1)}
+                    >
+                      ▼
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary reorder-btn"
+                      title="En üste taşı"
+                      disabled={index === 0}
+                      onClick={() => moveToTop(item.id)}
+                    >
+                      ⤒
+                    </button>
+                  </span>
+                </>
               ) : null}
               {editingId === item.id ? (
                 <input

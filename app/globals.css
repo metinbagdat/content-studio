@@ -1201,6 +1201,26 @@ button:disabled {
   flex-shrink: 0;
 }
 
+.seq-badge {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--accent);
+  background: rgba(58, 160, 255, 0.12);
+  border-color: rgba(58, 160, 255, 0.3);
+}
+
+.reorder-controls {
+  gap: 0.2rem;
+  margin: 0;
+}
+
+.reorder-btn {
+  padding: 0.2rem 0.45rem;
+  font-size: 0.72rem;
+  line-height: 1;
+  min-width: auto;
+}
+
 @media (max-width: 720px) {
   .topbar {
     flex-direction: column;
