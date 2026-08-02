@@ -25,7 +25,7 @@ Status legend: `todo` · `doing` · `done` · `blocked` · `learncon` (tracked i
 | CS-02 | Platform captions (X, LI, IG, TT, YT, FB, Pin) | done | — | Formatters + limits per platform, reviewable with platform badge |
 | CS-03 | Image generation (cards / thumbs) | doing | CS-02 | Cards now render at correct per-platform size/aspect ratio; DALL-E art variant still open (paid API) |
 | CS-04 | Audio / music (TTS, march/song) | doing | CS-03 | Podcast MP3 via edge-tts/OpenAI works; lyrics text-only, no Suno/Udio audio |
-| CS-05 | Podcast packaging | todo | CS-04 | Intro/outro + normalize (see FAZ2) |
+| CS-05 | Podcast packaging | doing | CS-04 | Structured segments + zod validation + admin timeline preview; multi-episode + music-bed mixing still open |
 | CS-06 | Publishers: IG / TikTok / YT / FB / Pinterest | doing | OAuth apps ready | Dry-run account/draft infra ready for all platforms; real OAuth+publish still open |
 | CS-07 | Distribution calendar apply | done | — | `/admin/calendar` preview + apply; weekday-preferred, weekend-reduced cadence |
 | CS-08 | Performance feedback loop | doing | Metrics API access | X/LinkedIn stats + top-performers leaderboard, worker cron every 3h; posting-time auto-tuning still needs more data |

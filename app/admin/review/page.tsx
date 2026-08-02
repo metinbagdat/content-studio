@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { DEFAULT_ADMIN_API_KEY } from '@/lib/adminKey'
+import { PodcastTimeline } from '@/components/admin/PodcastTimeline'
 
 type Item = {
   id: string
@@ -584,6 +585,8 @@ export default function ReviewPage() {
             </div>
             {editingId === item.id ? (
               <textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} style={{ marginTop: '0.5rem' }} />
+            ) : item.contentType === 'PODCAST_SCRIPT' ? (
+              <PodcastTimeline content={item.content} />
             ) : (
               <div className="pre">{item.content}</div>
             )}
