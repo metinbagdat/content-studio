@@ -2,9 +2,19 @@
 # bypassing `prisma db push`'s full-schema diff (which can prompt to drop unrelated
 # tables like a leftover `users` table from the legacy app).
 #
-# Usage:
-#   powershell -ExecutionPolicy Bypass -File scripts/db-execute.ps1 -Sql 'ALTER TYPE "ContentType" ADD VALUE IF NOT EXISTS ''NEW_VALUE'';'
-#   powershell -ExecutionPolicy Bypass -File scripts/db-execute.ps1 -File .\my-change.sql
+# RECOMMENDED usage — write SQL to a file with a here-string first (no quoting problems
+# at all), then pass the file. Run this directly in PowerShell, NOT via "npm run db:exec --"
+# (npm invokes scripts through cmd.exe on Windows, which mangles single quotes and breaks
+# -Sql inline strings):
+#
+#   @'
+#   ALTER TYPE "ContentType" ADD VALUE IF NOT EXISTS 'NEW_VALUE';
+#   '@ | Out-File -Encoding ascii change.sql
+#   .\scripts\db-execute.ps1 -File .\change.sql
+#   Remove-Item change.sql
+#
+# -Sql inline also works, but ONLY when you call this script directly (not through npm):
+#   .\scripts\db-execute.ps1 -Sql 'ALTER TYPE "ContentType" ADD VALUE IF NOT EXISTS ''NEW_VALUE'';'
 #
 # Why this exists (2026-08): `prisma db push` compares the ENTIRE live schema against
 # prisma/schema.prisma and will offer to DROP any table it doesn't recognize (e.g. an
