@@ -112,11 +112,16 @@ export async function processPipeline(pipelineId: string) {
     await prisma.contentPipeline.update({
       where: { id: pipelineId },
       data: {
-        config: {
+		config: {
           ...config,
           atomizationPlan,
           distributionCalendar,
           plannedPieces: totalPlannedPieces(atomizationPlan.contentPieces),
+          atomizedCreated: atomized.created,
+          atomizedByType: atomized.byType,
+          atomizedErrors: atomized.errors,
+          aiImagesGenerated,        // YENİ
+          aiImageErrors,            // YENİ
         } as Prisma.InputJsonValue,
       },
     })
@@ -158,7 +163,7 @@ export async function processPipeline(pipelineId: string) {
         },
       })
     }
-
+    // processPipeline içinde, bu bloğun hemen altına:
     const atomized = await generateAllDerivatives(atomizationPlan, {
       sourceId: pipeline.sourceId,
       title: pipeline.source.title,
@@ -168,11 +173,36 @@ export async function processPipeline(pipelineId: string) {
       platforms: config.platforms,
     })
 
+    // YENİ: socialCard işaretli caption'lar için AI görsel üret (best-effort — bir
+    // görsel başarısız olursa diğerlerini ve pipeline'ı etkilemesin)
+    const socialCardTargets = await prisma.derivedContent.findMany({
+      where: {
+        sourceId: pipeline.sourceId,
+        contentType: 'SOCIAL_CAPTION',
+        createdAt: { gte: pipeline.startedAt ?? pipeline.createdAt },
+      },
+      select: { id: true, metadata: true },
+    })
+    const aiImageErrors: string[] = []
+    let aiImagesGenerated = 0
+    for (const item of socialCardTargets) {
+      const m = item.metadata && typeof item.metadata === 'object' ? (item.metadata as Record<string, unknown>) : {}
+      if (!m.socialCard) continue
+      try {
+        const { generateAiImageVariations } = await import('./image/generateAiImage')
+        const variations = await generateAiImageVariations(item.id, 2)
+        if (variations.length) aiImagesGenerated += 1
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        aiImageErrors.push(`${item.id.slice(0, 8)}: ${msg}`)
+      }
+    }
+			
     // A handful of failed items (e.g. a not-yet-migrated ContentType enum value) shouldn't
     // sink the whole run when dozens of other pieces were generated fine — surface them as
     // warnings on a COMPLETED pipeline instead of a hard FAILED status.
-    const allErrors = [...pipeline.errors, ...atomized.errors]
-
+    const allErrors = [...pipeline.errors, ...atomized.errors, ...aiImageErrors]
+	
     await prisma.contentPipeline.update({
       where: { id: pipelineId },
       data: {

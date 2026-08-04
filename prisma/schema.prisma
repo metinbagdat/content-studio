@@ -219,6 +219,7 @@ enum JobType {
   PUBLISH_SOCIAL_POST
   SYNC_ANALYTICS
   PROCESS_PIPELINE
+  DISCOVERY_NOTIFICATION
 }
 
 enum JobStatus {
@@ -228,3 +229,4 @@ enum JobStatus {
   FAILED
   RETRY
 }
+

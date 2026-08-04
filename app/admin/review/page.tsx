@@ -152,7 +152,9 @@ export default function ReviewPage() {
   const [autoMedia, setAutoMedia] = useState(true)
   const [bulkBusy, setBulkBusy] = useState(false)
   const [prioritySourceId, setPrioritySourceId] = useState('')
-
+  type AiImageState = { msg: string; urls: string[] }
+  const [aiImageState, setAiImageState] = useState<Record<string, AiImageState>>({})
+  
   const pendingItems = useMemo(() => items.filter((i) => i.status === 'IN_REVIEW'), [items])
 
   const counts = useMemo(() => {
@@ -300,6 +302,33 @@ export default function ReviewPage() {
       return next
     })
     await load()
+  }
+
+  async function generateAiImage(id: string) {
+    setBusyId(id)
+    setAiImageState((prev) => ({ ...prev, [id]: { msg: 'Üretiliyor…', urls: prev[id]?.urls || [] } }))
+    try {
+      const res = await fetch('/api/media/generate', {
+        method: 'POST',
+        headers: adminHeaders(adminKey, true),
+        body: JSON.stringify({ derivedContentId: id, kind: 'ai-image', count: 2 }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setAiImageState((prev) => ({ ...prev, [id]: { msg: data.error || 'Başarısız', urls: [] } }))
+        return
+      }
+      const variations = (data.variations || []) as Array<{ publicUrl: string }>
+      const urls = variations.map((v) => v.publicUrl)
+      setAiImageState((prev) => ({
+        ...prev,
+        [id]: { msg: `${urls.length} varyasyon üretildi`, urls },
+      }))
+    } catch {
+      setAiImageState((prev) => ({ ...prev, [id]: { msg: 'Bağlantı hatası', urls: prev[id]?.urls || [] } }))
+    } finally {
+      setBusyId(null)
+    }
   }
 
   function toggleSelect(id: string) {
@@ -669,6 +698,16 @@ export default function ReviewPage() {
                       Ses üret
                     </a>
                   ) : null}
+                  {item.contentType === 'SOCIAL_CAPTION' ? (
+                    <button
+                      type="button"
+                      className="secondary"
+                      disabled={busyId === item.id}
+                      onClick={() => generateAiImage(item.id)}
+                    >
+                      AI görsel üret
+                    </button>
+                  ) : null}
                   {item.status !== 'PUBLISHED' ? (
                     <button type="button" className="danger" disabled={busyId === item.id} onClick={() => remove(item.id)}>
                       Sil
@@ -677,6 +716,30 @@ export default function ReviewPage() {
                 </>
               )}
             </div>
+            {aiImageState[item.id] ? (
+              <div style={{ margin: '0.5rem 0 0' }}>
+                <p className="muted" style={{ margin: '0 0 0.4rem' }}>{aiImageState[item.id].msg}</p>
+                {aiImageState[item.id].urls.length ? (
+                  <div className="row" style={{ gap: '0.5rem' }}>
+                    {aiImageState[item.id].urls.map((url, i) => (
+                      <a key={url} href={url} target="_blank" rel="noreferrer">
+                        <img
+                          src={url}
+                          alt={`AI görsel ${i + 1}`}
+                          style={{
+                            width: 120,
+                            height: 120,
+                            objectFit: 'cover',
+                            borderRadius: 8,
+                            border: '1px solid rgba(0,0,0,0.15)',
+                          }}
+                        />
+                      </a>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
             {item.status !== 'IN_REVIEW' && editingId !== item.id ? (
               <p className="muted" style={{ margin: '0.35rem 0 0' }}>
                 {item.status === 'APPROVED' || item.status === 'PUBLISHED'

@@ -4,6 +4,7 @@ import { createPipeline } from '../pipeline'
 import { DEFAULT_PIPELINE_PLATFORMS } from '../platforms/targets'
 import { isDuplicateArticle, isLikelyHubPage } from './duplicateDetection'
 import { fetchBlogSitemap, type SitemapEntry } from './sitemap'
+import { fetchBlogRss, isRssAvailable } from './rss'
 
 export type DiscoveryResult = {
   scanned: number
@@ -12,6 +13,7 @@ export type DiscoveryResult = {
   skippedHubPages: number
   errors: string[]
   ingested: Array<{ slug: string; sourceId: string; title: string }>
+  source: 'sitemap' | 'rss' | 'manual'
 }
 
 export type DiscoveryOptions = {
@@ -31,7 +33,6 @@ async function ingestBlogSlug(slug: string): Promise<{ sourceId: string; title: 
   if (await isDuplicateArticle(slug, blog.title, blog.contentMarkdown)) {
     throw new Error(`DUPLICATE:${slug}`)
   }
-
   const source = await prisma.contentSource.create({
     data: {
       title: blog.title,
@@ -40,38 +41,61 @@ async function ingestBlogSlug(slug: string): Promise<{ sourceId: string; title: 
       tags: blog.tags,
     },
   })
-
   return { sourceId: source.id, title: blog.title }
 }
 
-/** Phase 0: scan sitemap, ingest new blogs, optionally trigger pipeline. */
+/** Resolve entries via sitemap, falling back to RSS if sitemap fails or is empty. */
+async function resolveEntries(options: DiscoveryOptions): Promise<{ entries: SitemapEntry[]; source: DiscoveryResult['source'] }> {
+  if (options.slugs?.length) {
+    return {
+      source: 'manual',
+      entries: options.slugs.map((slug) => ({
+        slug,
+        url: `https://www.egitim.today/blog/${slug}`,
+      })),
+    }
+  }
+
+  try {
+    const sitemapEntries = await fetchBlogSitemap()
+    if (sitemapEntries.length > 0) {
+      return { source: 'sitemap', entries: sitemapEntries }
+    }
+    console.warn('[discovery] sitemap returned 0 entries, checking RSS fallback')
+  } catch (err) {
+    console.warn('[discovery] sitemap fetch failed, checking RSS fallback', err)
+  }
+
+  if (await isRssAvailable()) {
+    const rssEntries = await fetchBlogRss()
+    return { source: 'rss', entries: rssEntries }
+  }
+
+  // Neither sitemap nor RSS worked — surface an empty result rather than throwing,
+  // so a transient outage doesn't crash the scheduled run.
+  console.error('[discovery] both sitemap and RSS unavailable')
+  return { source: 'sitemap', entries: [] }
+}
+
+/** Phase 0: scan sitemap (or RSS fallback), ingest new blogs, optionally trigger pipeline. */
 export async function runContentDiscovery(options: DiscoveryOptions = {}): Promise<DiscoveryResult> {
   const limit = options.limit ?? 3
   const triggerPipeline = options.triggerPipeline ?? true
+
+  const { entries, source } = await resolveEntries(options)
+
   const result: DiscoveryResult = {
-    scanned: 0,
+    scanned: entries.length,
     newArticles: 0,
     skippedDuplicates: 0,
     skippedHubPages: 0,
     errors: [],
     ingested: [],
+    source,
   }
-
-  let entries: SitemapEntry[] = []
-  if (options.slugs?.length) {
-    entries = options.slugs.map((slug) => ({
-      slug,
-      url: `https://www.egitim.today/blog/${slug}`,
-    }))
-  } else {
-    entries = await fetchBlogSitemap()
-  }
-
-  result.scanned = entries.length
 
   for (const entry of entries) {
     if (result.newArticles >= limit) break
-
     try {
       const blog = await fetchEgitimTodayBlog(entry.slug)
       if (isLikelyHubPage(entry.slug, blog.title, blog.contentMarkdown)) {
@@ -82,7 +106,6 @@ export async function runContentDiscovery(options: DiscoveryOptions = {}): Promi
         result.skippedDuplicates += 1
         continue
       }
-
       const source = await prisma.contentSource.create({
         data: {
           title: blog.title,
@@ -91,10 +114,8 @@ export async function runContentDiscovery(options: DiscoveryOptions = {}): Promi
           tags: blog.tags,
         },
       })
-
       result.newArticles += 1
       result.ingested.push({ slug: entry.slug, sourceId: source.id, title: blog.title })
-
       if (triggerPipeline) {
         await createPipeline(source.id, {
           platforms: [...DEFAULT_PIPELINE_PLATFORMS],

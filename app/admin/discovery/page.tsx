@@ -17,6 +17,21 @@ type DiscoveryInfo = {
   recent: RecentSource[]
 }
 
+type DiscoveryLog = {
+  id: string
+  status: 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED' | 'RETRY'
+  payload: { source: string; scanned: number } | null
+  result: {
+    newArticles: number
+    skippedDuplicates: number
+    skippedHubPages: number
+    errors: string[]
+    ingested: Array<{ slug: string; sourceId: string; title: string }>
+  } | null
+  error: string | null
+  createdAt: string
+}
+
 function headers(key: string, json = false): HeadersInit {
   const h: Record<string, string> = { 'x-admin-key': key }
   if (json) h['Content-Type'] = 'application/json'
@@ -26,6 +41,7 @@ function headers(key: string, json = false): HeadersInit {
 export default function DiscoveryPage() {
   const [adminKey, setAdminKey] = useState('')
   const [info, setInfo] = useState<DiscoveryInfo | null>(null)
+  const [logs, setLogs] = useState<DiscoveryLog[]>([])
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
   const [limit, setLimit] = useState(2)
@@ -44,6 +60,17 @@ export default function DiscoveryPage() {
     setMsg('')
   }, [adminKey])
 
+  const loadLogs = useCallback(async () => {
+    if (!adminKey) return
+    const res = await fetch('/api/admin/discovery-log?limit=20', {
+      headers: headers(adminKey),
+      cache: 'no-store',
+    })
+    if (!res.ok) return
+    const data = await res.json()
+    setLogs(data.logs || [])
+  }, [adminKey])
+
   useEffect(() => {
     const saved = localStorage.getItem('cs_admin_key')
     if (saved) setAdminKey(saved)
@@ -54,8 +81,9 @@ export default function DiscoveryPage() {
     if (adminKey) {
       localStorage.setItem('cs_admin_key', adminKey)
       load()
+      loadLogs()
     }
-  }, [adminKey, load])
+  }, [adminKey, load, loadLogs])
 
   async function runDiscovery() {
     setBusy(true)
@@ -75,6 +103,7 @@ export default function DiscoveryPage() {
           (r.errors?.length ? ` · hatalar: ${r.errors.length}` : ''),
       )
       await load()
+      await loadLogs()
     } catch (e) {
       setMsg(e instanceof Error ? e.message : 'Discovery hatası')
     } finally {
@@ -100,7 +129,15 @@ export default function DiscoveryPage() {
             placeholder={DEFAULT_ADMIN_API_KEY}
           />
         </div>
-        <button type="button" className="secondary" onClick={load} disabled={busy}>
+        <button
+          type="button"
+          className="secondary"
+          onClick={() => {
+            load()
+            loadLogs()
+          }}
+          disabled={busy}
+        >
           Yenile
         </button>
       </div>
@@ -151,6 +188,49 @@ export default function DiscoveryPage() {
           </ul>
         </section>
       </div>
+
+      <section className="panel" style={{ marginTop: '1.5rem' }}>
+        <h2>Discovery Log</h2>
+        <p className="muted">Zamanlanmış ve manuel çalıştırmaların geçmişi (sitemap / RSS kaynağı dahil).</p>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr>
+              <th style={{ textAlign: 'left' }}>Tarih</th>
+              <th style={{ textAlign: 'left' }}>Kaynak</th>
+              <th style={{ textAlign: 'left' }}>Durum</th>
+              <th style={{ textAlign: 'left' }}>Yeni</th>
+              <th style={{ textAlign: 'left' }}>Hata</th>
+            </tr>
+          </thead>
+          <tbody>
+            {logs.map((log) => (
+              <tr key={log.id} style={{ borderTop: '1px solid #333' }}>
+                <td>{new Date(log.createdAt).toLocaleString('tr-TR')}</td>
+                <td>{log.payload?.source ?? '—'}</td>
+                <td>{log.status}</td>
+                <td>
+                  {log.result?.newArticles ?? 0}
+                  {log.result?.ingested?.length ? (
+                    <ul>
+                      {log.result.ingested.map((i) => (
+                        <li key={i.sourceId}>{i.title}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </td>
+                <td style={{ color: log.error ? 'red' : undefined }}>{log.error || '—'}</td>
+              </tr>
+            ))}
+            {!logs.length ? (
+              <tr>
+                <td colSpan={5} className="muted">
+                  Henüz log kaydı yok
+                </td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+      </section>
     </div>
   )
 }

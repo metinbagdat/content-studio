@@ -58,11 +58,22 @@ async function openAiTts(text: string): Promise<Buffer> {
 
 async function edgeTts(text: string): Promise<Buffer> {
   const voice = process.env.TTS_EDGE_VOICE || 'tr-TR-EmelNeural'
-  const edgeMod = await import('edge-tts/out/index.js')
-  const ttsFn = edgeMod.tts as (text: string, options?: { voice?: string }) => Promise<Buffer>
-  if (!ttsFn) throw new Error('edge-tts tts bulunamadi - npm install edge-tts')
-  const buffer = await ttsFn(text.slice(0, 8000), { voice })
-  if (!buffer?.length) throw new Error('Edge TTS ses uretmedi')
+  const { MsEdgeTTS, OUTPUT_FORMAT } = await import('msedge-tts')
+
+  const tts = new MsEdgeTTS()
+  await tts.setMetadata(voice, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3)
+
+  const { audioStream } = await tts.toStream(text.slice(0, 8000))
+
+  const chunks: Buffer[] = []
+  await new Promise<void>((resolve, reject) => {
+    audioStream.on('data', (chunk: Buffer) => chunks.push(chunk))
+    audioStream.on('end', () => resolve())
+    audioStream.on('error', reject)
+  })
+
+  const buffer = Buffer.concat(chunks)
+  if (!buffer.length) throw new Error('Edge TTS ses uretmedi')
   return buffer
 }
 

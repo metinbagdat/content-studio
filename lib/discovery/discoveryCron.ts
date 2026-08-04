@@ -1,3 +1,4 @@
+import { prisma } from '../prisma'
 import { runContentDiscovery, type DiscoveryResult } from './contentDiscovery'
 
 const IST_OFFSET_MS = 3 * 60 * 60 * 1000
@@ -10,7 +11,6 @@ export function msUntilNextDiscoveryRun(from = new Date()): number {
   const istYear = istNow.getUTCFullYear()
   const istMonth = istNow.getUTCMonth()
   const istDate = istNow.getUTCDate()
-
   let targetUtc = Date.UTC(istYear, istMonth, istDate, DISCOVERY_HOUR_IST - 3, DISCOVERY_MINUTE_IST, 0, 0)
   if (targetUtc <= from.getTime()) {
     targetUtc = Date.UTC(istYear, istMonth, istDate + 1, DISCOVERY_HOUR_IST - 3, DISCOVERY_MINUTE_IST, 0, 0)
@@ -21,6 +21,35 @@ export function msUntilNextDiscoveryRun(from = new Date()): number {
 export type DiscoveryRunOptions = {
   limit?: number
   triggerPipeline?: boolean
+}
+
+/** Persist a QueueJob record so admins can see discovery runs in the job log. */
+async function logDiscoveryRun(result: DiscoveryResult): Promise<void> {
+  try {
+    await prisma.queueJob.create({
+      data: {
+        jobType: 'DISCOVERY_NOTIFICATION',
+        status: result.errors.length > 0 && result.newArticles === 0 ? 'FAILED' : 'COMPLETED',
+        payload: {
+          source: result.source,
+          scanned: result.scanned,
+        },
+        result: {
+          newArticles: result.newArticles,
+          skippedDuplicates: result.skippedDuplicates,
+          skippedHubPages: result.skippedHubPages,
+          errors: result.errors,
+          ingested: result.ingested,
+        },
+        error: result.errors.length ? result.errors.join('; ') : null,
+        startedAt: new Date(),
+        completedAt: new Date(),
+      },
+    })
+  } catch (err) {
+    // Never let logging failure break the discovery run itself
+    console.error('[discovery] failed to persist QueueJob log', err)
+  }
 }
 
 /** Run discovery and emit structured logs for admin / ops visibility. */
@@ -56,6 +85,8 @@ export async function runScheduledDiscovery(
     )
   }
 
+  await logDiscoveryRun(result)
+
   return result
 }
 
@@ -64,16 +95,13 @@ let discoveryRunning = false
 
 function scheduleNextDiscoveryRun(runNow = false): void {
   if (discoveryTimer) clearTimeout(discoveryTimer)
-
   const delay = runNow ? 0 : msUntilNextDiscoveryRun()
   const nextAt = new Date(Date.now() + delay)
-
   console.log('[discovery] next run scheduled', {
     nextAt: nextAt.toISOString(),
     delayMs: delay,
     hourIst: `${DISCOVERY_HOUR_IST}:${String(DISCOVERY_MINUTE_IST).padStart(2, '0')}`,
   })
-
   discoveryTimer = setTimeout(async () => {
     if (discoveryRunning) {
       scheduleNextDiscoveryRun()
@@ -97,7 +125,6 @@ export function startDiscoveryCron(options: { runOnStart?: boolean } = {}): void
     console.log('[discovery] cron disabled (DISCOVERY_CRON_ENABLED=false)')
     return
   }
-
   const runOnStart = options.runOnStart ?? process.env.DISCOVERY_RUN_ON_START === 'true'
   scheduleNextDiscoveryRun(runOnStart)
 }
