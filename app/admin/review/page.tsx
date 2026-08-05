@@ -158,7 +158,7 @@ export default function ReviewPage() {
   const [autoMedia, setAutoMedia] = useState(true)
   const [bulkBusy, setBulkBusy] = useState(false)
   const [prioritySourceId, setPrioritySourceId] = useState('')
-type AiImageState = { msg: string; urls: string[] }
+type AiImageState = { msg: string; urls: string[]; mediaIds?: string[] }
   const [aiImageState, setAiImageState] = useState<Record<string, AiImageState>>({})
   const [customOrder, setCustomOrder] = useState<string[]>([])
   const pendingItems = useMemo(() => items.filter((i) => i.status === 'IN_REVIEW'), [items])
@@ -359,14 +359,56 @@ type AiImageState = { msg: string; urls: string[] }
         setAiImageState((prev) => ({ ...prev, [id]: { msg: data.error || 'Başarısız', urls: [] } }))
         return
       }
-      const variations = (data.variations || []) as Array<{ publicUrl: string }>
+      const variations = (data.variations || []) as Array<{ publicUrl: string; mediaId: string }>
       const urls = variations.map((v) => v.publicUrl)
       setAiImageState((prev) => ({
         ...prev,
-        [id]: { msg: `${urls.length} varyasyon üretildi`, urls },
+        [id]: { msg: `${urls.length} varyasyon · batch export için mediaId kullan`, urls, mediaIds: variations.map((v) => v.mediaId) },
       }))
     } catch {
       setAiImageState((prev) => ({ ...prev, [id]: { msg: 'Bağlantı hatası', urls: prev[id]?.urls || [] } }))
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function generateSong(id: string, kind: 'song' | 'march') {
+    setBusyId(id)
+    setMsg(`${kind === 'march' ? 'Marş' : 'Şarkı'} sesi üretiliyor…`)
+    try {
+      const res = await fetch('/api/media/generate', {
+        method: 'POST',
+        headers: adminHeaders(adminKey, true),
+        body: JSON.stringify({ derivedContentId: id, kind }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Başarısız')
+      setMsg(
+        data.reused
+          ? 'Mevcut ses kullanıldı'
+          : `Ses hazır${data.hasMusicBed ? ' (müzik yatağı ile)' : ' (sadece ses)'}`,
+      )
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : 'Ses üretimi başarısız')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function batchResizeImage(masterMediaId: string, derivedId: string) {
+    setBusyId(derivedId)
+    setMsg('Platform boyutlarına export ediliyor…')
+    try {
+      const res = await fetch('/api/media/generate', {
+        method: 'POST',
+        headers: adminHeaders(adminKey, true),
+        body: JSON.stringify({ kind: 'resize-batch', masterMediaId, format: 'jpeg', quality: 85 }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Export başarısız')
+      setMsg(`${(data.exports || []).length} platform boyutu oluşturuldu`)
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : 'Export hatası')
     } finally {
       setBusyId(null)
     }
@@ -786,6 +828,26 @@ type AiImageState = { msg: string; urls: string[] }
                       AI görsel üret
                     </button>
                   ) : null}
+                  {item.contentType === 'MARCH_LYRICS' ? (
+                    <button
+                      type="button"
+                      className="secondary"
+                      disabled={busyId === item.id}
+                      onClick={() => generateSong(item.id, 'march')}
+                    >
+                      Marş sesi üret
+                    </button>
+                  ) : null}
+                  {item.contentType === 'SONG_LYRICS' ? (
+                    <button
+                      type="button"
+                      className="secondary"
+                      disabled={busyId === item.id}
+                      onClick={() => generateSong(item.id, 'song')}
+                    >
+                      Şarkı sesi üret
+                    </button>
+                  ) : null}
                   {item.status !== 'PUBLISHED' ? (
                     <button type="button" className="danger" disabled={busyId === item.id} onClick={() => remove(item.id)}>
                       Sil
@@ -814,6 +876,16 @@ type AiImageState = { msg: string; urls: string[] }
                         />
                       </a>
                     ))}
+                    {aiImageState[item.id].mediaIds?.[0] ? (
+                      <button
+                        type="button"
+                        className="secondary"
+                        disabled={busyId === item.id}
+                        onClick={() => batchResizeImage(aiImageState[item.id].mediaIds![0], item.id)}
+                      >
+                        Tüm platform boyutları
+                      </button>
+                    ) : null}
                   </div>
                 ) : null}
               </div>

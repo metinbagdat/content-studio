@@ -1,7 +1,7 @@
 import ffmpeg from 'fluent-ffmpeg'
 import ffprobeStatic from 'ffprobe-static'
 
-ffmpeg.setFfprobePath(ffprobeStatic.path)
+ffmpeg.setFfprobePath(ffprobeStatic)
 
 /** Real duration (seconds) of an audio file via ffprobe — drives subtitle/image timing instead of estimates. */
 export function getAudioDurationSec(filePath: string): Promise<number> {

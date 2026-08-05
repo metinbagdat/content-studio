@@ -1,7 +1,8 @@
-import { startWorkers, drainDbPipelineJobs } from '../lib/queue'
+import { startWorkers, drainDbPipelineJobs, drainDbPublishJobs } from '../lib/queue'
 import { drainDuePosts } from '../lib/social/publish'
 import { startDiscoveryCron } from '../lib/discovery/discoveryCron'
 import { startAnalyticsSyncCron } from '../lib/social/analyticsCron'
+import { runSocialAutopilot } from '../lib/social/autopilot'
 
 async function main() {
   console.log('[content-studio worker] starting…')
@@ -18,15 +19,20 @@ async function main() {
   startAnalyticsSyncCron()
 
   setInterval(() => {
-    drainDbPipelineJobs(3).catch((e) => console.error(e))
-    drainDuePosts(5).catch((e) => console.error(e))
+    runWorkerTick().catch((e) => console.error('[worker tick]', e))
   }, 15_000)
 
-  await drainDbPipelineJobs(5)
+  await runWorkerTick()
+}
+
+async function runWorkerTick() {
+  await drainDbPipelineJobs(3)
+  await drainDbPublishJobs(5)
   await drainDuePosts(5)
+  await runSocialAutopilot(8)
 }
 
 main().catch((err) => {
-  console.error(err)
+  console.error('[worker] fatal startup error', err)
   process.exit(1)
 })

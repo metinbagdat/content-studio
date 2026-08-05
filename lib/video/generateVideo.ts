@@ -11,6 +11,7 @@ import { renderVideo, dimensionsForAspect, type AspectRatio } from './renderVide
 import { writeVideoFile, publicMediaVideoUrl } from './videoStorage'
 import { writeImageFile, imageDiskPath } from '../media/imageStorage'
 import sharp from 'sharp'
+import { ttsPronunciation } from '../media/pronunciation'
 
 const EN_VOICE = process.env.TTS_EDGE_VOICE_EN || 'en-US-AriaNeural'
 
@@ -18,13 +19,6 @@ export type VideoVariant = { mediaId: string; publicUrl: string; aspect: AspectR
 export type VideoLanguage = 'tr' | 'en'
 
 type ScriptSegment = { text: string; visualPrompt: string }
-
-function ttsPronunciation(text: string): string {
-  return text
-    .replace(/(?:www\.)?egitim\.today/gi, 'www nokta eğitim nokta tudey')
-    .replace(/https?:\/\/\S+/g, '')
-    .trim()
-}
 
 /** Parse VIDEO_SCRIPT JSON (hook/scenes/callToAction), tolerating ```json fences some LLM outputs wrap around it. */
 function parseVideoScript(raw: string, fallbackVisual: string): ScriptSegment[] {

@@ -15,17 +15,31 @@ export async function GET(_req: NextRequest, ctx: RouteCtx) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
-  const diskPath = imageDiskPath(`${id}.png`)
+  const ext = media.format === 'jpeg' ? 'jpg' : 'png'
+  const contentType = media.format === 'jpeg' ? 'image/jpeg' : 'image/png'
+  const diskPath = imageDiskPath(`${id}.${ext}`)
   try {
     const data = await readFile(diskPath)
     return new NextResponse(data, {
       headers: {
-        'Content-Type': 'image/png',
+        'Content-Type': contentType,
         'Content-Length': String(data.length),
         'Cache-Control': 'public, max-age=86400',
       },
     })
   } catch {
-    return NextResponse.json({ error: 'File missing on disk' }, { status: 404 })
+    // Legacy PNG-only rows
+    try {
+      const data = await readFile(imageDiskPath(`${id}.png`))
+      return new NextResponse(data, {
+        headers: {
+          'Content-Type': 'image/png',
+          'Content-Length': String(data.length),
+          'Cache-Control': 'public, max-age=86400',
+        },
+      })
+    } catch {
+      return NextResponse.json({ error: 'File missing on disk' }, { status: 404 })
+    }
   }
 }

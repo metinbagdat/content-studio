@@ -1,8 +1,6 @@
 import { prisma } from '../prisma'
 import { generatePostImage } from '../media/generatePostImage'
 import { defaultPostImageUrl } from './brandImage'
-import { verifyImageUrl } from './imageUrlCheck'
-import type { PublishResult } from './publish'
 
 function isCustomUrl(url: string): boolean {
   return url.startsWith('http://') || url.startsWith('https://')
@@ -31,23 +29,18 @@ export async function ensureGeneratedPostImage(derivedContentId: string): Promis
     return [existingUrl]
   }
 
-  const slug = derived.source?.tags?.find((t) => t.startsWith('blog:'))
-  if (slug && !existingUrl) {
-    const path = slug.replace('blog:', '')
-    const blogOgImage = `https://www.egitim.today/blog/${path}/opengraph-image`
-    if (await verifyImageUrl(blogOgImage)) {
-      return [blogOgImage]
-    }
-    console.warn('[ensureGeneratedPostImage] blog og-image 404, falling back to AI card', blogOgImage)
-  }
-
+  // Branded card renders per-platform — skip blog og-image probe (often 404, noisy logs)
   try {
-    const { publicUrl } = await generatePostImage(derivedContentId)
-    return [publicUrl]
+    const result = await generatePostImage(derivedContentId)
+    const url = result?.publicUrl
+    if (typeof url === 'string' && url.startsWith('http')) {
+      return [url]
+    }
   } catch (err) {
     console.warn('[ensureGeneratedPostImage]', derivedContentId, err)
-    return [defaultPostImageUrl()]
   }
+
+  return [defaultPostImageUrl()]
 }
 
 async function syncPostRowsFromCaption(derivedContentId: string, postContent: string, mediaUrls: string[]) {
@@ -108,9 +101,9 @@ export async function syncCaptionToSocial(
     }
 
     try {
-      const out: PublishResult = await publishPost(post.id, {
+      const out = await publishPost(post.id, {
         replace,
-        requireImage: true,
+        requireImage: post.platform === 'LINKEDIN',
         force: false,
       })
       if (out.skipped) {
@@ -165,7 +158,7 @@ export async function updatePublishedSocialPosts(derivedContentId: string, postC
   const { publishPost } = await import('./publish')
   for (const post of posts) {
     if (!post.account.isActive || post.account.accountId.startsWith('dryrun_')) continue
-    await publishPost(post.id, { replace: true, requireImage: true, force: true })
+    await publishPost(post.id, { replace: true, requireImage: post.platform === 'LINKEDIN', force: true })
   }
 }
 
@@ -206,5 +199,5 @@ export async function updatePostOnPlatform(postId: string) {
   })
 
   const { publishPost } = await import('./publish')
-  return publishPost(postId, { replace: true, requireImage: true, force: true })
+  return publishPost(postId, { replace: true, requireImage: post.platform === 'LINKEDIN', force: true })
 }

@@ -85,8 +85,10 @@ export function startWorkers() {
     QUEUE_SOCIAL,
     async (job) => {
       const { publishPost } = await import('./social/publish')
+      const { preparePostForPublish } = await import('./social/preparePublish')
       const { postId } = job.data as { postId: string }
-      return publishPost(postId)
+      await preparePostForPublish(postId)
+      return publishPost(postId, { requireImage: true })
     },
     { connection: getRedis(), concurrency: 3 },
   )
@@ -121,6 +123,67 @@ export async function drainDbPipelineJobs(limit = 5) {
       const payload = job.payload as { pipelineId?: string }
       if (!payload.pipelineId) throw new Error('missing pipelineId')
       const result = await processPipeline(payload.pipelineId)
+      await prisma.queueJob.update({
+        where: { id: job.id },
+        data: { status: 'COMPLETED', completedAt: new Date(), result },
+      })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      await prisma.queueJob.update({
+        where: { id: job.id },
+        data: { status: 'FAILED', failedAt: new Date(), error: message },
+      })
+    }
+  }
+  return jobs.length
+}
+
+/** Fallback: process PENDING PUBLISH_SOCIAL_POST jobs when Redis empty or worker DB-only. */
+export async function drainDbPublishJobs(limit = 5) {
+  const { publishPost } = await import('./social/publish')
+  const { preparePostForPublish, recoverStuckPublishing, isDryRunAccount } = await import(
+    './social/preparePublish',
+  )
+  const { prisma } = await import('./prisma')
+
+  await recoverStuckPublishing()
+
+  const jobs = await prisma.queueJob.findMany({
+    where: {
+      status: 'PENDING',
+      jobType: 'PUBLISH_SOCIAL_POST',
+      scheduledAt: { lte: new Date() },
+    },
+    orderBy: [{ priority: 'desc' }, { scheduledAt: 'asc' }],
+    take: limit,
+  })
+
+  for (const job of jobs) {
+    await prisma.queueJob.update({
+      where: { id: job.id },
+      data: { status: 'RUNNING', startedAt: new Date(), attempts: { increment: 1 } },
+    })
+    try {
+      const payload = job.payload as { postId?: string }
+      if (!payload.postId) throw new Error('missing postId')
+
+      const post = await prisma.socialMediaPost.findUnique({
+        where: { id: payload.postId },
+        include: { account: true },
+      })
+      if (!post) throw new Error('post not found')
+      if (!post.account.isActive || isDryRunAccount(post.account)) {
+        await prisma.queueJob.update({
+          where: { id: job.id },
+          data: { status: 'COMPLETED', completedAt: new Date(), result: { skipped: true } },
+        })
+        continue
+      }
+
+      await preparePostForPublish(payload.postId)
+      const result = await publishPost(payload.postId, {
+        requireImage: post.platform === 'LINKEDIN',
+      })
       await prisma.queueJob.update({
         where: { id: job.id },
         data: { status: 'COMPLETED', completedAt: new Date(), result },

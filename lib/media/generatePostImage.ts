@@ -17,14 +17,17 @@ function scaleFactor(spec: ImageSpec): number {
 
 /** Brand watermark — LEARNCONNECT.NET / egitim.today lockup, used on every generated post image. */
 function BrandWatermark({ scale, align = 'end' }: { scale: number; align?: 'start' | 'end' }) {
+  const positionStyle =
+    align === 'end'
+      ? { right: 44 * scale, bottom: 40 * scale }
+      : { left: 44 * scale, bottom: 40 * scale }
+
   return React.createElement(
     'div',
     {
       style: {
         position: 'absolute',
-        right: align === 'end' ? 44 * scale : undefined,
-        left: align === 'start' ? 44 * scale : undefined,
-        bottom: 40 * scale,
+        ...positionStyle,
         display: 'flex',
         flexDirection: 'column',
         alignItems: align === 'end' ? 'flex-end' : 'flex-start',
@@ -214,7 +217,12 @@ export async function generatePostImage(derivedContentId: string) {
   const articleTitle =
     typeof meta.articleTitle === 'string' && meta.articleTitle.trim()
       ? meta.articleTitle.trim()
-      : derived.source.title
+      : derived.source?.title || 'egitim.today'
+
+  const captionText =
+    typeof derived.content === 'string' && derived.content.trim()
+      ? derived.content.trim()
+      : articleTitle
 
   const existing = derived.mediaFiles[0]
   if (existing) {
@@ -229,7 +237,7 @@ export async function generatePostImage(derivedContentId: string) {
   const specKey = pickImageSpecKey(targetPlatform)
   const spec = getImageSpec(specKey)
 
-  const design = await extractPostImageDesign(articleTitle, derived.content)
+  const design = await extractPostImageDesign(articleTitle, captionText)
   const png = await designToPng(design, spec)
 
   const media = await prisma.mediaFile.create({
@@ -282,7 +290,9 @@ export async function generatePostImage(derivedContentId: string) {
 }
 
 /** Read PNG bytes for LinkedIn upload (avoids localhost fetch issues). */
-export async function readPostImageBuffer(derivedContentId: string): Promise<Buffer | null> {
+export async function readPostImageBuffer(
+  derivedContentId: string,
+): Promise<{ buffer: Buffer; contentType: string } | null> {
   const row = await prisma.mediaFile.findFirst({
     where: {
       derivedContentId,
@@ -292,9 +302,16 @@ export async function readPostImageBuffer(derivedContentId: string): Promise<Buf
     orderBy: { createdAt: 'desc' },
   })
   if (!row) return null
+
+  const ext = row.format === 'jpeg' ? 'jpg' : 'png'
+  const contentType = row.format === 'jpeg' ? 'image/jpeg' : 'image/png'
   try {
-    return await readImageFile(`${row.id}.png`)
+    return { buffer: await readImageFile(`${row.id}.${ext}`), contentType }
   } catch {
-    return null
+    try {
+      return { buffer: await readImageFile(`${row.id}.png`), contentType: 'image/png' }
+    } catch {
+      return null
+    }
   }
 }

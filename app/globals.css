@@ -28,6 +28,8 @@
   --panel-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
   --hover-tint: rgba(255, 255, 255, 0.06);
   --card-bg: rgba(8, 12, 22, 0.45);
+  --btn-primary-fg: #f8fbff;
+  --btn-ok-fg: #04150e;
 }
 
 :root[data-theme='light'] {
@@ -55,6 +57,8 @@
   --panel-shadow: 0 8px 24px rgba(16, 24, 40, 0.06);
   --hover-tint: rgba(16, 24, 40, 0.05);
   --card-bg: #ffffff;
+  --btn-primary-fg: #ffffff;
+  --btn-ok-fg: #04150e;
 }
 
 * {
@@ -262,7 +266,7 @@ button,
   border: 0;
   border-radius: 10px;
   background: linear-gradient(180deg, var(--accent), var(--accent-2));
-  color: #061018;
+  color: var(--btn-primary-fg);
   font-weight: 650;
   padding: 0.62rem 1rem;
   cursor: pointer;
@@ -272,7 +276,14 @@ button,
   align-items: center;
   justify-content: center;
   gap: 0.35rem;
-  transition: transform 0.12s ease, filter 0.12s ease;
+  transition: transform 0.12s ease, filter 0.12s ease, box-shadow 0.12s ease;
+}
+
+a.btn,
+a.btn:visited,
+a.btn:hover {
+  color: var(--btn-primary-fg);
+  text-decoration: none;
 }
 
 button:hover:not(:disabled),
@@ -286,15 +297,36 @@ button.secondary,
   background: var(--surface-2);
   color: var(--text);
   border: 1px solid var(--border);
+  box-shadow: none;
 }
 
-button.ok {
+a.btn.secondary,
+a.btn.secondary:visited,
+a.btn.secondary:hover {
+  color: var(--text);
+}
+
+button.ok,
+.btn.ok {
   background: linear-gradient(180deg, #4adb9c, #2fb87a);
-  color: #04150e;
+  color: var(--btn-ok-fg);
 }
 
-button.danger {
+a.btn.ok,
+a.btn.ok:visited,
+a.btn.ok:hover {
+  color: var(--btn-ok-fg);
+}
+
+button.danger,
+.btn.danger {
   background: linear-gradient(180deg, #ff4d7a, var(--danger));
+  color: #fff;
+}
+
+a.btn.danger,
+a.btn.danger:visited,
+a.btn.danger:hover {
   color: #fff;
 }
 

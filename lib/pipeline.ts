@@ -11,6 +11,7 @@ import { generateAllDerivatives } from './atomization/generateDerivatives'
 import { buildDistributionCalendar } from './scheduling/distributionCalendar'
 import { enqueuePipelineJob, enqueuePublishJob } from './queue'
 import { ensureGeneratedPostImage, publishCaptionWithImages } from './social/publishCaption'
+import { preparePostForPublish } from './social/preparePublish'
 import { DEFAULT_PIPELINE_PLATFORMS, normalizePlatforms } from './platforms/targets'
 
 export type PipelineConfig = {
@@ -112,16 +113,11 @@ export async function processPipeline(pipelineId: string) {
     await prisma.contentPipeline.update({
       where: { id: pipelineId },
       data: {
-		config: {
+        config: {
           ...config,
           atomizationPlan,
           distributionCalendar,
           plannedPieces: totalPlannedPieces(atomizationPlan.contentPieces),
-          atomizedCreated: atomized.created,
-          atomizedByType: atomized.byType,
-          atomizedErrors: atomized.errors,
-          aiImagesGenerated,        // YENİ
-          aiImageErrors,            // YENİ
         } as Prisma.InputJsonValue,
       },
     })
@@ -219,6 +215,8 @@ export async function processPipeline(pipelineId: string) {
           atomizedCreated: atomized.created,
           atomizedByType: atomized.byType,
           atomizedErrors: atomized.errors,
+          aiImagesGenerated,
+          aiImageErrors,
         } as Prisma.InputJsonValue,
       },
     })
@@ -345,6 +343,9 @@ export async function setDerivedStatus(
       await createSocialDraftsForDerived(derived.id, derived.content)
       if (process.env.SOCIAL_AUTO_PUBLISH === 'true' && derived.contentType === 'SOCIAL_CAPTION') {
         await publishCaptionWithImages(derived.id)
+      } else if (derived.contentType === 'SOCIAL_CAPTION') {
+        const { afterCaptionApproved } = await import('./social/autopilot')
+        await afterCaptionApproved(derived.id)
       }
     }
   }
@@ -395,6 +396,22 @@ export async function bulkSetDerivedStatus(
           if (derived.contentType === 'SOCIAL_CAPTION') {
             await ensureGeneratedPostImage(id)
             result.mediaGenerated += 1
+            try {
+              const { generateAiImageVariations } = await import('./image/generateAiImage')
+              await generateAiImageVariations(id, 2)
+              result.mediaGenerated += 1
+            } catch (err) {
+              result.errors.push(`${id}: AI gorsel - ${err instanceof Error ? err.message : String(err)}`)
+            }
+          }
+          if (derived.contentType === 'MARCH_LYRICS' || derived.contentType === 'SONG_LYRICS') {
+            try {
+              const { generateSongAudio } = await import('./media/generateSong')
+              await generateSongAudio(id)
+              result.mediaGenerated += 1
+            } catch (err) {
+              result.errors.push(`${id}: Sarki sesi - ${err instanceof Error ? err.message : String(err)}`)
+            }
           }
         }
       } else {
@@ -447,11 +464,8 @@ export async function bulkPublishDraftPosts(
 
     result.attempted += 1
     try {
-      const mediaUrls = await ensureGeneratedPostImage(post.derivedContentId)
-      if (mediaUrls.length) {
-        await prisma.socialMediaPost.update({ where: { id: post.id }, data: { mediaUrls } })
-      }
-      const r = await publishPost(post.id, { requireImage: true })
+      await preparePostForPublish(post.id)
+      const r = await publishPost(post.id, { requireImage: post.platform === 'LINKEDIN' })
       if (r.skipped) {
         result.skipped += 1
       } else {

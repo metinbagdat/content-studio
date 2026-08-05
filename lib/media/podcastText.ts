@@ -1,33 +1,75 @@
-/** Extract speakable plain text from PODCAST_SCRIPT JSON or fallback raw content.
- * Music cue fields (introMusicCue/outroMusicCue) are editing notes, never spoken. */
-export function extractPodcastSpeech(content: string, title: string): string {
-  try {
-    const data = JSON.parse(content) as {
-      // current schema (CS-05)
-      welcome?: string
-      keyTakeaways?: string[]
-      cta?: string
-      // legacy schema
-      intro?: string
-      outro?: string
-      segments?: Array<{ title?: string; script?: string }>
-    }
-    const parts: string[] = []
-    if (data.welcome) parts.push(data.welcome)
-    else if (data.intro) parts.push(data.intro)
-    for (const seg of data.segments || []) {
-      if (seg.title) parts.push(seg.title)
-      if (seg.script) parts.push(seg.script)
-    }
-    if (data.keyTakeaways?.length) parts.push(data.keyTakeaways.join('. '))
-    if (data.cta) parts.push(data.cta)
-    else if (data.outro) parts.push(data.outro)
-    const joined = parts.join('\n\n').trim()
-    if (joined) return joined.slice(0, 12_000)
-  } catch {
-    /* plain text fallback */
+import { cleanPodcastTitle, parsePodcastScript } from './podcastSchema'
+import { ttsPronunciation } from './pronunciation'
+
+/** Editing notes / music cues — never spoken. */
+export function isMusicCue(text: string): boolean {
+  const t = text.trim()
+  if (!t) return true
+  if (/^\[.*\]$/.test(t)) return true
+  if (/^\(.*\)$/.test(t) && /jingle|müzik|music|sn\s/i.test(t)) return true
+  if (/^(intro|outro)\s*(music|müzik)/i.test(t)) return true
+  if (/^PODCAST_SCRIPT:/i.test(t)) return true
+  if (/jingle|müzik\s*bed|music\s*cue|arka\s*plan\s*müzi/i.test(t) && t.length < 120) return true
+  return false
+}
+
+export type PodcastSpeechParts = {
+  /** Ordered speakable blocks: welcome → segment scripts → takeaways → cta */
+  parts: string[]
+  fullText: string
+}
+
+export type ExtractPodcastOptions = {
+  /** Source article excerpt — used when JSON parse fails */
+  excerpt?: string
+}
+
+/** Extract only spoken podcast fields — skips titles, music cues, metadata. */
+export function extractPodcastSpeechParts(
+  content: string,
+  title: string,
+  options: ExtractPodcastOptions = {},
+): PodcastSpeechParts {
+  const topic = cleanPodcastTitle(title)
+  const excerpt = options.excerpt || ''
+  const script = parsePodcastScript(content, topic, excerpt)
+
+  const rawParts: string[] = []
+
+  if (script.welcome && !isMusicCue(script.welcome)) {
+    rawParts.push(script.welcome)
   }
-  return `${title}\n\n${content}`.slice(0, 12_000)
+
+  for (const seg of script.segments) {
+    if (seg.script && !isMusicCue(seg.script)) {
+      rawParts.push(seg.script)
+    }
+  }
+
+  const takeaways = script.keyTakeaways.filter((t) => t && !isMusicCue(t))
+  if (takeaways.length) {
+    rawParts.push(takeaways.join('. '))
+  }
+
+  if (script.cta && !isMusicCue(script.cta)) {
+    rawParts.push(script.cta)
+  }
+
+  const parts = rawParts.map((p) => ttsPronunciation(p)).filter(Boolean)
+
+  return {
+    parts,
+    fullText: parts.join('\n\n'),
+  }
+}
+
+/** Flat speakable text (all parts joined). */
+export function extractPodcastSpeech(
+  content: string,
+  title: string,
+  options: ExtractPodcastOptions = {},
+): string {
+  return extractPodcastSpeechParts(content, title, options).fullText.slice(0, 12_000)
 }
 
 /** Rough duration estimate from character count (~14 chars/sec Turkish speech). */
