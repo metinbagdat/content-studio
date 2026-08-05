@@ -710,15 +710,29 @@ export default function SocialPage() {
         Önce <Link href="/admin/review">Onay</Link>, sonra yayınla. Rehber:{' '}
         <Link href="/docs/social-setup">SM kurulum</Link>
       </p>
-      <div className="row" style={{ marginBottom: '1rem' }}>
-        <a className="btn" href="#published" onClick={() => setPostView('published')}>
+      <div className="row sm-view-tabs" style={{ marginBottom: '1rem' }}>
+        <a
+          className={`btn${postView === 'published' ? '' : ' secondary'}`}
+          href="#published"
+          onClick={() => setPostView('published')}
+        >
           Yayınlanan ({publishedPosts.length})
         </a>
-        <button type="button" className="btn secondary" onClick={() => setPostView('drafts')}>
+        <button
+          type="button"
+          className={`btn${postView === 'drafts' ? '' : ' secondary'}`}
+          onClick={() => setPostView('drafts')}
+        >
           Taslaklar
         </button>
         <button type="button" className="btn secondary" disabled={busyId === 'sync-stats'} onClick={syncStats}>
           Metrikleri yenile
+        </button>
+        <button type="button" className="btn secondary" disabled={busyId === 'repair'} onClick={repairAccounts}>
+          Faz 2 dry-run tamamla
+        </button>
+        <button type="button" className="btn secondary" disabled={busyId === 'sync-drafts'} onClick={syncDrafts}>
+          Taslakları senkronize et
         </button>
       </div>
       <div className="keybar">

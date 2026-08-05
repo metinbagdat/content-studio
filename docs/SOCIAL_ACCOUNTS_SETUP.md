@@ -133,6 +133,49 @@ Developer portal + LinkedIn app’te aynı URL’leri ekle.
 
 ---
 
+## 5. Faz 2 — Pipeline platformları (şimdilik dry-run)
+
+Caption/video pipeline şu platformlar için içerik üretir; **gerçek OAuth henüz yok**:
+
+| Platform | Açılacak hesap | Şimdi ne yapılır |
+|----------|----------------|------------------|
+| **YouTube** | egitim.today kanalı | `/admin/social` → **Faz 2 dry-run hesapları tamamla** |
+| **Instagram** | @egitim.today (Business) | Aynı — taslak + takvim testi |
+| **TikTok** | @egitim.today | Aynı |
+| **Facebook** | egitim.today sayfası | Aynı |
+| **Pinterest** | egitim.today | Caption üretilir; DB hesap slotu yok (Faz 2 API) |
+
+Dry-run postlar gerçek SM’de görünmez; onay → taslak → zamanlama akışını doğrular.
+
+### Faz 2 OAuth (sıra önerisi)
+
+1. **Podcast MP3 stabil** → YouTube Data API v3 (video/audio upload)
+2. **Video pipeline** → TikTok for Developers
+3. **Meta Business** → Instagram + Facebook Graph API (tek app)
+
+Env şablonu: `.env.example` içinde yorum satırları.
+
+---
+
+## 6. Zorunlu `.env` özeti
+
+```env
+# Faz 1 — gerçek yayın
+X_CLIENT_ID / X_CLIENT_SECRET
+LINKEDIN_CLIENT_ID / LINKEDIN_CLIENT_SECRET
+LINKEDIN_ORGANIZATION_ID=""   # şirket sayfası Page ID (opsiyonel)
+LINKEDIN_ORG_POST="false"     # true + yeniden OAuth → sayfadan post
+
+# Otomasyon
+SOCIAL_AUTOPILOT="true"
+npm run worker                  # ayrı terminal — zamanlanmış yayın
+
+NEXT_PUBLIC_APP_URL="http://localhost:3100"
+TOKEN_ENCRYPTION_KEY="..."      # prod'da sabit kal — token bozulmasın
+```
+
+---
+
 ## İçerik akışı
 
 Kaynak: [Zamanı Zafere Dönüştürmek](https://www.egitim.today/blog/zamani-zafere-donusturmek)

@@ -3,6 +3,7 @@ import { linkedinAuthorUrn } from './config'
 import { getValidAccessToken } from './tokenRefresh'
 import { resolvePostMediaUrls, readPostImageBuffer } from './brandImage'
 import { deletePlatformPost } from './platformDelete'
+import { preparePostForPublish, isDryRunAccount, recoverStuckPublishing } from './preparePublish'
 import {
   postContentFingerprint,
   readPublishMetrics,
@@ -69,7 +70,15 @@ export async function publishPost(postId: string, options: PublishOptions = {}):
 
   await prisma.socialMediaPost.update({
     where: { id: postId },
-    data: { status: 'PUBLISHING', mediaUrls, error: null },
+    data: {
+      status: 'PUBLISHING',
+      mediaUrls,
+      error: null,
+      metrics: {
+        ...prevMetrics,
+        publishingStartedAt: new Date().toISOString(),
+      },
+    },
   })
 
   const accessToken = await getValidAccessToken(post.account)
@@ -82,16 +91,8 @@ export async function publishPost(postId: string, options: PublishOptions = {}):
     deletedFromPlatform = del.deleted
     if (!del.deleted && del.error) {
       deleteError = del.error
-      if (requireImage || post.platform === 'LINKEDIN') {
-        await prisma.socialMediaPost.update({
-          where: { id: postId },
-          data: {
-            status: 'FAILED',
-            error: `Eski paylaşım silinemedi: ${deleteError}`,
-          },
-        })
-        throw new Error(`Eski paylaşım silinemedi: ${deleteError}`)
-      }
+      // Don't block new publish if old post can't be deleted (permissions / already removed)
+      console.warn('[publishPost] delete old platform post failed, continuing', deleteError)
     }
   }
 
@@ -116,9 +117,6 @@ export async function publishPost(postId: string, options: PublishOptions = {}):
       platformPostId = li.platformPostId
       imageAttached = li.imageAttached
       imageError = li.imageError
-      if (imageError && requireImage) {
-        throw new Error(imageError)
-      }
     } else {
       throw new Error(
         `${post.platform} için gerçek yayın API'si Faz 2'de eklenecek — altyapı (hesap, taslak, otomasyon) hazır, ` +
@@ -231,8 +229,8 @@ async function publishLinkedIn(
     : `urn:li:person:${authorFromConfig}`
 
   const imageUrl = mediaUrls.find((u) => u.startsWith('http'))
-  const localBuffer = derivedContentId ? await readPostImageBuffer(derivedContentId) : null
-  const wantsImage = Boolean(localBuffer || imageUrl)
+  const localImage = derivedContentId ? await readPostImageBuffer(derivedContentId) : null
+  const wantsImage = Boolean(localImage || imageUrl)
 
   let shareContent: Record<string, unknown>
   let imageAttached = false
@@ -241,8 +239,13 @@ async function publishLinkedIn(
   if (wantsImage) {
     try {
       let asset: string
-      if (localBuffer) {
-        asset = await linkedinUploadImageFromBuffer(accessToken, author, localBuffer, 'image/png')
+      if (localImage) {
+        asset = await linkedinUploadImageFromBuffer(
+          accessToken,
+          author,
+          localImage.buffer,
+          localImage.contentType,
+        )
       } else if (imageUrl) {
         asset = await linkedinUploadImageFromUrl(accessToken, author, imageUrl)
       } else {
@@ -263,7 +266,7 @@ async function publishLinkedIn(
       }
     } catch (err) {
       imageError = `Görsel yüklenemedi: ${err instanceof Error ? err.message : String(err)}`
-      if (requireImage) throw new Error(imageError)
+      console.warn('[publishLinkedIn] image upload failed, posting text-only', imageError)
       shareContent = {
         shareCommentary: { text },
         shareMediaCategory: 'NONE',
@@ -306,6 +309,8 @@ async function publishLinkedIn(
 
 /** Process due SCHEDULED posts (DB poll fallback). */
 export async function drainDuePosts(limit = 10) {
+  await recoverStuckPublishing()
+
   const due = await prisma.socialMediaPost.findMany({
     where: {
       status: 'SCHEDULED',
@@ -313,13 +318,23 @@ export async function drainDuePosts(limit = 10) {
     },
     take: limit,
     orderBy: { scheduledAt: 'asc' },
+    include: { account: true },
   })
+
+  let processed = 0
   for (const p of due) {
+    if (!p.account.isActive || isDryRunAccount(p.account)) {
+      console.warn('[drainDuePosts] skip inactive/dry-run', p.id, p.platform)
+      continue
+    }
     try {
-      await publishPost(p.id, { requireImage: true })
+      await preparePostForPublish(p.id)
+      // LinkedIn needs image; X text-only is fine
+      await publishPost(p.id, { requireImage: p.platform === 'LINKEDIN' })
+      processed += 1
     } catch (err) {
       console.error('[drainDuePosts]', p.id, err)
     }
   }
-  return due.length
+  return processed
 }

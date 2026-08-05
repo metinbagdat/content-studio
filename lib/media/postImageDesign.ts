@@ -15,22 +15,77 @@ function hashString(s: string): number {
   return Math.abs(h)
 }
 
-function cleanLine(s: string, max: number): string {
-  return s.replace(/\s+/g, ' ').replace(/→.*$/s, '').trim().slice(0, max)
+function cleanLine(s: unknown, max: number): string {
+  const text = typeof s === 'string' ? s : s == null ? '' : String(s)
+  return text.replace(/\s+/g, ' ').replace(/→.*$/s, '').trim().slice(0, max)
 }
 
-function fallbackDesign(title: string, caption: string): PostImageDesign {
-  const lines = caption.split('\n').map((l) => l.trim()).filter(Boolean)
-  const headline = cleanLine(lines[0] || title, 72)
-  const body = lines.slice(1).join(' ') || caption
-  const subtitle = cleanLine(body.replace(/#\S+/g, '').trim(), 140)
-  const accent = ACCENTS[hashString(title + caption) % ACCENTS.length]
-  const tagMatch = caption.match(/#(\w+)/)
+/** Pull hook candidates from caption: **bold**, quotes, questions, exclamations. */
+function extractHookLines(caption: string): string[] {
+  const hooks: string[] = []
+  const seen = new Set<string>()
+
+  const add = (raw: string) => {
+    const line = cleanLine(raw.replace(/\*\*/g, ''), 200)
+    if (!line || line.length < 8) return
+    const key = line.toLowerCase()
+    if (seen.has(key)) return
+    seen.add(key)
+    hooks.push(line)
+  }
+
+  for (const m of caption.matchAll(/\*\*([^*]+)\*\*/g)) add(m[1])
+  for (const m of caption.matchAll(/[""«»]([^""«»]+)[""«»]/g)) add(m[1])
+
+  for (const line of caption.split(/\n+/)) {
+    const t = line.replace(/\*\*/g, '').trim()
+    if (!t || t.startsWith('#')) continue
+    if (/\?$/.test(t) || /!$/.test(t)) add(t)
+  }
+
+  for (const line of caption.split(/\n+/)) {
+    const t = line.replace(/\*\*/g, '').trim()
+    if (t && !t.startsWith('#') && t.length >= 12) add(t)
+  }
+
+  return hooks
+}
+
+function pickCatchyHeadline(title: string, caption: string): { headline: string; subtitle: string } {
+  const hooks = extractHookLines(caption)
+  const t = cleanLine(title, 80) || 'egitim.today'
+  const c = cleanLine(caption, 2000) || t
+
+  const headline = cleanLine(hooks[0] || t, 72)
+  const subtitleSource =
+    hooks[1] ||
+    hooks.find((h) => h.toLowerCase() !== headline.toLowerCase()) ||
+    c.replace(/\*\*[^*]+\*\*/g, '').replace(/#\S+/g, ' ')
+  const subtitle = cleanLine(subtitleSource, 140) || 'Öğren, büyü, hedefe ulaş.'
+
+  return { headline: headline || 'egitim.today', subtitle }
+}
+
+function fallbackDesign(title: unknown, caption: unknown): PostImageDesign {
+  const t = cleanLine(title, 80) || 'egitim.today'
+  const c = cleanLine(caption, 2000) || t
+  const { headline, subtitle } = pickCatchyHeadline(t, c)
+  const accent = ACCENTS[hashString(t + c) % ACCENTS.length]
+  const tagMatch = c.match(/#(\w+)/)
   return {
-    headline: headline || 'egitim.today',
-    subtitle: subtitle || 'Öğren, büyü, hedefe ulaş.',
+    headline,
+    subtitle,
     accent,
     tag: tagMatch?.[1] || 'egitim',
+  }
+}
+
+function normalizeDesign(d: PostImageDesign): PostImageDesign {
+  return {
+    headline: cleanLine(d.headline, 72) || 'egitim.today',
+    subtitle: cleanLine(d.subtitle, 140) || 'Öğren, büyü, hedefe ulaş.',
+    accent: /^#[0-9A-Fa-f]{6}$/.test(d.accent) ? d.accent : ACCENTS[0],
+    tag: cleanLine(d.tag, 24).replace(/^#/, '') || 'egitim',
   }
 }
 
@@ -52,12 +107,12 @@ function parseDesignJson(text: string, fallback: PostImageDesign): PostImageDesi
 
 /** Content-aware card copy for branded post image. */
 export async function extractPostImageDesign(
-  title: string,
-  caption: string,
+  title: unknown,
+  caption: unknown,
 ): Promise<PostImageDesign> {
   const fallback = fallbackDesign(title, caption)
   const { client, model } = resolveLlm()
-  if (!client) return fallback
+  if (!client) return normalizeDesign(fallback)
 
   try {
     const res = await client.chat.completions.create({
@@ -67,17 +122,19 @@ export async function extractPostImageDesign(
         {
           role: 'system',
           content:
-            'You design Turkish social media card graphics for egitim.today. Return JSON only: {"headline":"max 8 words","subtitle":"max 18 words","accent":"#RRGGBB","tag":"single topic word"}. Headline must match caption topic.',
+            'Türkçe sosyal medya kartı metni yaz (egitim.today). JSON only: {"headline":"max 8 kelime","subtitle":"max 18 kelime","accent":"#RRGGBB","tag":"tek kelime konu"}. ' +
+            'headline = caption içindeki EN ÇARPICI cümle (kalın yazılmış, soru, iddia veya merak uyandıran). ' +
+            'subtitle = ikinci güçlü mesaj veya CTA. Başlık kopyalamak yerine paylaşım metninden hook seç.',
         },
         {
           role: 'user',
-          content: `Title: ${title}\n\nCaption:\n${caption.slice(0, 1200)}`,
+          content: `Title: ${cleanLine(title, 200)}\n\nCaption:\n${cleanLine(caption, 1200)}`,
         },
       ],
     })
     const text = res.choices[0]?.message?.content?.trim() || ''
-    return parseDesignJson(text, fallback)
+    return normalizeDesign(parseDesignJson(text, fallback))
   } catch {
-    return fallback
+    return normalizeDesign(fallback)
   }
 }

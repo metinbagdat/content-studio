@@ -10,12 +10,10 @@ Resize/crop generated images for each platform aspect ratio.
 - [x] Specs from `lib/image/platformSizes.ts` used directly — each card is now **rendered**
       at its target aspect ratio (`next/og` renders at any width/height natively), so no
       separate crop/resize pass is needed for the template-based cards (see CS-03)
-- [ ] Sharp or FFmpeg pipeline for **uploaded/custom** images (a user-provided photo that
-      needs cropping to multiple ratios) — still open, only auto-generated cards are covered
-- [ ] Batch export: derive all platform sizes from one master photo (relevant once CS-03's
-      AI-art variant exists — a template card can just be re-rendered per size for free,
-      a photo can't)
-- [ ] File size optimization (JPEG quality) — PNG only today
+- [x] Sharp pipeline for master photos — `lib/image/resizeBatch.ts` + `batchExportFromMaster.ts`
+- [x] Batch export: LinkedIn, Twitter, IG, Pinterest, YT, TikTok sizes from one master
+- [x] File size optimization (JPEG quality 85, mozjpeg)
+- [x] Admin: `/admin/review` → "Tüm platform boyutları" · `/admin/media` export panel
 
 ## Current state
 Auto-generated cards render directly at the correct per-platform size (done via CS-03).

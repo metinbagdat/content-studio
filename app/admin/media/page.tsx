@@ -55,6 +55,7 @@ export default function MediaPage() {
   const [items, setItems] = useState<MediaItem[]>([])
   const [ttsMode, setTtsMode] = useState('')
   const [derivedId, setDerivedId] = useState('')
+  const [contentType, setContentType] = useState('')
   const [msg, setMsg] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -69,6 +70,9 @@ export default function MediaPage() {
     const data = await res.json()
     setItems(data.items || [])
     setTtsMode(data.ttsMode || '')
+    if (derivedId && data.items?.[0]?.derivedContent?.contentType) {
+      setContentType(data.items[0].derivedContent.contentType)
+    }
   }, [adminKey, derivedId])
 
   useEffect(() => {
@@ -85,17 +89,29 @@ export default function MediaPage() {
     if (adminKey) load()
   }, [adminKey, load])
 
-  async function generate() {
+  async function generate(force = false) {
     if (!derivedId.trim()) {
-      setMsg('Podcast script ID gir (PODCAST_SCRIPT türevi)')
+      setMsg('Derived content ID gir')
       return
     }
     setBusy(true)
-    setMsg('Ses üretiliyor… (30–90 sn sürebilir)')
+    const kind =
+      contentType === 'MARCH_LYRICS'
+        ? 'march'
+        : contentType === 'SONG_LYRICS'
+          ? 'song'
+          : 'podcast'
+    setMsg(
+      force
+        ? 'Yeniden üretiliyor…'
+        : kind === 'podcast'
+          ? 'Ses üretiliyor… (segment başına jingle dahil, 30–120 sn)'
+          : 'Ses + müzik yatağı üretiliyor…',
+    )
     const res = await fetch('/api/media/generate', {
       method: 'POST',
       headers: headers(adminKey, true),
-      body: JSON.stringify({ derivedContentId: derivedId.trim() }),
+      body: JSON.stringify({ derivedContentId: derivedId.trim(), kind, force }),
     })
     const data = await res.json()
     setBusy(false)
@@ -105,9 +121,29 @@ export default function MediaPage() {
     }
     setMsg(
       data.reused
-        ? `Mevcut ses kullanıldı (${data.mode})`
-        : `Podcast hazır · ~${data.durationSec}s · ${data.mode}`,
+        ? `Mevcut ses kullanıldı — yeniden üretmek için "Yeniden üret" butonuna bas`
+        : kind === 'podcast'
+          ? `Podcast hazır · ~${data.durationSec}s · ${data.partCount ?? '?'} bölüm · ${data.hasJingles ? `${data.jingleCount} jingle` : 'jingle yok (müzik kütüphanesi boş)'}`
+          : `Ses hazır${data.hasMusicBed ? ' · müzik yatağı ile' : ''}`,
     )
+    await load()
+  }
+
+  async function batchResize(masterMediaId: string) {
+    setBusy(true)
+    setMsg('Platform boyutlarına export…')
+    const res = await fetch('/api/media/generate', {
+      method: 'POST',
+      headers: headers(adminKey, true),
+      body: JSON.stringify({ kind: 'resize-batch', masterMediaId, format: 'jpeg', quality: 85 }),
+    })
+    const data = await res.json()
+    setBusy(false)
+    if (!res.ok) {
+      setMsg(data.error || 'Export başarısız')
+      return
+    }
+    setMsg(`${(data.exports || []).length} platform boyutu oluşturuldu`)
     await load()
   }
 
@@ -117,15 +153,17 @@ export default function MediaPage() {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
   }
 
+  const imageMasters = items.filter((m) => m.mediaType === 'IMAGE' && m.processingStatus === 'COMPLETED')
+
   return (
     <div>
-      <h1>Medya (Faz 2a)</h1>
+      <h1>Medya (Faz 2)</h1>
       <p className="lead">
-        Podcast script → dinlenebilir MP3. TTS: <strong>{ttsMode || '…'}</strong>
+        Podcast / marş / şarkı → MP3 · Görseller → platform export. TTS: <strong>{ttsMode || '…'}</strong>
       </p>
       <p className="muted">
-        Onay kuyruğundan PODCAST_SCRIPT ID kopyala veya{' '}
-        <Link href="/admin/review">/admin/review</Link> → &quot;Ses üret&quot;.
+        Onay kuyruğundan ID kopyala veya{' '}
+        <Link href="/admin/review">/admin/review</Link> → Ses / AI görsel üret.
       </p>
 
       <div className="keybar">
@@ -144,18 +182,44 @@ export default function MediaPage() {
       </div>
 
       <section className="panel" style={{ marginBottom: '1rem' }}>
-        <h2>Podcast ses üret</h2>
-        <label>PODCAST_SCRIPT derived ID</label>
+        <h2>Ses üret</h2>
+        <label>Derived ID (PODCAST_SCRIPT / MARCH_LYRICS / SONG_LYRICS)</label>
         <input
           value={derivedId}
           onChange={(e) => setDerivedId(e.target.value)}
           placeholder="uuid from /admin/review"
         />
-        <button type="button" disabled={busy} onClick={generate}>
+        <button type="button" disabled={busy} onClick={() => generate(false)}>
           {busy ? 'Üretiliyor…' : 'MP3 üret'}
+        </button>
+        <button type="button" className="secondary" disabled={busy} onClick={() => generate(true)} style={{ marginLeft: '0.5rem' }}>
+          Yeniden üret
         </button>
         {msg ? <p className="muted" style={{ marginBottom: 0 }}>{msg}</p> : null}
       </section>
+
+      {imageMasters.length ? (
+        <section className="panel" style={{ marginBottom: '1rem' }}>
+          <h2>Görsel → platform export</h2>
+          <p className="muted">Master görselden LinkedIn, X, IG, Pinterest vb. JPEG boyutları (sharp crop).</p>
+          <ul className="list">
+            {imageMasters.map((m) => (
+              <li key={m.id}>
+                <strong>{m.derivedContent?.title || m.id}</strong>
+                <div className="muted">{formatSize(m.fileSize)} · {m.format}</div>
+                <div className="row" style={{ marginTop: '0.35rem', gap: '0.5rem' }}>
+                  <a href={`/api/media/${m.id}/image`} target="_blank" rel="noreferrer" className="secondary btn" style={{ textDecoration: 'none', padding: '0.4rem 0.7rem' }}>
+                    Önizle
+                  </a>
+                  <button type="button" className="secondary" disabled={busy} onClick={() => batchResize(m.id)}>
+                    Tüm platform boyutları
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <section className="panel">
         <h2>Üretilmiş dosyalar</h2>
@@ -173,12 +237,19 @@ export default function MediaPage() {
               <div className="muted">
                 {m.duration ? `~${m.duration}s` : ''} · {formatSize(m.fileSize)} · {m.format}
               </div>
-              {m.processingStatus === 'COMPLETED' ? (
+              {m.processingStatus === 'COMPLETED' && m.mediaType === 'AUDIO' ? (
                 <AdminAudio mediaId={m.id} adminKey={adminKey} />
+              ) : null}
+              {m.processingStatus === 'COMPLETED' && m.mediaType === 'IMAGE' ? (
+                <img
+                  src={`/api/media/${m.id}/image`}
+                  alt=""
+                  style={{ maxWidth: 200, marginTop: '0.5rem', borderRadius: 8 }}
+                />
               ) : null}
             </li>
           ))}
-          {!items.length ? <li className="muted">Henüz ses dosyası yok</li> : null}
+          {!items.length ? <li className="muted">Henüz medya dosyası yok</li> : null}
         </ul>
       </section>
     </div>

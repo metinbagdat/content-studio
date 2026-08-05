@@ -1,36 +1,31 @@
-import { mkdir, writeFile } from 'fs/promises'
+import { readdir } from 'fs/promises'
 import path from 'path'
 
-const PIXABAY_URL = 'https://pixabay.com/api/videos/music/' // NOTE: verify exact endpoint against docs before first real run
-
-export function musicStorageDir(): string {
-  return path.join(process.cwd(), 'storage', 'music-cache')
+function musicLibraryDir(): string {
+  return path.join(process.cwd(), 'storage', 'music-library')
 }
 
-/** Fetch a free royalty-free background track from Pixabay, cached locally by mood keyword. */
-export async function fetchBackgroundMusic(mood = 'inspiring'): Promise<string | null> {
-  const key = process.env.PIXABAY_API_KEY
-  if (!key) return null
+const MOOD_FOLDERS: Record<string, string> = {
+  'marching band anthem, uplifting, orchestral': 'marching',
+  'inspiring corporate': 'uplifting',
+  'pop, uplifting, motivational': 'uplifting',
+  calm: 'calm',
+}
 
+function resolveFolder(mood: string): string {
+  return MOOD_FOLDERS[mood] || 'uplifting'
+}
+
+/** Pick a random local royalty-free track by mood. Returns null if the library is empty —
+ * callers already treat null as "continue without music" (best-effort, non-fatal). */
+export async function fetchBackgroundMusic(mood = 'inspiring corporate'): Promise<string | null> {
+  const folder = path.join(musicLibraryDir(), resolveFolder(mood))
   try {
-    const url = `${PIXABAY_URL}?key=${key}&query=${encodeURIComponent(mood)}&per_page=5`
-    const res = await fetch(url)
-    if (!res.ok) throw new Error(`Pixabay ${res.status}`)
-    const data = (await res.json()) as { hits?: Array<{ id: number; url: string }> }
-    const track = data.hits?.[0]
-    if (!track) return null
-
-    const dir = musicStorageDir()
-    await mkdir(dir, { recursive: true })
-    const filePath = path.join(dir, `${track.id}.mp3`)
-
-    const audioRes = await fetch(track.url)
-    if (!audioRes.ok) throw new Error(`Pixabay track fetch ${audioRes.status}`)
-    const buffer = Buffer.from(await audioRes.arrayBuffer())
-    await writeFile(filePath, buffer)
-    return filePath
-  } catch (err) {
-    console.warn('[pixabayMusic] failed, continuing without background music', err)
-    return null
+    const files = (await readdir(folder)).filter((f) => f.toLowerCase().endsWith('.mp3'))
+    if (!files.length) return null
+    const pick = files[Math.floor(Math.random() * files.length)]
+    return path.join(folder, pick)
+  } catch {
+    return null // folder doesn't exist yet — fine, just means no music for now
   }
 }

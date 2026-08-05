@@ -6,6 +6,7 @@ import { schedulePost, syncSocialDraftsFromApprovedCaptions, bulkPublishDraftPos
 import { getDraftDiagnostics } from '@/lib/social/draftDiagnostics'
 import { publishPost } from '@/lib/social/publish'
 import { publishCaptionWithImages, ensureGeneratedPostImage, syncPostImagesFromCaptions, updatePostOnPlatform } from '@/lib/social/publishCaption'
+import { preparePostForPublish } from '@/lib/social/preparePublish'
 import { toImagePreviewPath } from '@/lib/social/imagePreview'
 import { readPublishMetrics } from '@/lib/social/publishFingerprint'
 import { auditSocialAccounts, repairMissingSocialAccounts } from '@/lib/social/accountAudit'
@@ -136,6 +137,14 @@ async function handleAction(action: string, body: Record<string, unknown>) {
     return NextResponse.json({ accountHealth, sync })
   }
 
+  if (action === 'bootstrap-faz2') {
+    const { bootstrapFaz2DryRunAccounts } = await import('@/lib/social/accountAudit')
+    const created = await bootstrapFaz2DryRunAccounts()
+    const sync = await syncSocialDraftsFromApprovedCaptions()
+    const diagnostics = await getDraftDiagnostics()
+    return NextResponse.json({ created, sync, diagnostics })
+  }
+
   if (action === 'connect-url') {
     const platform = String(body.platform || '').toUpperCase()
     if (platform !== 'TWITTER' && platform !== 'LINKEDIN') {
@@ -217,7 +226,7 @@ async function handleAction(action: string, body: Record<string, unknown>) {
       const post = await prisma.socialMediaPost.findUnique({ where: { id: postId } })
       if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
 
-      const mediaUrls = await ensureGeneratedPostImage(post.derivedContentId)
+      const mediaUrls = await preparePostForPublish(postId)
       await prisma.socialMediaPost.update({
         where: { id: postId },
         data: { mediaUrls },

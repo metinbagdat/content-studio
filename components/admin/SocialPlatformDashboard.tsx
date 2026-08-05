@@ -335,12 +335,24 @@ export function SocialPlatformDashboard({
           <button type="button" className="secondary" disabled={busyId === 'sync-stats'} onClick={onSyncStats}>
             İstatistikleri yenile
           </button>
-          {!envCheck?.ready ? (
-            <button type="button" className="secondary" disabled={busyId === 'repair'} onClick={onRepair}>
-              Eksik hesapları tamamla (dry-run)
-            </button>
-          ) : null}
+          <button type="button" className="secondary" disabled={busyId === 'repair'} onClick={onRepair}>
+            {envCheck?.ready ? 'Faz 2 dry-run hesapları tamamla' : 'Eksik hesapları tamamla (dry-run)'}
+          </button>
         </div>
+        {envCheck?.ready ? (
+          <ul className="muted" style={{ margin: '0.75rem 0 0', fontSize: '0.82rem', paddingLeft: '1.1rem' }}>
+            <li>
+              <strong>X:</strong> Developer Portal → kredi yükle → başarısız postlar otomatik yeniden denenecek
+            </li>
+            <li>
+              <strong>LinkedIn şirket sayfası:</strong> Page ID → <code>LINKEDIN_ORGANIZATION_ID</code> +{' '}
+              <code>LINKEDIN_ORG_POST=true</code> → Kes → OAuth yeniden bağla
+            </li>
+            <li>
+              <strong>Worker:</strong> <code>npm run worker</code> açık olmalı (zamanlanmış yayın)
+            </li>
+          </ul>
+        ) : null}
       </section>
 
       <div className="sm-platform-grid">

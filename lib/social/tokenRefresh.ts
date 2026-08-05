@@ -2,15 +2,30 @@ import type { SocialMediaAccount } from '@prisma/client'
 import { prisma } from '../prisma'
 import { decryptSecret, encryptSecret } from '../crypto'
 
+export class TokenExpiredError extends Error {
+  constructor(platform: string) {
+    super(`${platform} OAuth token süresi doldu — /admin/social üzerinden hesabı yeniden bağla`)
+    this.name = 'TokenExpiredError'
+  }
+}
+
 export async function getValidAccessToken(account: SocialMediaAccount): Promise<string> {
   const access = decryptSecret(account.accessToken)
+  if (access === 'dry-run') return access
+
   const stillValid =
     !account.tokenExpiry || account.tokenExpiry.getTime() > Date.now() + 120_000
-  if (stillValid || access === 'dry-run') return access
+  if (stillValid) return access
 
   const refreshed = await refreshAccessToken(account)
   if (refreshed) return refreshed
-  return access
+
+  await prisma.socialMediaAccount.update({
+    where: { id: account.id },
+    data: { isActive: false },
+  }).catch(() => {})
+
+  throw new TokenExpiredError(account.platform)
 }
 
 async function refreshAccessToken(account: SocialMediaAccount): Promise<string | null> {
@@ -32,7 +47,10 @@ async function refreshAccessToken(account: SocialMediaAccount): Promise<string |
         refresh_token: refresh,
       }),
     })
-    if (!res.ok) return null
+    if (!res.ok) {
+      console.error('[tokenRefresh] X refresh failed', res.status, await res.text())
+      return null
+    }
     const tokens = (await res.json()) as {
       access_token: string
       refresh_token?: string
@@ -57,7 +75,10 @@ async function refreshAccessToken(account: SocialMediaAccount): Promise<string |
         client_secret: process.env.LINKEDIN_CLIENT_SECRET,
       }),
     })
-    if (!res.ok) return null
+    if (!res.ok) {
+      console.error('[tokenRefresh] LinkedIn refresh failed', res.status, await res.text())
+      return null
+    }
     const tokens = (await res.json()) as {
       access_token: string
       refresh_token?: string
@@ -82,6 +103,7 @@ async function persistTokens(
       accessToken: encryptSecret(accessToken),
       refreshToken: refreshToken ? encryptSecret(refreshToken) : undefined,
       tokenExpiry: expiresIn ? new Date(Date.now() + expiresIn * 1000) : undefined,
+      isActive: true,
     },
   })
 }

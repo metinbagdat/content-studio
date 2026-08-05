@@ -20,21 +20,21 @@ export function resolveTtsMode(): TtsMode {
   return 'edge'
 }
 
-export async function synthesizeSpeech(text: string): Promise<Buffer> {
+export async function synthesizeSpeech(text: string, voiceOverride?: string): Promise<Buffer> {
   const trimmed = text.trim()
   if (!trimmed) throw new Error('TTS metni boş')
 
   const mode = resolveTtsMode()
-  if (mode === 'openai') return openAiTts(trimmed)
-  return edgeTts(trimmed)
+  if (mode === 'openai') return openAiTts(trimmed, voiceOverride)
+  return edgeTts(trimmed, voiceOverride)
 }
 
-async function openAiTts(text: string): Promise<Buffer> {
+async function openAiTts(text: string, voiceOverride?: string): Promise<Buffer> {
   const key = process.env.OPENAI_API_KEY
   if (!key) throw new Error('OPENAI_API_KEY gerekli (TTS_PROVIDER=openai)')
   const base = process.env.OPENAI_BASE_URL?.replace(/\/$/, '') || 'https://api.openai.com/v1'
   const model = process.env.TTS_MODEL || 'tts-1'
-  const voice = process.env.TTS_VOICE || 'nova'
+  const voice = voiceOverride || process.env.TTS_VOICE || 'nova'
 
   const res = await fetch(`${base}/audio/speech`, {
     method: 'POST',
@@ -56,8 +56,8 @@ async function openAiTts(text: string): Promise<Buffer> {
   return Buffer.from(await res.arrayBuffer())
 }
 
-async function edgeTts(text: string): Promise<Buffer> {
-  const voice = process.env.TTS_EDGE_VOICE || 'tr-TR-EmelNeural'
+async function edgeTts(text: string, voiceOverride?: string): Promise<Buffer> {
+  const voice = voiceOverride || process.env.TTS_EDGE_VOICE || 'tr-TR-EmelNeural'
   const { MsEdgeTTS, OUTPUT_FORMAT } = await import('msedge-tts')
 
   const tts = new MsEdgeTTS()

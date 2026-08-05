@@ -6,6 +6,9 @@ import { upsertDryRunAccount } from './oauth'
 /** Platforms that produce drafts and can publish in Faz 1. */
 export const PUBLISH_PLATFORMS: SocialPlatform[] = ['TWITTER', 'LINKEDIN']
 
+/** Pipeline-only platforms — dry-run for draft/calendar infra until OAuth (Faz 2). */
+export const FAZ2_DRY_RUN_PLATFORMS: SocialPlatform[] = ['YOUTUBE', 'INSTAGRAM', 'TIKTOK', 'FACEBOOK']
+
 export type AccountSlotStatus = 'ok' | 'missing' | 'dry_run' | 'expired' | 'oauth_ok' | 'failed_posts'
 
 export type AccountSlot = {
@@ -141,6 +144,9 @@ export async function repairMissingSocialAccounts(): Promise<AccountAudit> {
     repaired.push(slot.platform)
   }
 
+  const faz2 = await bootstrapFaz2DryRunAccounts()
+  repaired.push(...faz2)
+
   if (repaired.length) {
     const { syncSocialDraftsFromApprovedCaptions } = await import('../pipeline')
     await syncSocialDraftsFromApprovedCaptions()
@@ -148,4 +154,18 @@ export async function repairMissingSocialAccounts(): Promise<AccountAudit> {
 
   const refreshed = await auditSocialAccounts()
   return { ...refreshed, repaired }
+}
+
+/** Ensure YouTube/Instagram/TikTok/Facebook dry-run slots exist for pipeline captions. */
+export async function bootstrapFaz2DryRunAccounts(): Promise<string[]> {
+  const repaired: string[] = []
+  for (const platform of FAZ2_DRY_RUN_PLATFORMS) {
+    const existing = await prisma.socialMediaAccount.findFirst({
+      where: { platform, isActive: true },
+    })
+    if (existing) continue
+    await upsertDryRunAccount(platform, `Dry-run ${platform}`)
+    repaired.push(platform)
+  }
+  return repaired
 }
