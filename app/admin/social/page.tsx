@@ -16,8 +16,16 @@ type OAuthStatus = {
     configured: boolean
     callbackUrl: string
     organizationId: string | null
+    orgPostEnabled?: boolean
     clientIdSet?: boolean
     clientSecretSet?: boolean
+  }
+  youtube?: {
+    configured: boolean
+    callbackUrl: string
+    clientIdSet?: boolean
+    clientSecretSet?: boolean
+    scopes?: string
   }
 }
 
@@ -26,6 +34,8 @@ type EnvCheck = {
   X_CLIENT_SECRET: boolean
   LINKEDIN_CLIENT_ID: boolean
   LINKEDIN_CLIENT_SECRET: boolean
+  YOUTUBE_CLIENT_ID: boolean
+  YOUTUBE_CLIENT_SECRET: boolean
   ready: boolean
 }
 
@@ -314,7 +324,74 @@ export default function SocialPage() {
     }
   }
 
-  async function oauthConnect(platform: 'TWITTER' | 'LINKEDIN') {
+  async function youtubeTest() {
+    setBusyId('youtube-test')
+    try {
+      const res = await fetch('/api/social', {
+        method: 'POST',
+        headers: headers(adminKey, true),
+        body: JSON.stringify({ action: 'youtube-test' }),
+      })
+      const data = await parseApiJson(res)
+      if (!res.ok) {
+        setMsgType('error')
+        setMsg(String(data.error || 'YouTube test başarısız'))
+        return
+      }
+      const r = data.result as { ok?: boolean; channel?: { title?: string; id?: string }; error?: string; quotaNote?: string }
+      if (r?.ok) {
+        setMsgType('ok')
+        setMsg(`YouTube OK — kanal: ${r.channel?.title || '?'} (${r.channel?.id || ''})`)
+      } else {
+        setMsgType('error')
+        setMsg(r?.error || 'YouTube test başarısız')
+      }
+      await load()
+    } catch (err) {
+      setMsgType('error')
+      setMsg(`YouTube test: ${err instanceof Error ? err.message : String(err)}`)
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function youtubeSync(publishNow = false) {
+    setBusyId('youtube-sync')
+    try {
+      const res = await fetch('/api/social', {
+        method: 'POST',
+        headers: headers(adminKey, true),
+        body: JSON.stringify({ action: 'youtube-sync', limit: 5, publishNow }),
+      })
+      const data = await parseApiJson(res)
+      if (!res.ok) {
+        setMsgType('error')
+        setMsg(String(data.error || 'YouTube senkron başarısız'))
+        return
+      }
+      const r = data.result as {
+        scanned?: number
+        videosGenerated?: number
+        draftsCreated?: number
+        scheduled?: number
+        published?: number
+        errors?: string[]
+      }
+      const errTail = r.errors?.length ? ` · Hatalar: ${r.errors.slice(0, 2).join('; ')}` : ''
+      setMsgType(r.errors?.length ? 'error' : 'ok')
+      setMsg(
+        `YouTube: ${r.scanned ?? 0} script · ${r.videosGenerated ?? 0} video · ${r.draftsCreated ?? 0} taslak · ${r.scheduled ?? 0} planlandı · ${r.published ?? 0} yayınlandı${errTail}`,
+      )
+      await load()
+    } catch (err) {
+      setMsgType('error')
+      setMsg(`YouTube senkron: ${err instanceof Error ? err.message : String(err)}`)
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function oauthConnect(platform: 'TWITTER' | 'LINKEDIN' | 'YOUTUBE') {
     setBusyId(platform)
     try {
       const res = await fetch('/api/social', {
@@ -710,17 +787,20 @@ export default function SocialPage() {
         Önce <Link href="/admin/review">Onay</Link>, sonra yayınla. Rehber:{' '}
         <Link href="/docs/social-setup">SM kurulum</Link>
       </p>
-      <div className="row sm-view-tabs" style={{ marginBottom: '1rem' }}>
-        <a
-          className={`btn${postView === 'published' ? '' : ' secondary'}`}
-          href="#published"
-          onClick={() => setPostView('published')}
-        >
-          Yayınlanan ({publishedPosts.length})
-        </a>
+      <div className="row btn-group-tabs sm-view-tabs" style={{ marginBottom: '1rem' }}>
         <button
           type="button"
-          className={`btn${postView === 'drafts' ? '' : ' secondary'}`}
+          className={`btn${postView === 'published' ? ' is-active' : ' secondary'}`}
+          onClick={() => {
+            setPostView('published')
+            window.location.hash = 'published'
+          }}
+        >
+          Yayınlanan ({publishedPosts.length})
+        </button>
+        <button
+          type="button"
+          className={`btn${postView === 'drafts' ? ' is-active' : ' secondary'}`}
           onClick={() => setPostView('drafts')}
         >
           Taslaklar
@@ -764,6 +844,8 @@ export default function SocialPage() {
         onSyncStats={syncStats}
         onRepair={repairAccounts}
         onPublishDraft={(id) => publishNow(id)}
+        onYoutubeTest={youtubeTest}
+        onYoutubeSync={() => youtubeSync(false)}
       />
 
       {accountHealth && accountHealth.brokenCount > 0 ? (
@@ -778,6 +860,9 @@ export default function SocialPage() {
         </button>
         <button type="button" className="secondary" disabled={busyId === 'sync-images'} onClick={syncImages}>
           Görselleri senkronize et
+        </button>
+        <button type="button" className="secondary" disabled={busyId === 'youtube-sync'} onClick={() => youtubeSync(false)}>
+          YouTube video senkronize
         </button>
         <button type="button" className="secondary" disabled={busyId === 'sync-stats'} onClick={syncStats}>
           İstatistikleri yenile

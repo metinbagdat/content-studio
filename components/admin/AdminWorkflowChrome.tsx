@@ -14,6 +14,7 @@ const NAV = [
   { href: '/admin/social', label: 'Sosyal', step: 'social' },
   { href: '/admin/calendar', label: 'Takvim', step: 'calendar' },
   { href: '/admin/discovery', label: 'Discovery', step: 'discovery' },
+  { href: '/admin/analytics', label: 'Performans' },  // step yok — badge/workflow mant\u0131\u011f\u0131na hi\u00e7 girmiyor
 ]
 
 function adminHeaders(key: string): HeadersInit {
@@ -77,7 +78,7 @@ export function AdminWorkflowChrome({ children }: { children: React.ReactNode })
       <nav className="admin-subnav" aria-label="Admin">
         {NAV.map((item) => {
           const active = pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href))
-          const step = stepMap.get(item.step as WorkflowSnapshot['steps'][0]['id'])
+          const step = item.step ? stepMap.get(item.step as WorkflowSnapshot['steps'][0]['id']) : undefined
           const badge =
             step?.count && (item.step === 'review' ? step.count > 0 : step.count > 0)
               ? step.count

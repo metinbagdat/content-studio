@@ -54,9 +54,10 @@ export function pickPostingSlot(
   dayOffset: number,
   slotIndex: number,
   from = new Date(),
+  slotOrder?: string[], // YENİ — verilirse statik listenin yerine bunu kullanır
 ): Date {
   const weekend = isWeekendOffset(dayOffset, from)
-  const slots = weekend ? OPTIMAL_POSTING_WEEKEND_IST[platform] : OPTIMAL_POSTING_IST[platform]
+  const slots = slotOrder || (weekend ? OPTIMAL_POSTING_WEEKEND_IST[platform] : OPTIMAL_POSTING_IST[platform])
   const time = slots[slotIndex % slots.length]
   return scheduleAtIst(dayOffset, time, from)
 }

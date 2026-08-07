@@ -4,6 +4,8 @@ export type PostPublishMetrics = {
   publishHash?: string
   imageAttached?: boolean
   imageError?: string
+  videoAttached?: boolean
+  videoError?: string
   replaced?: boolean
   previousPlatformPostId?: string
   deletedFromPlatform?: boolean

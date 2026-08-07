@@ -11,6 +11,7 @@ import { generateAllDerivatives } from './atomization/generateDerivatives'
 import { buildDistributionCalendar } from './scheduling/distributionCalendar'
 import { enqueuePipelineJob, enqueuePublishJob } from './queue'
 import { ensureGeneratedPostImage, publishCaptionWithImages } from './social/publishCaption'
+import { buildYouTubePostContent } from './social/publishVideo'
 import { preparePostForPublish } from './social/preparePublish'
 import { DEFAULT_PIPELINE_PLATFORMS, normalizePlatforms } from './platforms/targets'
 
@@ -104,7 +105,8 @@ export async function processPipeline(pipelineId: string) {
       pipeline.source.title,
       pipeline.source.content,
     )
-    const distributionCalendar = buildDistributionCalendar({
+
+    const distributionCalendar = await buildDistributionCalendar({
       plan: atomizationPlan,
       sourceTitle: pipeline.source.title,
       platforms: config.platforms,
@@ -235,7 +237,11 @@ export async function processPipeline(pipelineId: string) {
   }
 }
 
-export async function createSocialDraftsForDerived(derivedId: string, postContent: string) {
+export async function createSocialDraftsForDerived(
+  derivedId: string,
+  postContent: string,
+  opts: { skipImages?: boolean } = {},
+) {
   const derived = await prisma.derivedContent.findUnique({ where: { id: derivedId } })
   if (!derived) return []
 
@@ -248,6 +254,9 @@ export async function createSocialDraftsForDerived(derivedId: string, postConten
   let platforms: SocialPlatform[] = ['TWITTER', 'LINKEDIN']
   if (derived.contentType === 'TWITTER_THREAD') platforms = ['TWITTER']
   if (derived.contentType === 'LINKEDIN_CAROUSEL') platforms = ['LINKEDIN']
+  if (derived.contentType === 'VIDEO_SCRIPT' || derived.contentType === 'SHORT_VIDEO_SCRIPT') {
+    platforms = ['YOUTUBE']
+  }
   if (targetPlatform && targetPlatform !== 'PINTEREST') {
     platforms = [targetPlatform]
   }
@@ -270,7 +279,19 @@ export async function createSocialDraftsForDerived(derivedId: string, postConten
     })
   }
   const mediaUrls =
-    derived.contentType === 'SOCIAL_CAPTION' ? await ensureGeneratedPostImage(derivedId) : []
+    derived.contentType === 'SOCIAL_CAPTION' && !opts.skipImages
+      ? await ensureGeneratedPostImage(derivedId)
+      : []
+
+  const body =
+    derived.contentType === 'VIDEO_SCRIPT' || derived.contentType === 'SHORT_VIDEO_SCRIPT'
+      ? buildYouTubePostContent({
+          title: derived.title,
+          content: derived.content,
+          contentType: derived.contentType,
+          metadata: derived.metadata,
+        })
+      : postContent
   const created = []
   for (const account of accounts) {
     if (targetPlatform && account.platform !== targetPlatform && derived.contentType === 'SOCIAL_CAPTION') {
@@ -293,7 +314,7 @@ export async function createSocialDraftsForDerived(derivedId: string, postConten
         derivedContentId: derivedId,
         accountId: account.id,
         platform: account.platform,
-        postContent,
+        postContent: body,
         mediaUrls,
         status: 'DRAFT',
       },
@@ -309,16 +330,18 @@ export async function createSocialDraftsForCaption(derivedId: string, postConten
 }
 
 /** Backfill drafts when caption was approved before accounts were connected. */
-export async function syncSocialDraftsFromApprovedCaptions() {
+export async function syncSocialDraftsFromApprovedCaptions(opts: { skipImages?: boolean } = {}) {
   const captions = await prisma.derivedContent.findMany({
     where: {
-      contentType: { in: ['SOCIAL_CAPTION', 'TWITTER_THREAD', 'LINKEDIN_CAROUSEL'] },
+      contentType: {
+        in: ['SOCIAL_CAPTION', 'TWITTER_THREAD', 'LINKEDIN_CAROUSEL', 'VIDEO_SCRIPT', 'SHORT_VIDEO_SCRIPT'],
+      },
       status: { in: ['APPROVED', 'PUBLISHED'] },
     },
   })
   let created = 0
   for (const caption of captions) {
-    const posts = await createSocialDraftsForDerived(caption.id, caption.content)
+    const posts = await createSocialDraftsForDerived(caption.id, caption.content, opts)
     created += posts.length
   }
   return { captions: captions.length, draftsCreated: created }
@@ -339,6 +362,8 @@ export async function setDerivedStatus(
 
   if (status === 'APPROVED') {
     const socialTypes = ['SOCIAL_CAPTION', 'TWITTER_THREAD', 'LINKEDIN_CAROUSEL'] as const
+    const videoTypes = ['VIDEO_SCRIPT', 'SHORT_VIDEO_SCRIPT'] as const
+
     if (socialTypes.includes(derived.contentType as (typeof socialTypes)[number])) {
       await createSocialDraftsForDerived(derived.id, derived.content)
       if (process.env.SOCIAL_AUTO_PUBLISH === 'true' && derived.contentType === 'SOCIAL_CAPTION') {
@@ -347,6 +372,12 @@ export async function setDerivedStatus(
         const { afterCaptionApproved } = await import('./social/autopilot')
         await afterCaptionApproved(derived.id)
       }
+    }
+
+    if (videoTypes.includes(derived.contentType as (typeof videoTypes)[number])) {
+      await createSocialDraftsForDerived(derived.id, derived.content)
+      const { afterVideoApproved } = await import('./social/autopilot')
+      await afterVideoApproved(derived.id)
     }
   }
 
@@ -411,6 +442,15 @@ export async function bulkSetDerivedStatus(
               result.mediaGenerated += 1
             } catch (err) {
               result.errors.push(`${id}: Sarki sesi - ${err instanceof Error ? err.message : String(err)}`)
+            }
+          }
+          if (derived.contentType === 'VIDEO_SCRIPT' || derived.contentType === 'SHORT_VIDEO_SCRIPT') {
+            try {
+              const { ensureGeneratedVideo } = await import('./social/publishVideo')
+              await ensureGeneratedVideo(id)
+              result.mediaGenerated += 1
+            } catch (err) {
+              result.errors.push(`${id}: Video - ${err instanceof Error ? err.message : String(err)}`)
             }
           }
         }

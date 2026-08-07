@@ -14,5 +14,9 @@ export function socialPostPublicUrl(
     return `https://twitter.com/i/web/status/${platformPostId}`
   }
 
+  if (platform === 'YOUTUBE') {
+    return `https://www.youtube.com/watch?v=${platformPostId}`
+  }
+
   return null
 }

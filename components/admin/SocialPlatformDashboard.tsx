@@ -44,6 +44,7 @@ type OAuthSlot = {
   callbackUrl: string
   organizationId?: string | null
   orgPostEnabled?: boolean
+  scopes?: string
 }
 
 type EnvCheck = {
@@ -51,16 +52,23 @@ type EnvCheck = {
   X_CLIENT_SECRET: boolean
   LINKEDIN_CLIENT_ID: boolean
   LINKEDIN_CLIENT_SECRET: boolean
+  YOUTUBE_CLIENT_ID: boolean
+  YOUTUBE_CLIENT_SECRET: boolean
   ready: boolean
 }
 
 type PipelinePlatformDef = {
   id: string
   note: string
+  oauthKey?: 'youtube'
 }
 
 const PIPELINE_PLATFORMS: PipelinePlatformDef[] = [
-  { id: 'YOUTUBE', note: 'Pipeline video script üretir. Yayın için Google/YouTube OAuth entegrasyonu Faz 2.' },
+  {
+    id: 'YOUTUBE',
+    oauthKey: 'youtube',
+    note: 'OAuth bağla → Video senkronize: onaylı scriptlerden watermarked MP4 üretir ve YouTube\'a yükler.',
+  },
   { id: 'INSTAGRAM', note: 'Pipeline caption üretir. Yayın için Meta Graph API entegrasyonu Faz 2.' },
   { id: 'TIKTOK', note: 'Pipeline kısa video script üretir. Yayın için TikTok API entegrasyonu Faz 2.' },
   { id: 'FACEBOOK', note: 'Pipeline caption üretir. Yayın için Meta Graph API entegrasyonu Faz 2.' },
@@ -167,19 +175,23 @@ export function SocialPlatformDashboard({
   onSyncStats,
   onRepair,
   onPublishDraft,
+  onYoutubeTest,
+  onYoutubeSync,
 }: {
   accounts: PlatformCardAccount[]
-  oauth: { twitter: OAuthSlot; linkedin: OAuthSlot } | null
+  oauth: { twitter: OAuthSlot; linkedin: OAuthSlot; youtube?: OAuthSlot } | null
   envCheck: EnvCheck | null
   busyId: string | null
   readyDraftsByPlatform: Record<string, ReadyDraft[]>
   recentPublishedByPlatform: Record<string, RecentPublished[]>
-  onOAuthConnect: (p: 'TWITTER' | 'LINKEDIN') => void
+  onOAuthConnect: (p: 'TWITTER' | 'LINKEDIN' | 'YOUTUBE') => void
   onDryConnect: (p: string) => void
   onDisconnect: (id: string) => void
   onSyncStats: () => void
   onRepair: () => void
   onPublishDraft: (id: string) => void
+  onYoutubeTest?: () => void
+  onYoutubeSync?: () => void
 }) {
   const twitterAccount = accounts.find((a) => a.platform === 'TWITTER' && a.isActive)
   const linkedinAccount = accounts.find((a) => a.platform === 'LINKEDIN' && a.isActive)
@@ -322,6 +334,8 @@ export function SocialPlatformDashboard({
             <EnvRow label="X_CLIENT_SECRET" ok={envCheck.X_CLIENT_SECRET} />
             <EnvRow label="LINKEDIN_CLIENT_ID" ok={envCheck.LINKEDIN_CLIENT_ID} />
             <EnvRow label="LINKEDIN_CLIENT_SECRET" ok={envCheck.LINKEDIN_CLIENT_SECRET} />
+            <EnvRow label="YOUTUBE_CLIENT_ID" ok={envCheck.YOUTUBE_CLIENT_ID} />
+            <EnvRow label="YOUTUBE_CLIENT_SECRET" ok={envCheck.YOUTUBE_CLIENT_SECRET} />
             <p className="row" style={{ marginTop: '0.65rem' }}>
               {envCheck.ready ? (
                 <span className="badge ok">OAuth env tamam — kartlardan OAuth bağla</span>
@@ -362,11 +376,13 @@ export function SocialPlatformDashboard({
           const account = accounts.find((a) => a.platform === p.id && a.isActive)
           const drafts = readyDraftsByPlatform[p.id] || []
           const published = recentPublishedByPlatform[p.id] || []
+          const oauthSlot = p.oauthKey === 'youtube' ? oauth?.youtube : undefined
           return (
             <article className="sm-platform-card panel sm-pipeline-only" key={p.id}>
               <header className="sm-platform-head">
                 <div className="row">
                   <PlatformIconLink platform={p.id} title={`${platformLabel(p.id)} (yeni sekme)`} />
+                  {account?.oauth ? <span className="badge ok">oauth</span> : null}
                   {account?.dryRun ? <span className="badge warn">dry-run</span> : null}
                   {account?.isActive ? <span className="badge ok">aktif</span> : <span className="badge">bağlı değil</span>}
                 </div>
@@ -379,14 +395,46 @@ export function SocialPlatformDashboard({
                 <StatCell label="Etkileşim" value={null} />
               </div>
               <div className="sm-platform-actions row">
-                <button
-                  type="button"
-                  className="secondary"
-                  disabled={busyId === `dry-${p.id}`}
-                  onClick={() => onDryConnect(p.id)}
-                >
-                  {account?.isActive ? 'Dry-run yenile' : 'Dry-run bağla (altyapı testi)'}
-                </button>
+                {oauthSlot?.configured ? (
+                  <button
+                    type="button"
+                    className="ok"
+                    disabled={busyId === p.id}
+                    onClick={() => onOAuthConnect('YOUTUBE')}
+                  >
+                    OAuth bağla
+                  </button>
+                ) : null}
+                {oauthSlot?.configured && account?.oauth && onYoutubeTest ? (
+                  <button
+                    type="button"
+                    className="secondary"
+                    disabled={busyId === 'youtube-test'}
+                    onClick={onYoutubeTest}
+                  >
+                    API test
+                  </button>
+                ) : null}
+                {oauthSlot?.configured && account?.oauth && onYoutubeSync ? (
+                  <button
+                    type="button"
+                    className="ok"
+                    disabled={busyId === 'youtube-sync'}
+                    onClick={onYoutubeSync}
+                  >
+                    Video senkronize
+                  </button>
+                ) : null}
+                {!oauthSlot?.configured ? (
+                  <button
+                    type="button"
+                    className="secondary"
+                    disabled={busyId === `dry-${p.id}`}
+                    onClick={() => onDryConnect(p.id)}
+                  >
+                    {account?.isActive ? 'Dry-run yenile' : 'Dry-run bağla (altyapı testi)'}
+                  </button>
+                ) : null}
                 {account?.isActive ? (
                   <button type="button" className="secondary" disabled={busyId === account.id} onClick={() => onDisconnect(account.id)}>
                     Kes

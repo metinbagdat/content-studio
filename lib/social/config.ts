@@ -17,7 +17,27 @@ export function oauthPlatformStatus() {
       clientIdSet: Boolean(process.env.LINKEDIN_CLIENT_ID),
       clientSecretSet: Boolean(process.env.LINKEDIN_CLIENT_SECRET),
     },
+    youtube: {
+      configured: Boolean(process.env.YOUTUBE_CLIENT_ID && process.env.YOUTUBE_CLIENT_SECRET),
+      callbackUrl: process.env.YOUTUBE_CALLBACK_URL || `${appUrl}/api/social/callback/youtube`,
+      clientIdSet: Boolean(process.env.YOUTUBE_CLIENT_ID),
+      clientSecretSet: Boolean(process.env.YOUTUBE_CLIENT_SECRET),
+      scopes: youtubeOAuthScopes(),
+    },
   }
+}
+
+export function youtubeOAuthScopes(): string {
+  if (process.env.YOUTUBE_OAUTH_SCOPES?.trim()) {
+    return process.env.YOUTUBE_OAUTH_SCOPES.trim()
+  }
+  return [
+    'openid',
+    'email',
+    'profile',
+    'https://www.googleapis.com/auth/youtube.readonly',
+    'https://www.googleapis.com/auth/youtube.upload',
+  ].join(' ')
 }
 
 /** Masked env presence check for admin UI (never exposes secret values). */
@@ -27,6 +47,8 @@ export function oauthEnvCheck() {
     X_CLIENT_SECRET: Boolean(process.env.X_CLIENT_SECRET?.trim()),
     LINKEDIN_CLIENT_ID: Boolean(process.env.LINKEDIN_CLIENT_ID?.trim()),
     LINKEDIN_CLIENT_SECRET: Boolean(process.env.LINKEDIN_CLIENT_SECRET?.trim()),
+    YOUTUBE_CLIENT_ID: Boolean(process.env.YOUTUBE_CLIENT_ID?.trim()),
+    YOUTUBE_CLIENT_SECRET: Boolean(process.env.YOUTUBE_CLIENT_SECRET?.trim()),
     ready:
       Boolean(process.env.X_CLIENT_ID?.trim() && process.env.X_CLIENT_SECRET?.trim()) &&
       Boolean(process.env.LINKEDIN_CLIENT_ID?.trim() && process.env.LINKEDIN_CLIENT_SECRET?.trim()),
