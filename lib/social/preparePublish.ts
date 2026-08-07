@@ -2,11 +2,23 @@ import { prisma } from '../prisma'
 import { ensureGeneratedPostImage } from './publishCaption'
 import { readPostImageBuffer } from '../media/generatePostImage'
 import { readPublishMetrics } from './publishFingerprint'
+import { resolveVideoMediaUrls } from './publishVideo'
 
-/** Ensure image URLs + on-disk buffer exist before LinkedIn/X publish (worker + API). */
+/** Ensure media exists before publish (images for LinkedIn/X, video for YouTube). */
 export async function preparePostForPublish(postId: string): Promise<string[]> {
   const post = await prisma.socialMediaPost.findUnique({ where: { id: postId } })
   if (!post) throw new Error('Post not found')
+
+  if (post.platform === 'YOUTUBE') {
+    const mediaUrls = await resolveVideoMediaUrls(post.derivedContentId)
+    if (mediaUrls.length) {
+      await prisma.socialMediaPost.update({
+        where: { id: postId },
+        data: { mediaUrls },
+      })
+    }
+    return mediaUrls
+  }
 
   let mediaUrls =
     post.mediaUrls.filter((u) => u.startsWith('http')).length > 0

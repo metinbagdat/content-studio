@@ -87,8 +87,13 @@ export function startWorkers() {
       const { publishPost } = await import('./social/publish')
       const { preparePostForPublish } = await import('./social/preparePublish')
       const { postId } = job.data as { postId: string }
+      const { prisma } = await import('./prisma')
+      const post = await prisma.socialMediaPost.findUnique({ where: { id: postId } })
       await preparePostForPublish(postId)
-      return publishPost(postId, { requireImage: true })
+      return publishPost(postId, {
+        requireImage: post?.platform === 'LINKEDIN',
+        requireVideo: post?.platform === 'YOUTUBE',
+      })
     },
     { connection: getRedis(), concurrency: 3 },
   )
@@ -183,6 +188,7 @@ export async function drainDbPublishJobs(limit = 5) {
       await preparePostForPublish(payload.postId)
       const result = await publishPost(payload.postId, {
         requireImage: post.platform === 'LINKEDIN',
+        requireVideo: post.platform === 'YOUTUBE',
       })
       await prisma.queueJob.update({
         where: { id: job.id },

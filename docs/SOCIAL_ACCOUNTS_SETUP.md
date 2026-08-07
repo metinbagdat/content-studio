@@ -53,9 +53,51 @@ OAuth env dolunca `/admin/social` → **OAuth ile X/LinkedIn bağla**.
 
 Kişisel post için `LINKEDIN_ORGANIZATION_ID` boş bırak.
 
+Kişisel post için `LINKEDIN_ORGANIZATION_ID` boş bırak.
+
 ---
 
-## 2. X (Twitter)
+## 2b. YouTube (Google OAuth)
+
+### Google Cloud hazırlık
+1. [console.cloud.google.com](https://console.cloud.google.com) → proje
+2. **APIs & Services → Library** → **YouTube Data API v3** → Enable
+3. **OAuth consent screen** → User type: **External** → Testing
+4. **Test users** → `metinbaghdat@gmail.com` ekle (Testing modunda sadece bunlar giriş yapabilir)
+5. **Credentials → OAuth client ID** → Web application  
+   Redirect URI:
+   ```
+   http://localhost:3100/api/social/callback/youtube
+   ```
+6. `.env`:
+   ```env
+   YOUTUBE_CLIENT_ID="....apps.googleusercontent.com"
+   YOUTUBE_CLIENT_SECRET="..."
+   YOUTUBE_CALLBACK_URL="http://localhost:3100/api/social/callback/youtube"
+   ```
+
+### "Google hasn't verified this app" — normal
+Testing modunda bu ekran çıkar. Kendi uygulaman → **Continue** / **Devam et** → izinleri onayla.
+- Test users: `metinbaghdat@gmail.com` ekli olmalı
+- Privacy Policy (opsiyonel): OAuth consent → `https://egitim.today` veya geçici `http://localhost:3100`
+
+### Content Studio'da bağla
+1. OAuth sırasında worker'ı durdur (pool timeout önlemek için)
+2. `/admin/social` → YouTube → **OAuth bağla** → **API test**
+
+### Test kullanıcısı vs production
+| Mod | Kim giriş yapabilir? |
+|-----|----------------------|
+| **Testing** (şimdi) | Sadece Test users listesindeki Gmail hesapları (max ~100) |
+| **Production** | Herkes — ama `youtube.upload` için Google **App Verification** gerekir |
+
+**egitim.today için pratik yol:** Tek kanal / tek Gmail yeterliyse Testing modunda kalıp yalnızca `metinbaghdat@gmail.com` (veya kanal Gmail'i) test user olarak eklemen yeterli — **normal kullanıcı eklemen gerekmez**.
+
+Herkese açık uygulama veya farklı Google hesapları bağlanacaksa: OAuth consent → **Publish App** + Google doğrulama süreci (birkaç hafta).
+
+---
+
+## 3. X (Twitter)
 
 **2026 portal:** https://console.x.com (Dashboard + Apps listesi - dogru yer)
 

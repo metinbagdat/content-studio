@@ -3,6 +3,7 @@ import type { AtomizationPlan } from '../atomization/types'
 import { maxPostsPerDay } from '../platforms/limits'
 import { DEFAULT_PIPELINE_PLATFORMS } from '../platforms/targets'
 import { isWeekendOffset, pickPostingSlot } from './postingTimes'
+import { getAdaptiveSlotOrder } from './postingPerformance'
 
 export type CalendarSlot = {
   platform: SocialPlatform
@@ -27,12 +28,23 @@ type BuildCalendarInput = {
   startDate?: Date
 }
 
-/** Spread planned social pieces across distributionDays respecting daily limits. */
-export function buildDistributionCalendar(input: BuildCalendarInput): DistributionCalendar {
+/** Spread planned social pieces across distributionDays respecting daily limits.
+ * Posting times per platform adapt to historical engagement once enough data exists (see
+ * getAdaptiveSlotOrder) — falls back to the static OPTIMAL_POSTING_IST defaults otherwise. */
+export async function buildDistributionCalendar(input: BuildCalendarInput): Promise<DistributionCalendar> {
   const { plan, sourceTitle, startDate = new Date() } = input
   const platforms: SocialPlatform[] = input.platforms?.length
     ? input.platforms
     : DEFAULT_PIPELINE_PLATFORMS
+
+  // Precompute adaptive slot order per platform × weekday/weekend, once, before placing pieces
+  const slotOrderCache = new Map<string, string[]>()
+  for (const platform of platforms) {
+    for (const weekend of [false, true]) {
+      const key = `${platform}:${weekend}`
+      slotOrderCache.set(key, await getAdaptiveSlotOrder(platform, weekend))
+    }
+  }
 
   const pieces = plan.contentPieces
   const queue: Array<{ platform: SocialPlatform; kind: string }> = []
@@ -41,7 +53,6 @@ export function buildDistributionCalendar(input: BuildCalendarInput): Distributi
     for (let i = 0; i < count; i++) queue.push({ platform, kind })
   }
 
-  // Featured first in queue: X then YouTube
   push('TWITTER', 'twitter_post', pieces.twitterPosts)
   push('TWITTER', 'twitter_thread', pieces.twitterThreads)
   push('YOUTUBE', 'youtube_short', pieces.youtubeShorts)
@@ -69,10 +80,12 @@ export function buildDistributionCalendar(input: BuildCalendarInput): Distributi
   const place = (item: { platform: SocialPlatform; kind: string }, d: number) => {
     const key = `${item.platform}:${d}`
     dailyCount[key] = (dailyCount[key] || 0) + 1
+    const weekend = isWeekendOffset(d, startDate)
+    const slotOrder = slotOrderCache.get(`${item.platform}:${weekend}`)
     slots.push({
       platform: item.platform,
       dayOffset: d,
-      scheduledAt: pickPostingSlot(item.platform, d, slotIdx, startDate),
+      scheduledAt: pickPostingSlot(item.platform, d, slotIdx, startDate, slotOrder),
       contentKind: item.kind,
       slotIndex: slotIdx,
     })
@@ -85,7 +98,6 @@ export function buildDistributionCalendar(input: BuildCalendarInput): Distributi
 
     let placed = false
 
-    // Pass 1: prefer weekdays ("hafta sonu daha az paylaşım")
     for (let attempt = 0; attempt < days && !placed; attempt++) {
       const d = (day + attempt) % days
       if (isWeekendOffset(d, startDate)) continue
@@ -94,7 +106,6 @@ export function buildDistributionCalendar(input: BuildCalendarInput): Distributi
       placed = true
     }
 
-    // Pass 2: weekend fallback if no weekday slot was free
     for (let attempt = 0; attempt < days && !placed; attempt++) {
       const d = (day + attempt) % days
       if (!canPlace(item, d)) continue

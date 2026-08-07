@@ -36,10 +36,16 @@ function parseVideoScript(raw: string, fallbackVisual: string): ScriptSegment[] 
       segments.push({ text: data.hook, visualPrompt: data.scenes?.[0]?.visuals || fallbackVisual })
     }
     for (const scene of data.scenes || []) {
-      if (scene.narration) {
+      const narration = scene.narration || (scene as { voice?: string }).voice
+      const visual =
+        scene.visuals ||
+        scene.description ||
+        (scene as { visual?: string }).visual ||
+        fallbackVisual
+      if (narration) {
         segments.push({
-          text: scene.narration,
-          visualPrompt: scene.visuals || scene.description || fallbackVisual,
+          text: narration,
+          visualPrompt: visual,
         })
       }
     }

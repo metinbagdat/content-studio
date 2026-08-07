@@ -5,11 +5,13 @@ import { repairMissingSocialAccounts } from './accountAudit'
 import { preparePostForPublish, isDryRunAccount } from './preparePublish'
 import { publishPost } from './publish'
 import { ensureGeneratedPostImage } from './publishCaption'
+import { ensureGeneratedVideo } from './publishVideo'
 import { readPublishMetrics } from './publishFingerprint'
 
 export type AutopilotResult = {
   draftsSynced: number
   imagesEnsured: number
+  videosEnsured: number
   scheduled: number
   published: number
   retried: number
@@ -19,6 +21,41 @@ export type AutopilotResult = {
 /** Hands-off SM pipeline — on by default; set SOCIAL_AUTOPILOT=false to disable. */
 export function isAutopilotEnabled(): boolean {
   return process.env.SOCIAL_AUTOPILOT !== 'false'
+}
+
+/** After video script approve: generate MP4 → schedule → optional publish. */
+export async function afterVideoApproved(derivedContentId: string): Promise<void> {
+  if (!isAutopilotEnabled()) return
+
+  try {
+    await ensureGeneratedVideo(derivedContentId)
+  } catch (err) {
+    console.warn('[autopilot] video ensure failed', derivedContentId, err)
+  }
+
+  const posts = await prisma.socialMediaPost.findMany({
+    where: { derivedContentId, platform: 'YOUTUBE' },
+    include: { account: true },
+  })
+
+  for (const post of posts) {
+    if (!post.account.isActive || isDryRunAccount(post.account)) continue
+
+    if (post.status === 'DRAFT') {
+      const when = pickPostingSlot('YOUTUBE', 0, hashSlot(post.id), new Date())
+      const scheduleAt = when.getTime() <= Date.now() ? new Date(Date.now() + 10 * 60_000) : when
+      await schedulePost(post.id, scheduleAt)
+    }
+
+    if (process.env.SOCIAL_AUTO_PUBLISH === 'true' && (post.status === 'DRAFT' || post.status === 'FAILED')) {
+      try {
+        await preparePostForPublish(post.id)
+        await publishPost(post.id, { requireVideo: true })
+      } catch (err) {
+        console.warn('[autopilot] YouTube publish failed', post.id, err)
+      }
+    }
+  }
 }
 
 /** After caption approve: image → schedule → optional immediate publish. */
@@ -48,7 +85,10 @@ export async function afterCaptionApproved(derivedContentId: string): Promise<vo
     if (process.env.SOCIAL_AUTO_PUBLISH === 'true' && (post.status === 'DRAFT' || post.status === 'FAILED')) {
       try {
         await preparePostForPublish(post.id)
-        await publishPost(post.id, { requireImage: post.platform === 'LINKEDIN' })
+        await publishPost(post.id, {
+          requireImage: post.platform === 'LINKEDIN',
+          requireVideo: post.platform === 'YOUTUBE',
+        })
       } catch (err) {
         console.warn('[autopilot] immediate publish failed', post.id, err)
       }
@@ -67,6 +107,7 @@ export async function runSocialAutopilot(limit = 8): Promise<AutopilotResult> {
   const result: AutopilotResult = {
     draftsSynced: 0,
     imagesEnsured: 0,
+    videosEnsured: 0,
     scheduled: 0,
     published: 0,
     retried: 0,
@@ -90,12 +131,31 @@ export async function runSocialAutopilot(limit = 8): Promise<AutopilotResult> {
     orderBy: { approvedAt: 'desc' },
   })
 
-  for (const cap of captions) {
+  for (const cap of captions.slice(0, 3)) {
     try {
       await ensureGeneratedPostImage(cap.id)
       result.imagesEnsured += 1
     } catch {
       /* fallback URL used inside ensure */
+    }
+  }
+
+  const videoScripts = await prisma.derivedContent.findMany({
+    where: {
+      contentType: { in: ['VIDEO_SCRIPT', 'SHORT_VIDEO_SCRIPT'] },
+      status: { in: ['APPROVED', 'PUBLISHED'] },
+    },
+    select: { id: true },
+    take: 2,
+    orderBy: { approvedAt: 'desc' },
+  })
+
+  for (const script of videoScripts) {
+    try {
+      await ensureGeneratedVideo(script.id)
+      result.videosEnsured += 1
+    } catch (err) {
+      result.errors.push(`video ${script.id.slice(0, 8)}: ${err instanceof Error ? err.message : String(err)}`)
     }
   }
 
@@ -135,7 +195,10 @@ export async function runSocialAutopilot(limit = 8): Promise<AutopilotResult> {
 
     try {
       await preparePostForPublish(post.id)
-      await publishPost(post.id, { requireImage: post.platform === 'LINKEDIN' })
+      await publishPost(post.id, {
+        requireImage: post.platform === 'LINKEDIN',
+        requireVideo: post.platform === 'YOUTUBE',
+      })
       result.retried += 1
     } catch (err) {
       await prisma.socialMediaPost.update({

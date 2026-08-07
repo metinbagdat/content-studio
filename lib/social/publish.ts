@@ -9,6 +9,8 @@ import {
   readPublishMetrics,
   type PostPublishMetrics,
 } from './publishFingerprint'
+import { ensureGeneratedVideo, buildYouTubeMetadata } from './publishVideo'
+import { uploadYouTubeVideo, setYouTubeThumbnail } from './youtubeApi'
 import { prisma } from '../prisma'
 
 export type PublishOptions = {
@@ -16,6 +18,8 @@ export type PublishOptions = {
   replace?: boolean
   /** Fail when image was expected but upload failed. */
   requireImage?: boolean
+  /** Fail when video was expected but upload failed. */
+  requireVideo?: boolean
   /** Publish even if fingerprint unchanged. */
   force?: boolean
 }
@@ -27,6 +31,8 @@ export type PublishResult = {
   replaced?: boolean
   imageAttached?: boolean
   imageError?: string
+  videoAttached?: boolean
+  videoError?: string
   reason?: string
   deleteError?: string
 }
@@ -67,6 +73,7 @@ export async function publishPost(postId: string, options: PublishOptions = {}):
     (options.replace && isPublished) || (isPublished && !unchanged),
   )
   const requireImage = options.requireImage ?? true
+  const requireVideo = options.requireVideo ?? false
 
   await prisma.socialMediaPost.update({
     where: { id: postId },
@@ -100,6 +107,8 @@ export async function publishPost(postId: string, options: PublishOptions = {}):
     let platformPostId: string
     let imageAttached = false
     let imageError: string | undefined
+    let videoAttached = false
+    let videoError: string | undefined
 
     if (post.platform === 'TWITTER') {
       platformPostId = await publishTwitter(post.postContent, accessToken)
@@ -117,6 +126,15 @@ export async function publishPost(postId: string, options: PublishOptions = {}):
       platformPostId = li.platformPostId
       imageAttached = li.imageAttached
       imageError = li.imageError
+    } else if (post.platform === 'YOUTUBE') {
+      const yt = await publishYouTube(
+        post,
+        accessToken,
+        requireVideo,
+      )
+      platformPostId = yt.platformPostId
+      videoAttached = yt.videoAttached
+      videoError = yt.videoError
     } else {
       throw new Error(
         `${post.platform} için gerçek yayın API'si Faz 2'de eklenecek — altyapı (hesap, taslak, otomasyon) hazır, ` +
@@ -128,6 +146,8 @@ export async function publishPost(postId: string, options: PublishOptions = {}):
       publishHash: fingerprint,
       imageAttached,
       imageError,
+      videoAttached,
+      videoError,
       replaced: shouldReplace,
       previousPlatformPostId: shouldReplace ? previousPlatformPostId || undefined : undefined,
       deletedFromPlatform,
@@ -141,7 +161,7 @@ export async function publishPost(postId: string, options: PublishOptions = {}):
         status: 'PUBLISHED',
         publishedAt: new Date(),
         platformPostId,
-        error: imageError || null,
+        error: imageError || videoError || null,
         metrics,
       },
     })
@@ -164,6 +184,8 @@ export async function publishPost(postId: string, options: PublishOptions = {}):
       replaced: shouldReplace,
       imageAttached,
       imageError,
+      videoAttached,
+      videoError,
       deleteError,
     }
   } catch (err) {
@@ -307,6 +329,76 @@ async function publishLinkedIn(
   }
 }
 
+type YouTubePublishOutcome = {
+  platformPostId: string
+  videoAttached: boolean
+  videoError?: string
+}
+
+async function publishYouTube(
+  post: {
+    derivedContentId: string
+    postContent: string
+    account: { config: unknown }
+  },
+  accessToken: string,
+  requireVideo = true,
+): Promise<YouTubePublishOutcome> {
+  if (!accessToken || accessToken === 'dry-run' || !process.env.YOUTUBE_CLIENT_ID) {
+    return { platformPostId: `mock_yt_${Date.now()}`, videoAttached: false }
+  }
+
+  const derived = await prisma.derivedContent.findUnique({
+    where: { id: post.derivedContentId },
+    include: { source: true },
+  })
+  if (!derived) throw new Error('Derived content not found')
+
+  let videoAttached = false
+  let videoError: string | undefined
+
+  try {
+    const video = await ensureGeneratedVideo(post.derivedContentId)
+    const ytMeta = buildYouTubeMetadata({
+      title: derived.title,
+      content: derived.content,
+      contentType: derived.contentType,
+      metadata: derived.metadata,
+      sourceTitle: derived.source.title,
+    })
+
+    const privacy =
+      (process.env.YOUTUBE_PRIVACY as 'public' | 'unlisted' | 'private' | undefined) || 'public'
+
+    const { videoId } = await uploadYouTubeVideo({
+      accessToken,
+      videoPath: video.diskPath,
+      title: ytMeta.title,
+      description: ytMeta.description,
+      tags: ytMeta.tags,
+      privacyStatus: privacy,
+      isShort: ytMeta.isShort,
+    })
+    videoAttached = true
+
+    try {
+      const thumb = await readPostImageBuffer(post.derivedContentId)
+      if (thumb) {
+        await setYouTubeThumbnail(accessToken, videoId, thumb.buffer, thumb.contentType)
+      }
+    } catch (err) {
+      console.warn('[publishYouTube] thumbnail upload failed (non-fatal)', err)
+    }
+
+    return { platformPostId: videoId, videoAttached }
+  } catch (err) {
+    videoError = err instanceof Error ? err.message : String(err)
+    if (requireVideo) throw new Error(videoError)
+    console.warn('[publishYouTube] video upload failed', videoError)
+    return { platformPostId: `mock_yt_${Date.now()}`, videoAttached: false, videoError }
+  }
+}
+
 /** Process due SCHEDULED posts (DB poll fallback). */
 export async function drainDuePosts(limit = 10) {
   await recoverStuckPublishing()
@@ -329,8 +421,10 @@ export async function drainDuePosts(limit = 10) {
     }
     try {
       await preparePostForPublish(p.id)
-      // LinkedIn needs image; X text-only is fine
-      await publishPost(p.id, { requireImage: p.platform === 'LINKEDIN' })
+      await publishPost(p.id, {
+        requireImage: p.platform === 'LINKEDIN',
+        requireVideo: p.platform === 'YOUTUBE',
+      })
       processed += 1
     } catch (err) {
       console.error('[drainDuePosts]', p.id, err)

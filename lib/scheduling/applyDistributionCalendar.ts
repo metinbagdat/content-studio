@@ -133,6 +133,9 @@ async function loadAccounts(): Promise<Map<SocialPlatform, boolean>> {
 }
 
 function isSchedulableKind(kind: string): boolean {
+  if (kind === 'youtube_short' || kind === 'long_form_video') {
+    return Boolean(KIND_TO_CONTENT_TYPE[kind])
+  }
   return !VIDEO_KINDS.has(kind) && Boolean(KIND_TO_CONTENT_TYPE[kind])
 }
 
@@ -165,6 +168,8 @@ function filterSchedulableDerivatives(rows: DerivativeRow[]): DerivativeRow[] {
     'SOCIAL_CAPTION',
     'TWITTER_THREAD',
     'LINKEDIN_CAROUSEL',
+    'VIDEO_SCRIPT',
+    'SHORT_VIDEO_SCRIPT',
   ])
   return rows.filter((r) => allowed.has(r.contentType))
 }
@@ -202,7 +207,7 @@ export async function previewDistributionSchedule(
     let derivative: DerivativeRow | undefined
 
     if (!schedulable) {
-      skipReason = 'video script — metin paylaşımı henüz desteklenmiyor'
+      skipReason = 'desteklenmeyen içerik türü'
       skippedCount += 1
     } else {
       derivative = takeFromPool(pools, slot.platform, slot.contentKind)

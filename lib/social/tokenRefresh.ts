@@ -88,6 +88,34 @@ async function refreshAccessToken(account: SocialMediaAccount): Promise<string |
     return tokens.access_token
   }
 
+  if (
+    account.platform === 'YOUTUBE' &&
+    process.env.YOUTUBE_CLIENT_ID &&
+    process.env.YOUTUBE_CLIENT_SECRET
+  ) {
+    const res = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: refresh,
+        client_id: process.env.YOUTUBE_CLIENT_ID,
+        client_secret: process.env.YOUTUBE_CLIENT_SECRET,
+      }),
+    })
+    if (!res.ok) {
+      console.error('[tokenRefresh] YouTube refresh failed', res.status, await res.text())
+      return null
+    }
+    const tokens = (await res.json()) as {
+      access_token: string
+      refresh_token?: string
+      expires_in?: number
+    }
+    await persistTokens(account.id, tokens.access_token, tokens.refresh_token, tokens.expires_in)
+    return tokens.access_token
+  }
+
   return null
 }
 

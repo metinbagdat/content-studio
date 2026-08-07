@@ -18,6 +18,9 @@ import {
   syncAllAccountStats,
   syncAllPublishedPostAnalytics,
 } from '@/lib/social/platformStats'
+import { getValidAccessToken } from '@/lib/social/tokenRefresh'
+import { testYouTubeConnection } from '@/lib/social/youtubeApi'
+import { syncYouTubeFromApprovedVideos } from '@/lib/social/youtubeBackfill'
 import { generatePkce, pkceCookieName } from '@/lib/social/pkce'
 
 export const dynamic = 'force-dynamic'
@@ -145,24 +148,59 @@ async function handleAction(action: string, body: Record<string, unknown>) {
     return NextResponse.json({ created, sync, diagnostics })
   }
 
+  if (action === 'youtube-test') {
+    const account = await prisma.socialMediaAccount.findFirst({
+      where: { platform: 'YOUTUBE', isActive: true },
+      orderBy: { updatedAt: 'desc' },
+    })
+    if (!account) {
+      return NextResponse.json({ error: 'YouTube hesabı bağlı değil — OAuth bağla' }, { status: 400 })
+    }
+    const cfg =
+      account.config && typeof account.config === 'object'
+        ? (account.config as Record<string, unknown>)
+        : {}
+    if (account.accountId.startsWith('dryrun_') || cfg.dryRun) {
+      return NextResponse.json({ error: 'Dry-run hesap — gerçek OAuth bağla' }, { status: 400 })
+    }
+    const token = await getValidAccessToken(account)
+    const result = await testYouTubeConnection(token)
+    return NextResponse.json({ result, accountId: account.id, accountName: account.accountName })
+  }
+
+  if (action === 'youtube-sync') {
+    const limit = Number(body.limit) || 5
+    const publishNow = Boolean(body.publishNow)
+    const result = await syncYouTubeFromApprovedVideos({
+      limit,
+      generateVideo: true,
+      schedule: true,
+      publishNow,
+    })
+    const diagnostics = await getDraftDiagnostics()
+    return NextResponse.json({ result, diagnostics })
+  }
+
   if (action === 'connect-url') {
     const platform = String(body.platform || '').toUpperCase()
-    if (platform !== 'TWITTER' && platform !== 'LINKEDIN') {
-      return NextResponse.json({ error: 'platform TWITTER|LINKEDIN' }, { status: 400 })
+    const OAUTH_PLATFORMS = ['TWITTER', 'LINKEDIN', 'YOUTUBE'] as const
+    if (!OAUTH_PLATFORMS.includes(platform as (typeof OAUTH_PLATFORMS)[number])) {
+      return NextResponse.json({ error: 'platform TWITTER|LINKEDIN|YOUTUBE' }, { status: 400 })
     }
     const state = crypto.randomUUID()
-    const platformKey = platform === 'TWITTER' ? 'twitter' : 'linkedin'
+    const platformKey =
+      platform === 'TWITTER' ? 'twitter' : platform === 'LINKEDIN' ? 'linkedin' : 'youtube'
     let url: string
     let pkceVerifier: string | undefined
     if (platform === 'TWITTER' && process.env.X_CLIENT_ID) {
       const pkce = generatePkce()
       pkceVerifier = pkce.verifier
-      url = getAuthUrl(platform as 'TWITTER' | 'LINKEDIN', state, pkce.challenge)
+      url = getAuthUrl('TWITTER', state, pkce.challenge)
     } else {
-      url = getAuthUrl(platform as 'TWITTER' | 'LINKEDIN', state)
+      url = getAuthUrl(platform as 'TWITTER' | 'LINKEDIN' | 'YOUTUBE', state)
     }
     const response = NextResponse.json({ url, state })
-    if (pkceVerifier) {
+    if (pkceVerifier && (platformKey === 'twitter' || platformKey === 'linkedin')) {
       response.cookies.set(pkceCookieName(platformKey), pkceVerifier, {
         httpOnly: true,
         sameSite: 'lax',
@@ -235,7 +273,8 @@ async function handleAction(action: string, body: Record<string, unknown>) {
       const replace = post.status === 'PUBLISHED' || body.replace === true
       const result = await publishPost(postId, {
         replace,
-        requireImage: true,
+        requireImage: post.platform === 'LINKEDIN',
+        requireVideo: post.platform === 'YOUTUBE',
         force: body.force === true,
       })
       return NextResponse.json(result)

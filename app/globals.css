@@ -267,22 +267,40 @@ button,
   border-radius: 10px;
   background: linear-gradient(180deg, var(--accent), var(--accent-2));
   color: var(--btn-primary-fg);
+  font: inherit;
   font-weight: 650;
   padding: 0.62rem 1rem;
   cursor: pointer;
-  font: inherit;
   text-decoration: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.35rem;
   transition: transform 0.12s ease, filter 0.12s ease, box-shadow 0.12s ease;
+  -webkit-text-fill-color: var(--btn-primary-fg);
 }
 
-a.btn,
-a.btn:visited,
-a.btn:hover {
-  color: var(--btn-primary-fg);
+/* Primary filled — links inherit parent color unless forced */
+button.btn:not(.secondary):not(.ok):not(.danger),
+a.btn:not(.secondary):not(.ok):not(.danger),
+.btn.is-active {
+  background: linear-gradient(180deg, var(--accent), var(--accent-2));
+  color: var(--btn-primary-fg) !important;
+  -webkit-text-fill-color: var(--btn-primary-fg);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.14) inset;
+}
+
+a.btn:not(.secondary):not(.ok):not(.danger),
+a.btn:not(.secondary):not(.ok):not(.danger):visited,
+a.btn:not(.secondary):not(.ok):not(.danger):hover,
+a.btn:not(.secondary):not(.ok):not(.danger):focus-visible,
+a.btn.is-active,
+a.btn.is-active:visited,
+a.btn.is-active:hover,
+a.btn.is-active:focus-visible {
+  color: var(--btn-primary-fg) !important;
+  -webkit-text-fill-color: var(--btn-primary-fg);
   text-decoration: none;
 }
 
@@ -295,15 +313,18 @@ button:hover:not(:disabled),
 button.secondary,
 .btn.secondary {
   background: var(--surface-2);
-  color: var(--text);
+  color: var(--text) !important;
+  -webkit-text-fill-color: var(--text);
   border: 1px solid var(--border);
   box-shadow: none;
 }
 
 a.btn.secondary,
 a.btn.secondary:visited,
-a.btn.secondary:hover {
-  color: var(--text);
+a.btn.secondary:hover,
+a.btn.secondary:focus-visible {
+  color: var(--text) !important;
+  -webkit-text-fill-color: var(--text);
 }
 
 button.ok,
@@ -341,6 +362,27 @@ button:disabled {
   gap: 0.5rem;
   flex-wrap: wrap;
   align-items: center;
+}
+
+/* Segmented view tabs (e.g. Yayınlanan / Taslaklar) */
+.btn-group-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.btn-group-tabs .btn.is-active {
+  background: linear-gradient(180deg, var(--accent), var(--accent-2));
+  color: var(--btn-primary-fg) !important;
+  -webkit-text-fill-color: var(--btn-primary-fg);
+  border-color: transparent;
+}
+
+.btn-group-tabs .btn.secondary {
+  background: var(--surface);
+  color: var(--text) !important;
+  -webkit-text-fill-color: var(--text);
 }
 
 .list {

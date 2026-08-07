@@ -1,15 +1,17 @@
 import { SocialPlatform, type Prisma } from '@prisma/client'
 import { prisma } from '../prisma'
 import { encryptSecret } from '../crypto'
-import { linkedinOAuthScopes } from './config'
+import { linkedinOAuthScopes, youtubeOAuthScopes } from './config'
+
+export type OAuthConnectPlatform = 'TWITTER' | 'LINKEDIN' | 'YOUTUBE'
 
 /**
- * OAuth helpers for X + LinkedIn.
+ * OAuth helpers for X + LinkedIn + YouTube.
  * Without client credentials, connectAccount stores a dry-run account for local testing.
  */
 
 export function getAuthUrl(
-  platform: 'TWITTER' | 'LINKEDIN',
+  platform: OAuthConnectPlatform,
   state: string,
   codeChallenge?: string,
 ): string {
@@ -31,17 +33,38 @@ export function getAuthUrl(
     return `https://twitter.com/i/oauth2/authorize?${params}`
   }
 
-  const clientId = process.env.LINKEDIN_CLIENT_ID
-  const redirect = process.env.LINKEDIN_CALLBACK_URL || `${appUrl}/api/social/callback/linkedin`
-  if (!clientId) return `${appUrl}/admin/social?dryRun=linkedin&state=${state}`
-  const params = new URLSearchParams({
-    response_type: 'code',
-    client_id: clientId,
-    redirect_uri: redirect,
-    state,
-    scope: linkedinOAuthScopes(),
-  })
-  return `https://www.linkedin.com/oauth/v2/authorization?${params}`
+  if (platform === 'LINKEDIN') {
+    const clientId = process.env.LINKEDIN_CLIENT_ID
+    const redirect = process.env.LINKEDIN_CALLBACK_URL || `${appUrl}/api/social/callback/linkedin`
+    if (!clientId) return `${appUrl}/admin/social?dryRun=linkedin&state=${state}`
+    const params = new URLSearchParams({
+      response_type: 'code',
+      client_id: clientId,
+      redirect_uri: redirect,
+      state,
+      scope: linkedinOAuthScopes(),
+    })
+    return `https://www.linkedin.com/oauth/v2/authorization?${params}`
+  }
+
+  if (platform === 'YOUTUBE') {
+    const clientId = process.env.YOUTUBE_CLIENT_ID
+    const redirect = process.env.YOUTUBE_CALLBACK_URL || `${appUrl}/api/social/callback/youtube`
+    if (!clientId) return `${appUrl}/admin/social?dryRun=youtube&state=${state}`
+    const params = new URLSearchParams({
+      response_type: 'code',
+      client_id: clientId,
+      redirect_uri: redirect,
+      scope: youtubeOAuthScopes(),
+      state,
+      access_type: 'offline',
+      prompt: 'consent',
+      include_granted_scopes: 'true',
+    })
+    return `https://accounts.google.com/o/oauth2/v2/auth?${params}`
+  }
+
+  return `${appUrl}/admin/social?connected=error&reason=unsupported_platform`
 }
 
 export async function upsertDryRunAccount(platform: SocialPlatform, name: string) {
