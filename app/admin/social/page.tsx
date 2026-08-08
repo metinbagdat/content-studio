@@ -205,6 +205,60 @@ export default function SocialPage() {
     await load()
   }
 
+  async function bulkPublishPlatform(platform: string) {
+    const platformPosts = posts.filter(
+      (p) => p.platform === platform && (p.status === 'DRAFT' || p.status === 'FAILED'),
+    )
+    const publishable = platformPosts.filter((p) => !p.isDryRun)
+    const dryOnly = publishable.length === 0 && platformPosts.some((p) => p.isDryRun)
+    const includeDryRun = platform === 'TIKTOK' || dryOnly
+    const count = publishable.length || (includeDryRun ? platformPosts.length : 0)
+    if (!count) {
+      setMsgType('info')
+      setMsg('Yayınlanacak taslak yok')
+      return
+    }
+    if (
+      !confirm(
+        `${platform}: ${count} taslak${includeDryRun ? ' (dry-run dahil)' : ''} yayınlanacak. Devam?` +
+          (count > 25 ? ' (max 25/durak — kalan için tekrar tıklayın)' : ''),
+      )
+    ) {
+      return
+    }
+    const bulkKey = `bulk-${platform}`
+    setBusyId(bulkKey)
+    setMsgType('info')
+    setMsg(`${platform} — toplu yayın…`)
+    try {
+      const res = await fetch('/api/social', {
+        method: 'POST',
+        headers: headers(adminKey, true),
+        body: JSON.stringify({ action: 'bulk-publish', includeDryRun, platform, limit: 25 }),
+      })
+      const data = await parseApiJson(res)
+      if (!res.ok) {
+        setMsgType('error')
+        setMsg(String(data.error || 'Toplu yayın başarısız'))
+        return
+      }
+      const r = data.result as { published: number; failed: number; skipped: number; errors: string[] } | undefined
+      setMsgType(r?.failed ? 'error' : 'ok')
+      setMsg(
+        `${platform}: ${r?.published ?? 0} yayınlandı · ${r?.skipped ?? 0} atlandı · ${r?.failed ?? 0} hata` +
+          (r?.errors?.length ? ` — ${r.errors[0]}` : '') +
+          (count > 25 ? ' · Kalan taslaklar için tekrar tıklayın' : ''),
+      )
+      setDiagnostics((data.diagnostics as DraftDiagnostics) || null)
+      await load()
+    } catch (err) {
+      setMsgType('error')
+      setMsg(`Toplu yayın hatası: ${err instanceof Error ? err.message : String(err)}`)
+    } finally {
+      setBusyId(null)
+    }
+  }
+
   useEffect(() => {
     const saved = localStorage.getItem('cs_admin_key')
     if (saved) setAdminKey(saved)
@@ -573,7 +627,9 @@ export default function SocialPage() {
           setMsg(`Platformda güncellendi (eski silindi): ${String(data.platformPostId || 'ok')}`)
         } else {
           setMsgType('ok')
-          setMsg(`✓ Yayınlandı — "Yayınlanan postlar" bölümünde görünecek: ${String(data.platformPostId || 'ok')}`)
+          const stats = data.accountStats as { postsCount?: number | null } | undefined
+          const statsHint = stats?.postsCount != null ? ` · post sayısı: ${stats.postsCount}` : ''
+          setMsg(`✓ Yayınlandı: ${String(data.platformPostId || 'ok')}${statsHint}`)
         }
       } else {
         setMsgType('error')
@@ -881,6 +937,7 @@ export default function SocialPage() {
         onSyncStats={syncStats}
         onRepair={repairAccounts}
         onPublishDraft={(id) => publishNow(id)}
+        onBulkPublishPlatform={bulkPublishPlatform}
         onYoutubeTest={youtubeTest}
         onYoutubeSync={() => youtubeSync(false)}
         onMetaTest={metaTest}

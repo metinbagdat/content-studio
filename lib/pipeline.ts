@@ -474,20 +474,25 @@ export type BulkPublishResult = {
   errors: string[]
 }
 
-/** Publish every DRAFT/FAILED social post now. Dry-run accounts skipped by default (mock IDs only). */
+/** Publish DRAFT/FAILED social posts. Dry-run accounts skipped by default (mock IDs only). */
 export async function bulkPublishDraftPosts(
-  options: { includeDryRun?: boolean } = {},
+  options: { includeDryRun?: boolean; platform?: import('@prisma/client').SocialPlatform; limit?: number } = {},
 ): Promise<BulkPublishResult> {
   const posts = await prisma.socialMediaPost.findMany({
-    where: { status: { in: ['DRAFT', 'FAILED'] } },
+    where: {
+      status: { in: ['DRAFT', 'FAILED'] },
+      ...(options.platform ? { platform: options.platform } : {}),
+    },
     include: { account: true },
     orderBy: { createdAt: 'asc' },
   })
 
   const result: BulkPublishResult = { attempted: 0, published: 0, skipped: 0, failed: 0, errors: [] }
   const { publishPost } = await import('./social/publish')
+  const maxAttempts = options.limit && options.limit > 0 ? options.limit : undefined
 
   for (const post of posts) {
+    if (maxAttempts != null && result.attempted >= maxAttempts) break
     const cfg =
       post.account.config && typeof post.account.config === 'object'
         ? (post.account.config as Record<string, unknown>)

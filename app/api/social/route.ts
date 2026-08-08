@@ -15,6 +15,8 @@ import { oauthEnvCheck, oauthPlatformStatus } from '@/lib/social/config'
 import {
   getAccountStatsFromConfig,
   getTopPerformingPosts,
+  pickPreferredAccount,
+  syncAccountStats,
   syncAllAccountStats,
   syncAllPublishedPostAnalytics,
 } from '@/lib/social/platformStats'
@@ -267,7 +269,28 @@ async function handleAction(action: string, body: Record<string, unknown>) {
 
   if (action === 'bulk-publish') {
     const includeDryRun = Boolean(body.includeDryRun)
-    const result = await bulkPublishDraftPosts({ includeDryRun })
+    const platformRaw = body.platform ? String(body.platform).toUpperCase() : undefined
+    const platform = platformRaw as SocialPlatform | undefined
+    const limit = body.limit != null ? Number(body.limit) : undefined
+    const result = await bulkPublishDraftPosts({
+      includeDryRun,
+      platform,
+      limit: limit && Number.isFinite(limit) ? limit : undefined,
+    })
+    if (platform) {
+      const platformAccounts = await prisma.socialMediaAccount.findMany({
+        where: { platform, isActive: true },
+      })
+      const preferred = pickPreferredAccount(platformAccounts)
+      if (preferred && !preferred.accountId.startsWith('dryrun_')) {
+        try {
+          await syncAccountStats(preferred.id)
+        } catch (err) {
+          console.warn('[bulk-publish sync-stats]', platform, err)
+        }
+      }
+    }
+    await syncAllPublishedPostAnalytics(30).catch(() => {})
     const diagnostics = await getDraftDiagnostics()
     return NextResponse.json({ result, diagnostics })
   }
@@ -300,7 +323,14 @@ async function handleAction(action: string, body: Record<string, unknown>) {
         requireVideo: post.platform === 'YOUTUBE',
         force: body.force === true,
       })
-      return NextResponse.json(result)
+      let accountStats = null
+      try {
+        accountStats = await syncAccountStats(post.accountId)
+      } catch (err) {
+        console.warn('[publish-now sync-stats]', post.accountId, err)
+      }
+      const updated = await prisma.socialMediaPost.findUnique({ where: { id: postId } })
+      return NextResponse.json({ ...result, accountStats, post: updated })
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
       console.error('[publish-now]', postId, message)
