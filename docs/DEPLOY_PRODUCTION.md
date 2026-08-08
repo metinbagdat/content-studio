@@ -50,8 +50,11 @@ Repo secrets (Settings → Secrets):
 | `CONTENT_STUDIO_VERCEL_PROJECT_ID` | Yeni projenin ID'si |
 | `VERCEL_ORG_ID` | Team/personal scope (LearnCon ile aynı olabilir) |
 
-Deploy: Actions → **Deploy Content Studio** → Run workflow  
-veya `main` branch push (Git auto-deploy kapalı — yalnızca GHA).
+Deploy: **yalnızca manuel** — Actions → **Deploy Content Studio** → **Run workflow**
+
+> **Kredi optimizasyonu:** `main` merge/push deploy **tetiklemez** (GHA + Vercel build dakikası tasarrufu).
+> Kod merge'ini GitHub'da manuel yap; deploy'u ihtiyaç olduğunda tek seferlik çalıştır.
+> Vercel Git auto-deploy zaten kapalı (`vercel.json` → `git.deploymentEnabled: false`).
 
 ## 4. LearnCon admin linki
 
@@ -116,9 +119,18 @@ https://studio.egitim.today/admin  →  admin panel (404 olmamalı)
 
 ## Maliyet
 
-| Bileşen | Maliyet |
-|---------|---------|
-| Vercel Hobby (2. proje) | $0 |
-| Supabase Free | $0 |
-| Worker / Railway | $0 (kullanılmıyor) |
-| X API metrikleri | ~$200/ay (opsiyonel) |
+| Bileşen | Maliyet | Not |
+|---------|---------|-----|
+| Vercel Hobby (2. proje) | $0 | Deploy manuel (merge başına build yok) |
+| Supabase Free | $0 | |
+| Worker / Railway | $0 | Kullanılmıyor |
+| Vercel cron | $0 | Günde 1× (`/api/cron/daily`) |
+| X API yayın | Kredi | `SOCIAL_AUTO_PUBLISH=false` — manuel «Şimdi yayınla» |
+| X API metrikleri | ~$200/ay | Opsiyonel; günlük sync yeter |
+
+### Kredi / maliyet kuralları (Senaryo A)
+
+1. **Deploy** — merge sonrası otomatik değil; hazır olduğunda Actions → Run workflow.
+2. **Git merge** — GitHub UI/CLI ile sen yap (Cursor agent merge = gereksiz kredi).
+3. **Yayın** — otomatik publish kapalı; admin'de onay + manuel veya takvim.
+4. **Cron** — günde 1 kez bakım; video/image ağır işler yerelde veya «Tam tur» butonu.

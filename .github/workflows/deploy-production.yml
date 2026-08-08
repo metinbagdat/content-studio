@@ -1,12 +1,8 @@
 name: Deploy Content Studio
 
+# Senaryo A / kredi optimizasyonu: deploy yalnızca manuel.
+# main'e merge/push Vercel build tetiklemez — Actions → Run workflow.
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - 'docs/**'
-      - '**/*.md'
-      - '.github/issue-bodies/**'
   workflow_dispatch:
 
 concurrency:
