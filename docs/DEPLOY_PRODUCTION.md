@@ -42,6 +42,24 @@ OAuth provider konsollarında redirect URI'leri prod URL ile güncelle → **[OA
 
 ## 3. GitHub Actions deploy
 
+### Git akışı (önerilen)
+
+```
+feature branch'e commit + push  →  sen GitHub'da PR aç / merge et  →  main'e merge  →  deploy otomatik
+```
+
+| Adım | Kim | Ne olur |
+|------|-----|---------|
+| 1 | Agent veya sen | `feat/...` branch'e **commit + push** (main'e doğrudan push etme) |
+| 2 | **Sen** | GitHub'da PR → **Merge** (manuel) |
+| 3 | GitHub | `main`'e push event → **Deploy Content Studio** workflow çalışır |
+| 4 | GHA | Vercel production deploy |
+
+> Merge = `main`'e push demek; workflow tam bunu dinliyor (`on.push.branches: [main]`).
+> Feature branch push'ları deploy **tetiklemez**.
+
+Acil redeploy: Actions → **Deploy Content Studio** → **Run workflow**
+
 Repo secrets (Settings → Secrets):
 
 | Secret | Açıklama |
@@ -51,10 +69,9 @@ Repo secrets (Settings → Secrets):
 | `VERCEL_ORG_ID` | Project Settings → General → **Project ID** yanındaki org/user ID (env için) |
 | `VERCEL_TEAM_SLUG` | *(opsiyonel)* Team hesabıysa team slug; personal hesapta **ekleme** |
 
-Deploy: `main` merge/push → otomatik production deploy (GHA).  
+Deploy: **`main`'e merge** → otomatik production deploy (GHA).  
 Sadece doküman değişikliklerinde (`docs/**`, `*.md`) deploy atlanır.  
-Ardışık merge'ler 90 sn coalesce ile tek deploy'a birleştirilir.  
-Acil redeploy: Actions → **Deploy Content Studio** → **Run workflow**
+Ardışık merge'ler 90 sn coalesce ile tek deploy'a birleştirilir.
 
 Vercel Git auto-deploy kapalı (`vercel.json` → `git.deploymentEnabled: false`) — deploy yalnızca GHA üzerinden.
 
