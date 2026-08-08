@@ -24,6 +24,7 @@
     "discovery:scan": "tsx --env-file=.env scripts/run-content-discovery.ts",
     "pipeline:zaman": "tsx --env-file=.env scripts/run-zaman-pipeline.ts",
     "env:parity": "tsx --env-file=.env scripts/print-db-fingerprint.ts",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@prisma/client": "^6.9.0",
