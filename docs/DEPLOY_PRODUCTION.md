@@ -62,12 +62,17 @@ Acil redeploy: Actions → **Deploy Content Studio** → **Run workflow**
 
 Repo secrets (Settings → Secrets):
 
-| Secret | Açıklama |
-|--------|----------|
-| `VERCEL_TOKEN` | Vercel → Account → Tokens (GitHub secret adı tam **`VERCEL_TOKEN`** olmalı) |
-| `CONTENT_STUDIO_VERCEL_PROJECT_ID` | Yeni projenin ID'si |
-| `VERCEL_ORG_ID` | Project Settings → General → **Project ID** yanındaki org/user ID (env için) |
-| `VERCEL_TEAM_SLUG` | *(opsiyonel)* Team hesabıysa team slug; personal hesapta **ekleme** |
+**Kişisel Vercel hesabı** (team yok — senin durumun):
+
+| Secret | Zorunlu | Açıklama |
+|--------|---------|----------|
+| `VERCEL_TOKEN` | Evet | [vercel.com/account/tokens](https://vercel.com/account/tokens) — GitHub'da secret adı tam **`VERCEL_TOKEN`** |
+| `CONTENT_STUDIO_VERCEL_PROJECT_ID` | Evet | Proje → Settings → General → **Project ID** |
+| `VERCEL_ORG_ID` | Opsiyonel | Kişisel **User ID** (team değil). CLI'nin projeyi bağlaması için; `--scope` olarak **kullanılmaz** |
+| `VERCEL_TEAM_SLUG` | **Ekleme** | Sadece Vercel Team hesabında gerekir |
+
+> Kişisel hesapta team ID yoktur — normal. Workflow `--scope` kullanmaz; token + project ID yeterli.
+> Önceki hata (`You cannot set your Personal Account as the scope`) `VERCEL_ORG_ID`'nin scope sanılmasından kaynaklanıyordu; düzeltildi.
 
 Deploy: **`main`'e merge** → otomatik production deploy (GHA).  
 Sadece doküman değişikliklerinde (`docs/**`, `*.md`) deploy atlanır.  
@@ -126,7 +131,7 @@ DNS doğru (Vercel'e gidiyor) ama **hiç production deploy yok**. Genelde domain
 |--------|--------|
 | `VERCEL_TOKEN` | [vercel.com/account/tokens](https://vercel.com/account/tokens) |
 | `CONTENT_STUDIO_VERCEL_PROJECT_ID` | Adım 6'daki Project ID |
-| `VERCEL_ORG_ID` | Team ID (Settings → General) |
+| `VERCEL_ORG_ID` | *(opsiyonel)* Kişisel User ID — team ID gerekmez |
 
 Sonra: Actions → **Deploy Content Studio** → **Run workflow**
 
