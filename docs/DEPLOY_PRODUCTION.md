@@ -78,6 +78,42 @@ NEXT_PUBLIC_CONTENT_STUDIO_URL=https://studio.egitim.today/admin
 - [ ] «Günlük bakım» manuel test → zamanlanmış + metrik OK
 - [ ] LearnCon sidebar → Content Studio linki
 
+## 404 DEPLOYMENT_NOT_FOUND — hızlı çözüm
+
+DNS doğru (Vercel'e gidiyor) ama **hiç production deploy yok**. Genelde domain eklendi, proje deploy edilmedi.
+
+### A) Vercel Dashboard (en hızlı, ~10 dk)
+
+1. [vercel.com/new](https://vercel.com/new) → **Import** `metinbagdat/content-studio`
+2. Proje adı: `content-studio` (LearnCon projesinden **ayrı**)
+3. **Environment Variables** (Production) — en az:
+   - `NEXT_PUBLIC_APP_URL` = `https://studio.egitim.today`
+   - `DATABASE_URL` = Supabase session pooler
+   - `ADMIN_API_KEY` = güçlü secret
+   - `TOKEN_ENCRYPTION_KEY` = 32+ karakter
+   - `CRON_SECRET` = rastgele uzun string
+4. **Deploy** — ilk build bitene kadar bekle
+5. Project → **Settings → Domains** → `studio.egitim.today` ekle (başka projede varsa önce oradan kaldır)
+6. Settings → General → **Project ID** kopyala
+
+### B) GitHub secrets (sonraki deploy'lar için)
+
+`content-studio` repo → Settings → Secrets:
+
+| Secret | Değer |
+|--------|--------|
+| `VERCEL_TOKEN` | [vercel.com/account/tokens](https://vercel.com/account/tokens) |
+| `CONTENT_STUDIO_VERCEL_PROJECT_ID` | Adım 6'daki Project ID |
+| `VERCEL_ORG_ID` | Team ID (Settings → General) |
+
+Sonra: Actions → **Deploy Content Studio** → **Run workflow**
+
+### Doğrulama
+
+```text
+https://studio.egitim.today/admin  →  admin panel (404 olmamalı)
+```
+
 ## Maliyet
 
 | Bileşen | Maliyet |
