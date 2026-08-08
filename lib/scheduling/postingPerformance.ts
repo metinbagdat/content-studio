@@ -1,4 +1,4 @@
-import type { SocialPlatform } from '@prisma/client'
+import { Prisma, type SocialPlatform } from '@prisma/client'
 import { prisma } from '../prisma'
 import { OPTIMAL_POSTING_IST, OPTIMAL_POSTING_WEEKEND_IST, istDayOfWeek } from './postingTimes'
 
@@ -43,7 +43,7 @@ export async function getAdaptiveSlotOrder(
   const defaults = weekend ? OPTIMAL_POSTING_WEEKEND_IST[platform] : OPTIMAL_POSTING_IST[platform]
 
   const posts = await prisma.socialMediaPost.findMany({
-    where: { platform, status: 'PUBLISHED', publishedAt: { not: null }, metrics: { not: null } },
+    where: { platform, status: 'PUBLISHED', publishedAt: { not: null }, metrics: { not: Prisma.DbNull } },
     select: { publishedAt: true, metrics: true },
     take: 200,
     orderBy: { publishedAt: 'desc' },

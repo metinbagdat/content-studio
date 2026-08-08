@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/auth'
 
@@ -17,7 +18,7 @@ export async function GET(req: NextRequest) {
   }
 
   const posts = await prisma.socialMediaPost.findMany({
-    where: { status: 'PUBLISHED', metrics: { not: null } },
+    where: { status: 'PUBLISHED', metrics: { not: Prisma.DbNull } },
     select: { id: true, platform: true, postContent: true, publishedAt: true, metrics: true },
     orderBy: { publishedAt: 'desc' },
     take: 300,
