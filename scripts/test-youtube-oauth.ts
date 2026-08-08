@@ -8,6 +8,7 @@ import { getAuthUrl } from '../lib/social/oauth'
 import { prisma } from '../lib/prisma'
 import { decryptSecret } from '../lib/crypto'
 import { testYouTubeConnection } from '../lib/social/youtubeApi'
+import { getValidAccessToken } from '../lib/social/tokenRefresh'
 
 async function main() {
   const oauth = oauthPlatformStatus()
@@ -43,7 +44,17 @@ async function main() {
   console.log('\n=== Bağlı hesap ===')
   console.log(account.accountName, account.accountId)
 
-  const result = await testYouTubeConnection(token)
+  let validToken: string
+  try {
+    validToken = await getValidAccessToken(account)  // DEĞİŞTİ — artık gerekirse otomatik yeniler
+    console.log('Token durumu: geçerli (gerekirse yenilendi)')
+  } catch (err) {
+    console.error('\nToken yenileme başarısız:', err instanceof Error ? err.message : String(err))
+    console.log('→ /admin/social üzerinden YouTube hesabını yeniden bağlaman gerekiyor')
+    return
+  }
+
+  const result = await testYouTubeConnection(validToken)  // DEĞİŞTİ — token yerine validToken
   console.log('\n=== API test ===')
   console.log(JSON.stringify(result, null, 2))
 }

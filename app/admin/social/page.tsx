@@ -36,6 +36,8 @@ type EnvCheck = {
   LINKEDIN_CLIENT_SECRET: boolean
   YOUTUBE_CLIENT_ID: boolean
   YOUTUBE_CLIENT_SECRET: boolean
+  META_APP_ID: boolean
+  META_APP_SECRET: boolean
   ready: boolean
 }
 
@@ -391,7 +393,7 @@ export default function SocialPage() {
     }
   }
 
-  async function oauthConnect(platform: 'TWITTER' | 'LINKEDIN' | 'YOUTUBE') {
+  async function oauthConnect(platform: 'TWITTER' | 'LINKEDIN' | 'YOUTUBE' | 'FACEBOOK' | 'INSTAGRAM') {
     setBusyId(platform)
     try {
       const res = await fetch('/api/social', {

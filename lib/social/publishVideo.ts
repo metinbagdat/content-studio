@@ -2,6 +2,7 @@ import type { ContentType } from '@prisma/client'
 import { prisma } from '../prisma'
 import { formatForPlatform } from '../platforms/formats'
 import { generateVideoVariants, generateTikTokVideo } from '../video/generateVideo'
+import { generatePodcastVideo } from '../video/generatePodcastVideo'
 import type { AspectRatio } from '../video/renderVideo'
 import { publicMediaVideoUrl, videoDiskPath } from '../video/videoStorage'
 
@@ -54,6 +55,7 @@ export function buildYouTubeMetadata(input: {
   const baseTitle = input.title || input.sourceTitle || 'egitim.today'
   const tags = ['egitim', 'education', 'learnconnect', 'egitimtoday']
   if (isShort) tags.push('Shorts')
+  if (input.contentType === 'PODCAST_SCRIPT') tags.push('podcast')
 
   const raw = unfenceJson(input.content)
   try {
@@ -61,20 +63,26 @@ export function buildYouTubeMetadata(input: {
       hook?: string
       caption?: string
       callToAction?: string
-      scenes?: Array<{ narration?: string; voice?: string; visuals?: string; visual?: string }>
+      welcome?: string
+      cta?: string
+      segments?: Array<{ title?: string; narration?: string; voice?: string; script?: string; visuals?: string; visual?: string }>
+      scenes?: Array<{ title?: string; narration?: string; voice?: string; script?: string; visuals?: string; visual?: string }>
     }
-    const hook = data.hook?.trim() || ''
-    const title = (hook || baseTitle).slice(0, 100)
+    const hook = data.hook?.trim() || data.welcome?.trim() || ''
+    const title = (hook || baseTitle.replace(/^Podcast:\s*/i, '').replace(/^PODCAST_SCRIPT:\s*/i, '')).slice(0, 100)
     const parts: string[] = []
     if (hook) parts.push(hook)
-    for (const scene of data.scenes || []) {
-      const line = scene.narration || scene.voice
+    const segs = data.segments || data.scenes || []
+    for (const scene of segs) {
+      const line = scene.script || scene.narration || scene.voice
       if (line?.trim()) parts.push(line.trim())
     }
     if (data.callToAction?.trim()) parts.push(data.callToAction.trim())
+    if (data.cta?.trim()) parts.push(data.cta.trim())
     if (data.caption?.trim()) parts.push(data.caption.trim())
     parts.push('\n\n🔗 egitim.today | LEARNCONNECT.NET')
     if (isShort) parts.push('\n#Shorts')
+    if (input.contentType === 'PODCAST_SCRIPT') parts.push('\n#Podcast')
 
     return {
       title,
@@ -84,7 +92,7 @@ export function buildYouTubeMetadata(input: {
     }
   } catch {
     return {
-      title: baseTitle.slice(0, 100),
+      title: baseTitle.replace(/^Podcast:\s*/i, '').slice(0, 100),
       description: formatForPlatform(`${raw}\n\n🔗 egitim.today | LEARNCONNECT.NET`, 'YOUTUBE'),
       tags,
       isShort,
@@ -135,17 +143,32 @@ export async function ensureGeneratedVideo(derivedContentId: string): Promise<Re
     include: { source: true },
   })
   if (!derived) throw new Error('Derived content not found')
-  if (!['VIDEO_SCRIPT', 'SHORT_VIDEO_SCRIPT'].includes(derived.contentType)) {
+
+  const isPodcast = derived.contentType === 'PODCAST_SCRIPT'
+  const isVideoScript = ['VIDEO_SCRIPT', 'SHORT_VIDEO_SCRIPT'].includes(derived.contentType)
+  if (!isVideoScript && !isPodcast) {
     throw new Error(`${derived.contentType} video üretimi desteklenmiyor`)
   }
 
-  const aspect = inferVideoAspect(derived.contentType, derived.metadata)
+  const aspect = isPodcast ? '16:9' : inferVideoAspect(derived.contentType, derived.metadata)
   const existing = await findCompletedVideo(derivedContentId, aspect)
   if (existing?.fileUrl) {
     return {
       mediaId: existing.id,
       publicUrl: existing.fileUrl || publicMediaVideoUrl(existing.id),
       diskPath: videoDiskPath(`${existing.id}.mp4`),
+      aspect,
+    }
+  }
+
+  if (isPodcast) {
+    const variants = await generatePodcastVideo(derivedContentId, [aspect])
+    const variant = variants[0]
+    if (!variant) throw new Error('Podcast video üretilemedi')
+    return {
+      mediaId: variant.mediaId,
+      publicUrl: variant.publicUrl,
+      diskPath: videoDiskPath(`${variant.mediaId}.mp4`),
       aspect,
     }
   }

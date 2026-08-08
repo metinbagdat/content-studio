@@ -2,8 +2,9 @@ import { SocialPlatform, type Prisma } from '@prisma/client'
 import { prisma } from '../prisma'
 import { encryptSecret } from '../crypto'
 import { linkedinOAuthScopes, youtubeOAuthScopes } from './config'
+import { metaConfigured, metaAuthUrl } from './metaApi'
 
-export type OAuthConnectPlatform = 'TWITTER' | 'LINKEDIN' | 'YOUTUBE'
+export type OAuthConnectPlatform = 'TWITTER' | 'LINKEDIN' | 'YOUTUBE' | 'FACEBOOK' | 'INSTAGRAM'
 
 /**
  * OAuth helpers for X + LinkedIn + YouTube.
@@ -62,6 +63,13 @@ export function getAuthUrl(
       include_granted_scopes: 'true',
     })
     return `https://accounts.google.com/o/oauth2/v2/auth?${params}`
+  }
+
+  if (platform === 'FACEBOOK' || platform === 'INSTAGRAM') {
+    if (!metaConfigured()) {
+      return `${appUrl}/admin/social?dryRun=${platform.toLowerCase()}&state=${state}`
+    }
+    return metaAuthUrl(platform, state, appUrl)
   }
 
   return `${appUrl}/admin/social?connected=error&reason=unsupported_platform`

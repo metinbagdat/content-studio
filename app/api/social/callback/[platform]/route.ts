@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import type { SocialPlatform } from '@prisma/client'
+import type { Prisma } from '@prisma/client'
 import { upsertDryRunAccount, upsertOAuthAccount } from '@/lib/social/oauth'
+import { connectMetaPlatform } from '@/lib/social/metaApi'
 import { pkceCookieName } from '@/lib/social/pkce'
 import { syncSocialDraftsFromApprovedCaptions } from '@/lib/pipeline'
 
@@ -10,6 +12,8 @@ const PLATFORM_MAP: Record<string, SocialPlatform> = {
   twitter: 'TWITTER',
   linkedin: 'LINKEDIN',
   youtube: 'YOUTUBE',
+  facebook: 'FACEBOOK',
+  instagram: 'INSTAGRAM',
 }
 
 function redirectWithMessage(appUrl: string, query: string) {
@@ -192,11 +196,26 @@ export async function GET(
           customUrl: channel.snippet?.customUrl,
         },
       })
+    } else if (
+      (platform === 'FACEBOOK' || platform === 'INSTAGRAM') &&
+      (process.env.META_APP_ID || process.env.FACEBOOK_CLIENT_ID) &&
+      (process.env.META_APP_SECRET || process.env.FACEBOOK_CLIENT_SECRET)
+    ) {
+      const connected = await connectMetaPlatform(platform, code)
+      await upsertOAuthAccount({
+        platform: connected.platform,
+        accountId: connected.accountId,
+        accountName: connected.accountName,
+        accessToken: connected.pageAccessToken,
+        refreshToken: connected.longLivedUserToken,
+        tokenExpiry: connected.tokenExpiry,
+        config: connected.config as Prisma.InputJsonValue,
+      })
     } else {
       await upsertDryRunAccount(platform, `Dry-run ${platform}`)
       return redirectWithMessage(appUrl, 'connected=dry')
     }
-    if (platform !== 'YOUTUBE') {
+    if (platform !== 'YOUTUBE' && platform !== 'FACEBOOK' && platform !== 'INSTAGRAM') {
       await syncSocialDraftsFromApprovedCaptions({ skipImages: true })
     }
   } catch (err) {
