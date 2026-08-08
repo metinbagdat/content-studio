@@ -50,11 +50,12 @@ Repo secrets (Settings → Secrets):
 | `CONTENT_STUDIO_VERCEL_PROJECT_ID` | Yeni projenin ID'si |
 | `VERCEL_ORG_ID` | Team/personal scope (LearnCon ile aynı olabilir) |
 
-Deploy: **yalnızca manuel** — Actions → **Deploy Content Studio** → **Run workflow**
+Deploy: `main` merge/push → otomatik production deploy (GHA).  
+Sadece doküman değişikliklerinde (`docs/**`, `*.md`) deploy atlanır.  
+Ardışık merge'ler 90 sn coalesce ile tek deploy'a birleştirilir.  
+Acil redeploy: Actions → **Deploy Content Studio** → **Run workflow**
 
-> **Kredi optimizasyonu:** `main` merge/push deploy **tetiklemez** (GHA + Vercel build dakikası tasarrufu).
-> Kod merge'ini GitHub'da manuel yap; deploy'u ihtiyaç olduğunda tek seferlik çalıştır.
-> Vercel Git auto-deploy zaten kapalı (`vercel.json` → `git.deploymentEnabled: false`).
+Vercel Git auto-deploy kapalı (`vercel.json` → `git.deploymentEnabled: false`) — deploy yalnızca GHA üzerinden.
 
 ## 4. LearnCon admin linki
 
@@ -121,16 +122,15 @@ https://studio.egitim.today/admin  →  admin panel (404 olmamalı)
 
 | Bileşen | Maliyet | Not |
 |---------|---------|-----|
-| Vercel Hobby (2. proje) | $0 | Deploy manuel (merge başına build yok) |
+| Vercel Hobby (2. proje) | $0 | Merge → GHA deploy (coalesce ile tek build) |
 | Supabase Free | $0 | |
 | Worker / Railway | $0 | Kullanılmıyor |
 | Vercel cron | $0 | Günde 1× (`/api/cron/daily`) |
 | X API yayın | Kredi | `SOCIAL_AUTO_PUBLISH=false` — manuel «Şimdi yayınla» |
 | X API metrikleri | ~$200/ay | Opsiyonel; günlük sync yeter |
 
-### Kredi / maliyet kuralları (Senaryo A)
+### Kredi tasarrufu (deploy dışı)
 
-1. **Deploy** — merge sonrası otomatik değil; hazır olduğunda Actions → Run workflow.
-2. **Git merge** — GitHub UI/CLI ile sen yap (Cursor agent merge = gereksiz kredi).
-3. **Yayın** — otomatik publish kapalı; admin'de onay + manuel veya takvim.
-4. **Cron** — günde 1 kez bakım; video/image ağır işler yerelde veya «Tam tur» butonu.
+1. **Yayın** — otomatik publish kapalı; admin'de onay + manuel veya takvim.
+2. **Cron** — günde 1 kez bakım; video/image ağır işler yerelde veya «Tam tur» butonu.
+3. **Merge coalesce** — ardışık merge'ler 90 sn içinde tek deploy'a birleşir.
