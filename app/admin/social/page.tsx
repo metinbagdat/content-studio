@@ -206,20 +206,22 @@ export default function SocialPage() {
   }
 
   async function bulkPublishPlatform(platform: string) {
-    const publishable = posts.filter(
-      (p) =>
-        p.platform === platform &&
-        (p.status === 'DRAFT' || p.status === 'FAILED') &&
-        !p.isDryRun,
+    const platformPosts = posts.filter(
+      (p) => p.platform === platform && (p.status === 'DRAFT' || p.status === 'FAILED'),
     )
-    if (!publishable.length) {
+    const publishable = platformPosts.filter((p) => !p.isDryRun)
+    const dryOnly = publishable.length === 0 && platformPosts.some((p) => p.isDryRun)
+    const includeDryRun = platform === 'TIKTOK' || dryOnly
+    const count = publishable.length || (includeDryRun ? platformPosts.length : 0)
+    if (!count) {
       setMsgType('info')
-      setMsg('Yayınlanacak gerçek taslak yok (dry-run hariç)')
+      setMsg('Yayınlanacak taslak yok')
       return
     }
     if (
       !confirm(
-        `${platform}: ${publishable.length} taslak yayınlanacak (dry-run atlanır). X rate limit için en fazla 25 post/durak. Devam?`,
+        `${platform}: ${count} taslak${includeDryRun ? ' (dry-run dahil)' : ''} yayınlanacak. Devam?` +
+          (count > 25 ? ' (max 25/durak — kalan için tekrar tıklayın)' : ''),
       )
     ) {
       return
@@ -232,7 +234,7 @@ export default function SocialPage() {
       const res = await fetch('/api/social', {
         method: 'POST',
         headers: headers(adminKey, true),
-        body: JSON.stringify({ action: 'bulk-publish', includeDryRun: false, platform, limit: 25 }),
+        body: JSON.stringify({ action: 'bulk-publish', includeDryRun, platform, limit: 25 }),
       })
       const data = await parseApiJson(res)
       if (!res.ok) {
@@ -245,7 +247,7 @@ export default function SocialPage() {
       setMsg(
         `${platform}: ${r?.published ?? 0} yayınlandı · ${r?.skipped ?? 0} atlandı · ${r?.failed ?? 0} hata` +
           (r?.errors?.length ? ` — ${r.errors[0]}` : '') +
-          (publishable.length > 25 ? ' · Kalan taslaklar için tekrar tıklayın' : ''),
+          (count > 25 ? ' · Kalan taslaklar için tekrar tıklayın' : ''),
       )
       setDiagnostics((data.diagnostics as DraftDiagnostics) || null)
       await load()

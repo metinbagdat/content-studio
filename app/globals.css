@@ -916,10 +916,61 @@ button:disabled {
 
 .sm-platform-card {
   min-height: 100%;
+  border: 1px solid var(--border);
+  transition: border-color 0.15s ease;
+}
+
+.sm-platform-card.sm-conn-connected {
+  border-color: rgba(34, 197, 94, 0.55);
+  box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.12);
+}
+
+.sm-platform-card.sm-conn-disconnected,
+.sm-platform-card.sm-conn-env_missing {
+  border-color: rgba(239, 68, 68, 0.55);
+  box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.1);
+}
+
+.sm-platform-card.sm-conn-dry_run {
+  border-color: rgba(234, 179, 8, 0.5);
 }
 
 .sm-platform-card.sm-pipeline-only {
   opacity: 0.82;
+}
+
+.sm-platform-card.sm-conn-connected.sm-pipeline-only {
+  opacity: 1;
+}
+
+.deploy-parity {
+  margin-bottom: 0.75rem;
+  padding: 0.55rem 0.85rem;
+}
+
+.deploy-parity-ok {
+  border-color: rgba(34, 197, 94, 0.35);
+}
+
+.deploy-parity-warn {
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.deploy-parity-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  font-size: 0.82rem;
+}
+
+.deploy-parity-url {
+  font-size: 0.78rem;
+}
+
+.deploy-parity-hint {
+  flex: 1 1 100%;
+  font-size: 0.76rem;
 }
 
 .sm-platform-head {

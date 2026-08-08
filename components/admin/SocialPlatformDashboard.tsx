@@ -120,6 +120,79 @@ function pickPreferredAccount(accounts: PlatformCardAccount[]): PlatformCardAcco
   return accounts[0]
 }
 
+type OAuthConnectionState = 'connected' | 'dry_run' | 'disconnected' | 'env_missing'
+
+function oauthConnectionState(
+  account: PlatformCardAccount | undefined,
+  oauthConfigured: boolean,
+): OAuthConnectionState {
+  if (account?.isActive && account.oauth && !account.dryRun) return 'connected'
+  if (account?.isActive && account.dryRun) return 'dry_run'
+  if (!oauthConfigured) return 'env_missing'
+  return 'disconnected'
+}
+
+function connectionBadge(state: OAuthConnectionState) {
+  switch (state) {
+    case 'connected':
+      return <span className="badge ok">Bağlı</span>
+    case 'dry_run':
+      return <span className="badge warn">dry-run</span>
+    case 'disconnected':
+      return <span className="badge danger">Bağlı değil</span>
+    case 'env_missing':
+      return <span className="badge danger">env eksik</span>
+  }
+}
+
+function cardConnectionClass(state: OAuthConnectionState): string {
+  return `sm-conn-${state}`
+}
+
+function bulkEligibleCount(platform: string, drafts: ReadyDraft[]): number {
+  const oauthDrafts = drafts.filter((d) => !d.isDryRun)
+  if (oauthDrafts.length) return oauthDrafts.length
+  if (platform === 'TIKTOK' && drafts.length) return drafts.length
+  return 0
+}
+
+function OAuthConnectButton({
+  platform,
+  label,
+  state,
+  oauthConfigured,
+  busyId,
+  onConnect,
+}: {
+  platform: string
+  label?: string
+  state: OAuthConnectionState
+  oauthConfigured: boolean
+  busyId: string | null
+  onConnect: () => void
+}) {
+  if (!oauthConfigured) {
+    return <span className="badge danger">env eksik</span>
+  }
+  if (state === 'connected') {
+    return (
+      <button type="button" className="ok" disabled title="OAuth bağlı">
+        Bağlı ✓
+      </button>
+    )
+  }
+  return (
+    <button
+      type="button"
+      className={state === 'disconnected' ? 'danger' : 'ok'}
+      disabled={busyId === platform}
+      onClick={onConnect}
+    >
+      {label || 'OAuth bağla'}
+    </button>
+  )
+}
+
 function ReadyDraftsList({
   platform,
   drafts,
@@ -134,20 +207,20 @@ function ReadyDraftsList({
   onBulkPublish?: (platform: string) => void
 }) {
   if (!drafts.length) return null
-  const publishable = drafts.filter((d) => !d.isDryRun)
+  const bulkCount = bulkEligibleCount(platform, drafts)
   const bulkKey = `bulk-${platform}`
   return (
     <div className="sm-mini-list">
       <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.35rem' }}>
         <strong className="sm-mini-heading">Hazır taslaklar ({drafts.length})</strong>
-        {publishable.length > 1 && onBulkPublish ? (
+        {bulkCount >= 1 && onBulkPublish ? (
           <button
             type="button"
             className="ok sm-mini-btn"
             disabled={busyId === bulkKey}
             onClick={() => onBulkPublish(platform)}
           >
-            {busyId === bulkKey ? 'Yayınlanıyor…' : `Toplu yayınla (${publishable.length})`}
+            {busyId === bulkKey ? 'Yayınlanıyor…' : `Toplu yayınla (${bulkCount})`}
           </button>
         ) : null}
       </div>
@@ -259,8 +332,9 @@ export function SocialPlatformDashboard({
     const username = account?.username || account?.accountName || '—'
     const drafts = readyDraftsByPlatform[platform] || []
     const published = recentPublishedByPlatform[platform] || []
+    const connState = oauthConnectionState(account, Boolean(oauthSlot?.configured))
     return (
-      <article className="sm-platform-card panel" key={platform}>
+      <article className={`sm-platform-card panel ${cardConnectionClass(connState)}`} key={platform}>
         <header className="sm-platform-head">
           <div className="row">
             <PlatformIconLink
@@ -268,9 +342,7 @@ export function SocialPlatformDashboard({
               username={account?.username || stats?.username}
               profileUrl={stats?.profileUrl}
             />
-            {account?.dryRun ? <span className="badge warn">dry-run</span> : null}
-            {account?.oauth ? <span className="badge ok">OAuth</span> : null}
-            {account?.isActive ? <span className="badge ok">aktif</span> : <span className="badge danger">yok</span>}
+            {connectionBadge(connState)}
           </div>
           {stats?.profileUrl ? (
             <a href={stats.profileUrl} target="_blank" rel="noopener noreferrer" className="sm-profile-link">
@@ -314,13 +386,13 @@ export function SocialPlatformDashboard({
         {stats?.error ? <p className="muted sm-sync-error">{stats.error}</p> : null}
 
         <div className="sm-platform-actions row">
-          {oauthSlot?.configured ? (
-            <button type="button" className="ok" disabled={busyId === platform} onClick={() => onOAuthConnect(platform)}>
-              OAuth bağla
-            </button>
-          ) : (
-            <span className="badge warn">env eksik</span>
-          )}
+          <OAuthConnectButton
+            platform={platform}
+            state={connState}
+            oauthConfigured={Boolean(oauthSlot?.configured)}
+            busyId={busyId}
+            onConnect={() => onOAuthConnect(platform)}
+          />
           {!envCheck?.ready ? (
             <button type="button" className="secondary" disabled={busyId === `dry-${platform}`} onClick={() => onDryConnect(platform)}>
               Dry-run
@@ -446,14 +518,17 @@ export function SocialPlatformDashboard({
                 : p.id === 'INSTAGRAM'
                   ? 'INSTAGRAM'
                   : null
+          const connState = oauthConnectionState(account, Boolean(oauthSlot?.configured))
+          const pipelineDim = connState !== 'connected' && p.id !== 'TIKTOK'
           return (
-            <article className="sm-platform-card panel sm-pipeline-only" key={p.id}>
+            <article
+              className={`sm-platform-card panel ${cardConnectionClass(connState)} ${pipelineDim ? 'sm-pipeline-only' : ''}`}
+              key={p.id}
+            >
               <header className="sm-platform-head">
                 <div className="row">
                   <PlatformIconLink platform={p.id} title={`${platformLabel(p.id)} (yeni sekme)`} />
-                  {account?.oauth ? <span className="badge ok">oauth</span> : null}
-                  {account?.dryRun ? <span className="badge warn">dry-run</span> : null}
-                  {account?.isActive ? <span className="badge ok">aktif</span> : <span className="badge">bağlı değil</span>}
+                  {connectionBadge(connState)}
                 </div>
               </header>
               <h3 className="sm-username">
@@ -491,15 +566,14 @@ export function SocialPlatformDashboard({
               ) : null}
               {stats?.error ? <p className="muted sm-sync-error">{stats.error}</p> : null}
               <div className="sm-platform-actions row">
-                {oauthSlot?.configured && oauthPlatform ? (
-                  <button
-                    type="button"
-                    className="ok"
-                    disabled={busyId === p.id}
-                    onClick={() => onOAuthConnect(oauthPlatform)}
-                  >
-                    OAuth bağla
-                  </button>
+                {oauthPlatform ? (
+                  <OAuthConnectButton
+                    platform={p.id}
+                    state={connState}
+                    oauthConfigured={Boolean(oauthSlot?.configured)}
+                    busyId={busyId}
+                    onConnect={() => onOAuthConnect(oauthPlatform)}
+                  />
                 ) : null}
                 {oauthSlot?.configured && account?.oauth && p.oauthKey === 'youtube' && onYoutubeTest ? (
                   <button

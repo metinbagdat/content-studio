@@ -7,6 +7,7 @@ import { DEFAULT_ADMIN_API_KEY } from '@/lib/adminKey'
 import type { WorkflowSnapshot } from '@/lib/workflow/status'
 import { PlatformIconLink } from '@/components/admin/PlatformIconLink'
 import { WorkerOpsPanel } from '@/components/admin/WorkerOpsPanel'
+import { DeployParityBanner } from '@/components/admin/DeployParityBanner'
 
 const NAV = [
   { href: '/admin', label: 'Pipeline', step: 'pipeline' },
@@ -103,6 +104,8 @@ export function AdminWorkflowChrome({ children }: { children: React.ReactNode })
           SM rehber
         </Link>
       </nav>
+
+      {adminKey ? <DeployParityBanner adminKey={adminKey} /> : null}
 
       {workflow ? (
         <section className="workflow-track panel" aria-label="Süreç durumu">
