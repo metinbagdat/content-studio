@@ -1,7 +1,7 @@
 import type { SocialMediaAccount } from '@prisma/client'
 import { prisma } from '../prisma'
 import { decryptSecret, encryptSecret } from '../crypto'
-
+import { metaAppId, metaAppSecret } from './metaApi'
 export class TokenExpiredError extends Error {
   constructor(platform: string) {
     super(`${platform} OAuth token süresi doldu — /admin/social üzerinden hesabı yeniden bağla`)
@@ -114,6 +114,35 @@ async function refreshAccessToken(account: SocialMediaAccount): Promise<string |
     }
     await persistTokens(account.id, tokens.access_token, tokens.refresh_token, tokens.expires_in)
     return tokens.access_token
+  }
+
+  if (
+    (account.platform === 'FACEBOOK' || account.platform === 'INSTAGRAM') &&
+    account.refreshToken &&
+    metaAppId() &&
+    metaAppSecret()
+  ) {
+    const { refreshMetaLongLivedToken, fetchMetaPages } = await import('./metaApi')
+    const refresh = decryptSecret(account.refreshToken)
+    const long = await refreshMetaLongLivedToken(refresh)
+    if (!long?.access_token) return null
+
+    const pages = await fetchMetaPages(long.access_token)
+    const cfg =
+      account.config && typeof account.config === 'object'
+        ? (account.config as Record<string, unknown>)
+        : {}
+    const pageId = String(cfg.pageId || process.env.META_PAGE_ID || '')
+    const page = pages.find((p) => p.id === pageId) || pages[0]
+    if (!page?.access_token) return null
+
+    await persistTokens(
+      account.id,
+      page.access_token,
+      long.access_token,
+      long.expires_in || 55 * 24 * 3600,
+    )
+    return page.access_token
   }
 
   return null

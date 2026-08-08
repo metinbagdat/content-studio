@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { DEFAULT_ADMIN_API_KEY } from '@/lib/adminKey'
 import type { WorkflowSnapshot } from '@/lib/workflow/status'
 import { PlatformIconLink } from '@/components/admin/PlatformIconLink'
+import { WorkerOpsPanel } from '@/components/admin/WorkerOpsPanel'
 
 const NAV = [
   { href: '/admin', label: 'Pipeline', step: 'pipeline' },
@@ -181,6 +182,8 @@ export function AdminWorkflowChrome({ children }: { children: React.ReactNode })
               </ul>
             </div>
           ) : null}
+
+          <WorkerOpsPanel adminKey={adminKey} onDone={loadWorkflow} />
 
           <div className="workflow-next">
             <strong>Sıradaki:</strong>

@@ -1,4 +1,6 @@
 /** Which OAuth platforms have client credentials in env (no secrets exposed). */
+import { metaConfigured, metaCallbackUrl, metaOAuthScopes, metaAppId } from './metaApi'
+
 export function oauthPlatformStatus() {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3100'
   return {
@@ -23,6 +25,20 @@ export function oauthPlatformStatus() {
       clientIdSet: Boolean(process.env.YOUTUBE_CLIENT_ID),
       clientSecretSet: Boolean(process.env.YOUTUBE_CLIENT_SECRET),
       scopes: youtubeOAuthScopes(),
+    },
+    facebook: {
+      configured: metaConfigured(),
+      callbackUrl: metaCallbackUrl('FACEBOOK', appUrl),
+      clientIdSet: Boolean(metaAppId()),
+      clientSecretSet: metaConfigured(),
+      scopes: metaOAuthScopes(),
+    },
+    instagram: {
+      configured: metaConfigured(),
+      callbackUrl: metaCallbackUrl('INSTAGRAM', appUrl),
+      clientIdSet: Boolean(metaAppId()),
+      clientSecretSet: metaConfigured(),
+      scopes: metaOAuthScopes(),
     },
   }
 }
@@ -49,6 +65,8 @@ export function oauthEnvCheck() {
     LINKEDIN_CLIENT_SECRET: Boolean(process.env.LINKEDIN_CLIENT_SECRET?.trim()),
     YOUTUBE_CLIENT_ID: Boolean(process.env.YOUTUBE_CLIENT_ID?.trim()),
     YOUTUBE_CLIENT_SECRET: Boolean(process.env.YOUTUBE_CLIENT_SECRET?.trim()),
+    META_APP_ID: Boolean(metaAppId()),
+    META_APP_SECRET: metaConfigured(),
     ready:
       Boolean(process.env.X_CLIENT_ID?.trim() && process.env.X_CLIENT_SECRET?.trim()) &&
       Boolean(process.env.LINKEDIN_CLIENT_ID?.trim() && process.env.LINKEDIN_CLIENT_SECRET?.trim()),

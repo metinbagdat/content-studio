@@ -54,6 +54,68 @@ function isDryRun(account: SocialMediaAccount): boolean {
   return account.accountId.startsWith('dryrun_') || Boolean(cfg.dryRun)
 }
 
+type DbPublishedAggregate = {
+  postsCount: number
+  impressions: number
+  likes: number
+  comments: number
+  shares: number
+  clicks: number
+}
+
+async function aggregateDbPublishedMetrics(
+  accountId: string,
+  platform: SocialPlatform,
+): Promise<DbPublishedAggregate> {
+  const published = await prisma.socialMediaPost.findMany({
+    where: { accountId, status: 'PUBLISHED', platform },
+    select: { metrics: true },
+    take: 500,
+  })
+  let impressions = 0
+  let likes = 0
+  let comments = 0
+  let shares = 0
+  let clicks = 0
+  for (const p of published) {
+    const a = readPostAnalytics(p.metrics)
+    if (a) {
+      impressions += a.impressions ?? 0
+      likes += a.likes ?? 0
+      comments += a.comments ?? 0
+      shares += a.shares ?? 0
+      clicks += a.clicks ?? 0
+    }
+  }
+  return {
+    postsCount: published.length,
+    impressions,
+    likes,
+    comments,
+    shares,
+    clicks,
+  }
+}
+
+function dryRunStats(account: SocialMediaAccount, error = 'Dry-run — gerçek istatistik yok'): PlatformAccountStats {
+  return {
+    username: cfgOf(account.config).username as string | null ?? 'dry-run',
+    displayName: account.accountName,
+    profileUrl: null,
+    followers: null,
+    following: null,
+    postsCount: null,
+    impressions: null,
+    engagement: null,
+    likes: null,
+    comments: null,
+    shares: null,
+    clicks: null,
+    fetchedAt: new Date().toISOString(),
+    error,
+  }
+}
+
 function readStoredStats(config: unknown): PlatformAccountStats | null {
   const stats = cfgOf(config).stats
   if (!stats || typeof stats !== 'object') return null
@@ -65,22 +127,7 @@ async function fetchTwitterAccountStats(
   accessToken: string,
 ): Promise<PlatformAccountStats> {
   if (accessToken === 'dry-run' || isDryRun(account)) {
-    return {
-      username: cfgOf(account.config).username as string | null ?? 'dry-run',
-      displayName: account.accountName,
-      profileUrl: null,
-      followers: null,
-      following: null,
-      postsCount: null,
-      impressions: null,
-      engagement: null,
-      likes: null,
-      comments: null,
-      shares: null,
-      clicks: null,
-      fetchedAt: new Date().toISOString(),
-      error: 'Dry-run — gerçek istatistik yok',
-    }
+    return dryRunStats(account)
   }
 
   const res = await fetch(
@@ -163,22 +210,7 @@ async function fetchLinkedInAccountStats(
   accessToken: string,
 ): Promise<PlatformAccountStats> {
   if (accessToken === 'dry-run' || isDryRun(account)) {
-    return {
-      username: 'dry-run',
-      displayName: account.accountName,
-      profileUrl: null,
-      followers: null,
-      following: null,
-      postsCount: null,
-      impressions: null,
-      engagement: null,
-      likes: null,
-      comments: null,
-      shares: null,
-      clicks: null,
-      fetchedAt: new Date().toISOString(),
-      error: 'Dry-run — gerçek istatistik yok',
-    }
+    return dryRunStats(account)
   }
 
   const cfg = cfgOf(account.config)
@@ -214,26 +246,7 @@ async function fetchLinkedInAccountStats(
     }
   }
 
-  const published = await prisma.socialMediaPost.findMany({
-    where: { accountId: account.id, status: 'PUBLISHED', platform: 'LINKEDIN' },
-    select: { metrics: true },
-    take: 100,
-  })
-  let impressions = 0
-  let likes = 0
-  let comments = 0
-  let shares = 0
-  let clicks = 0
-  for (const p of published) {
-    const a = readPostAnalytics(p.metrics)
-    if (a) {
-      impressions += a.impressions ?? 0
-      likes += a.likes ?? 0
-      comments += a.comments ?? 0
-      shares += a.shares ?? 0
-      clicks += a.clicks ?? 0
-    }
-  }
+  const db = await aggregateDbPublishedMetrics(account.id, 'LINKEDIN')
 
   return {
     username,
@@ -241,14 +254,163 @@ async function fetchLinkedInAccountStats(
     profileUrl,
     followers,
     following: null,
-    postsCount: published.length || null,
-    impressions: impressions || null,
-    engagement: likes + comments + shares + clicks || null,
-    likes: likes || null,
-    comments: comments || null,
-    shares: shares || null,
-    clicks: clicks || null,
+    postsCount: db.postsCount || null,
+    impressions: db.impressions || null,
+    engagement: db.likes + db.comments + db.shares + db.clicks || null,
+    likes: db.likes || null,
+    comments: db.comments || null,
+    shares: db.shares || null,
+    clicks: db.clicks || null,
     fetchedAt: new Date().toISOString(),
+  }
+}
+
+async function fetchYouTubeAccountStats(
+  account: SocialMediaAccount,
+  accessToken: string,
+): Promise<PlatformAccountStats> {
+  if (accessToken === 'dry-run' || isDryRun(account)) {
+    return dryRunStats(account)
+  }
+
+  const cfg = cfgOf(account.config)
+  const channelId = String(cfg.channelId || account.accountId)
+  const db = await aggregateDbPublishedMetrics(account.id, 'YOUTUBE')
+
+  let followers: number | null = null
+  let impressions: number | null = db.impressions || null
+  let profileUrl: string | null = null
+  let username: string | null = account.accountName
+  let displayName = account.accountName
+  let apiPostsCount: number | null = null
+  let error: string | undefined
+
+  try {
+    const res = await fetch(
+      `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&id=${encodeURIComponent(channelId)}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    )
+    if (!res.ok) {
+      error = `YouTube API ${res.status}`
+    } else {
+      const json = (await res.json()) as {
+        items?: Array<{
+          snippet?: { title?: string; customUrl?: string }
+          statistics?: { subscriberCount?: string; viewCount?: string; videoCount?: string }
+        }>
+      }
+      const item = json.items?.[0]
+      const stats = item?.statistics
+      followers = stats?.subscriberCount ? Number(stats.subscriberCount) : null
+      impressions = stats?.viewCount ? Number(stats.viewCount) : impressions
+      apiPostsCount = stats?.videoCount ? Number(stats.videoCount) : null
+      displayName = item?.snippet?.title || displayName
+      const customUrl = item?.snippet?.customUrl
+      username = customUrl || `@${displayName}`
+      profileUrl = customUrl
+        ? `https://www.youtube.com/${customUrl.replace(/^@/, '')}`
+        : `https://www.youtube.com/channel/${channelId}`
+    }
+  } catch (err) {
+    error = err instanceof Error ? err.message : String(err)
+  }
+
+  return {
+    username,
+    displayName,
+    profileUrl,
+    followers,
+    following: null,
+    postsCount: db.postsCount || apiPostsCount,
+    impressions,
+    engagement: db.likes + db.comments + db.shares || null,
+    likes: db.likes || null,
+    comments: db.comments || null,
+    shares: db.shares || null,
+    clicks: db.clicks || null,
+    fetchedAt: new Date().toISOString(),
+    error,
+  }
+}
+
+async function fetchMetaPageStats(
+  account: SocialMediaAccount,
+  accessToken: string,
+  platform: 'FACEBOOK' | 'INSTAGRAM',
+): Promise<PlatformAccountStats> {
+  if (accessToken === 'dry-run' || isDryRun(account)) {
+    return dryRunStats(account)
+  }
+
+  const cfg = cfgOf(account.config)
+  const db = await aggregateDbPublishedMetrics(account.id, platform)
+  const graphVersion = process.env.META_GRAPH_VERSION?.trim() || 'v21.0'
+
+  let followers: number | null = null
+  let apiPostsCount: number | null = null
+  let username: string | null = account.accountName
+  let displayName = account.accountName
+  let profileUrl: string | null = null
+  let error: string | undefined
+
+  try {
+    const entityId =
+      platform === 'FACEBOOK'
+        ? String(cfg.pageId || account.accountId)
+        : String(cfg.igUserId || account.accountId)
+    const fields =
+      platform === 'FACEBOOK'
+        ? 'name,followers_count,fan_count,published_posts.limit(0).summary(total_count)'
+        : 'username,name,followers_count,media_count'
+
+    const url = new URL(`https://graph.facebook.com/${graphVersion}/${entityId}`)
+    url.searchParams.set('fields', fields)
+    url.searchParams.set('access_token', accessToken)
+
+    const res = await fetch(url.toString())
+    if (!res.ok) {
+      const body = await res.text()
+      error = `Meta Graph ${res.status}: ${body.slice(0, 200)}`
+    } else {
+      const json = (await res.json()) as {
+        name?: string
+        username?: string
+        followers_count?: number
+        fan_count?: number
+        media_count?: number
+        published_posts?: { summary?: { total_count?: number } }
+      }
+      followers = json.followers_count ?? json.fan_count ?? null
+      displayName = json.name || displayName
+      if (platform === 'INSTAGRAM') {
+        username = json.username ? `@${json.username}` : username
+        apiPostsCount = json.media_count ?? null
+        profileUrl = json.username ? `https://www.instagram.com/${json.username}/` : null
+      } else {
+        username = displayName
+        apiPostsCount = json.published_posts?.summary?.total_count ?? null
+        profileUrl = `https://www.facebook.com/${entityId}`
+      }
+    }
+  } catch (err) {
+    error = err instanceof Error ? err.message : String(err)
+  }
+
+  return {
+    username,
+    displayName,
+    profileUrl,
+    followers,
+    following: null,
+    postsCount: db.postsCount || apiPostsCount,
+    impressions: db.impressions || null,
+    engagement: db.likes + db.comments + db.shares + db.clicks || null,
+    likes: db.likes || null,
+    comments: db.comments || null,
+    shares: db.shares || null,
+    clicks: db.clicks || null,
+    fetchedAt: new Date().toISOString(),
+    error,
   }
 }
 
@@ -256,6 +418,9 @@ export async function fetchAccountStats(account: SocialMediaAccount): Promise<Pl
   const token = await getValidAccessToken(account)
   if (account.platform === 'TWITTER') return fetchTwitterAccountStats(account, token)
   if (account.platform === 'LINKEDIN') return fetchLinkedInAccountStats(account, token)
+  if (account.platform === 'YOUTUBE') return fetchYouTubeAccountStats(account, token)
+  if (account.platform === 'FACEBOOK') return fetchMetaPageStats(account, token, 'FACEBOOK')
+  if (account.platform === 'INSTAGRAM') return fetchMetaPageStats(account, token, 'INSTAGRAM')
   return {
     username: null,
     displayName: account.accountName,
@@ -289,13 +454,34 @@ export async function syncAccountStats(accountId: string): Promise<PlatformAccou
   return stats
 }
 
+/** Prefer real OAuth account over dry-run when multiple active rows exist. */
+export function pickPreferredAccount<T extends { accountId: string; config: unknown }>(
+  accounts: T[],
+): T | undefined {
+  const active = accounts.filter((a) => !a.accountId.startsWith('dryrun_'))
+  if (active.length) {
+    const oauth = active.find((a) => Boolean(cfgOf(a.config).oauth))
+    return oauth || active[0]
+  }
+  return accounts[0]
+}
+
 export async function syncAllAccountStats(): Promise<{ synced: number; errors: string[] }> {
   const accounts = await prisma.socialMediaAccount.findMany({
-    where: { isActive: true, platform: { in: ['TWITTER', 'LINKEDIN'] } },
+    where: { isActive: true, platform: { in: ['TWITTER', 'LINKEDIN', 'YOUTUBE', 'FACEBOOK', 'INSTAGRAM'] } },
   })
+  const byPlatform = new Map<SocialPlatform, SocialMediaAccount[]>()
+  for (const account of accounts) {
+    const list = byPlatform.get(account.platform) || []
+    list.push(account)
+    byPlatform.set(account.platform, list)
+  }
+  const toSync = [...byPlatform.values()]
+    .map((list) => pickPreferredAccount(list))
+    .filter((a): a is SocialMediaAccount => Boolean(a))
   let synced = 0
   const errors: string[] = []
-  for (const account of accounts) {
+  for (const account of toSync) {
     try {
       await syncAccountStats(account.id)
       synced += 1

@@ -59,8 +59,9 @@ export async function syncYouTubeFromApprovedVideos(options: {
 
   const scripts = await prisma.derivedContent.findMany({
     where: {
-      contentType: { in: ['VIDEO_SCRIPT', 'SHORT_VIDEO_SCRIPT'] },
+      contentType: { in: ['VIDEO_SCRIPT', 'SHORT_VIDEO_SCRIPT', 'PODCAST_SCRIPT'] },
       status: { in: ['APPROVED', 'PUBLISHED'] },
+	  metadata: { path: ['platform'], equals: 'YOUTUBE' },
     },
     orderBy: { approvedAt: 'asc' },
     take: limit,

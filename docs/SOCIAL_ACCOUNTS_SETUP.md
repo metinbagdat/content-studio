@@ -193,7 +193,7 @@ Dry-run postlar gerçek SM’de görünmez; onay → taslak → zamanlama akış
 
 1. **Podcast MP3 stabil** → YouTube Data API v3 (video/audio upload)
 2. **Video pipeline** → TikTok for Developers
-3. **Meta Business** → Instagram + Facebook Graph API (tek app)
+3. **Meta Business** → Instagram + Facebook Graph API (tek app) — ayrıntılı rehber: **[META_FACEBOOK_SETUP.md](./META_FACEBOOK_SETUP.md)**
 
 Env şablonu: `.env.example` içinde yorum satırları.
 

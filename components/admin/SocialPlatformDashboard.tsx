@@ -54,24 +54,34 @@ type EnvCheck = {
   LINKEDIN_CLIENT_SECRET: boolean
   YOUTUBE_CLIENT_ID: boolean
   YOUTUBE_CLIENT_SECRET: boolean
+  META_APP_ID: boolean
+  META_APP_SECRET: boolean
   ready: boolean
 }
 
 type PipelinePlatformDef = {
   id: string
   note: string
-  oauthKey?: 'youtube'
+  oauthKey?: 'youtube' | 'facebook' | 'instagram'
 }
 
 const PIPELINE_PLATFORMS: PipelinePlatformDef[] = [
   {
     id: 'YOUTUBE',
     oauthKey: 'youtube',
-    note: 'OAuth bağla → Video senkronize: onaylı scriptlerden watermarked MP4 üretir ve YouTube\'a yükler.',
+    note: 'OAuth bağla → Video senkronize ile watermark\'lı MP4 yükler.',
   },
-  { id: 'INSTAGRAM', note: 'Pipeline caption üretir. Yayın için Meta Graph API entegrasyonu Faz 2.' },
+  {
+    id: 'FACEBOOK',
+    oauthKey: 'facebook',
+    note: 'Meta OAuth — egitim.today Facebook sayfasından paylaşım (Development mod).',
+  },
+  {
+    id: 'INSTAGRAM',
+    oauthKey: 'instagram',
+    note: 'Meta OAuth — IG Business hesabı (Facebook sayfasına bağlı olmalı).',
+  },
   { id: 'TIKTOK', note: 'Pipeline kısa video script üretir. Yayın için TikTok API entegrasyonu Faz 2.' },
-  { id: 'FACEBOOK', note: 'Pipeline caption üretir. Yayın için Meta Graph API entegrasyonu Faz 2.' },
 ]
 
 function StatCell({ label, value }: { label: string; value: string | number | null | undefined }) {
@@ -99,6 +109,15 @@ function formatWhen(iso: string): string {
   } catch {
     return iso
   }
+}
+
+function pickPreferredAccount(accounts: PlatformCardAccount[]): PlatformCardAccount | undefined {
+  const real = accounts.filter((a) => !a.dryRun)
+  if (real.length) {
+    const oauth = real.find((a) => a.oauth)
+    return oauth || real[0]
+  }
+  return accounts[0]
 }
 
 function ReadyDraftsList({
@@ -177,14 +196,15 @@ export function SocialPlatformDashboard({
   onPublishDraft,
   onYoutubeTest,
   onYoutubeSync,
+  onMetaTest,
 }: {
   accounts: PlatformCardAccount[]
-  oauth: { twitter: OAuthSlot; linkedin: OAuthSlot; youtube?: OAuthSlot } | null
+  oauth: { twitter: OAuthSlot; linkedin: OAuthSlot; youtube?: OAuthSlot; facebook?: OAuthSlot; instagram?: OAuthSlot } | null
   envCheck: EnvCheck | null
   busyId: string | null
   readyDraftsByPlatform: Record<string, ReadyDraft[]>
   recentPublishedByPlatform: Record<string, RecentPublished[]>
-  onOAuthConnect: (p: 'TWITTER' | 'LINKEDIN' | 'YOUTUBE') => void
+  onOAuthConnect: (p: 'TWITTER' | 'LINKEDIN' | 'YOUTUBE' | 'FACEBOOK' | 'INSTAGRAM') => void
   onDryConnect: (p: string) => void
   onDisconnect: (id: string) => void
   onSyncStats: () => void
@@ -192,9 +212,14 @@ export function SocialPlatformDashboard({
   onPublishDraft: (id: string) => void
   onYoutubeTest?: () => void
   onYoutubeSync?: () => void
+  onMetaTest?: (platform: 'FACEBOOK' | 'INSTAGRAM') => void
 }) {
-  const twitterAccount = accounts.find((a) => a.platform === 'TWITTER' && a.isActive)
-  const linkedinAccount = accounts.find((a) => a.platform === 'LINKEDIN' && a.isActive)
+  const twitterAccount = pickPreferredAccount(accounts.filter((a) => a.platform === 'TWITTER' && a.isActive))
+  const linkedinAccount = pickPreferredAccount(accounts.filter((a) => a.platform === 'LINKEDIN' && a.isActive))
+
+  function accountForPlatform(platform: string) {
+    return pickPreferredAccount(accounts.filter((a) => a.platform === platform && a.isActive))
+  }
 
   const linkedinWantsOrg = Boolean(oauth?.linkedin.orgPostEnabled && oauth?.linkedin.organizationId)
   const linkedinIsOnOrg =
@@ -336,6 +361,8 @@ export function SocialPlatformDashboard({
             <EnvRow label="LINKEDIN_CLIENT_SECRET" ok={envCheck.LINKEDIN_CLIENT_SECRET} />
             <EnvRow label="YOUTUBE_CLIENT_ID" ok={envCheck.YOUTUBE_CLIENT_ID} />
             <EnvRow label="YOUTUBE_CLIENT_SECRET" ok={envCheck.YOUTUBE_CLIENT_SECRET} />
+            <EnvRow label="META_APP_ID" ok={envCheck.META_APP_ID} />
+            <EnvRow label="META_APP_SECRET" ok={envCheck.META_APP_SECRET} />
             <p className="row" style={{ marginTop: '0.65rem' }}>
               {envCheck.ready ? (
                 <span className="badge ok">OAuth env tamam — kartlardan OAuth bağla</span>
@@ -373,10 +400,26 @@ export function SocialPlatformDashboard({
         {renderPublishCard('TWITTER', 'X', twitterAccount, oauth?.twitter)}
         {renderPublishCard('LINKEDIN', 'LinkedIn', linkedinAccount, oauth?.linkedin)}
         {PIPELINE_PLATFORMS.map((p) => {
-          const account = accounts.find((a) => a.platform === p.id && a.isActive)
+          const account = accountForPlatform(p.id)
+          const stats = account?.stats
           const drafts = readyDraftsByPlatform[p.id] || []
           const published = recentPublishedByPlatform[p.id] || []
-          const oauthSlot = p.oauthKey === 'youtube' ? oauth?.youtube : undefined
+          const oauthSlot =
+            p.oauthKey === 'youtube'
+              ? oauth?.youtube
+              : p.oauthKey === 'facebook'
+                ? oauth?.facebook
+                : p.oauthKey === 'instagram'
+                  ? oauth?.instagram
+                  : undefined
+          const oauthPlatform =
+            p.id === 'YOUTUBE'
+              ? 'YOUTUBE'
+              : p.id === 'FACEBOOK'
+                ? 'FACEBOOK'
+                : p.id === 'INSTAGRAM'
+                  ? 'INSTAGRAM'
+                  : null
           return (
             <article className="sm-platform-card panel sm-pipeline-only" key={p.id}>
               <header className="sm-platform-head">
@@ -387,25 +430,52 @@ export function SocialPlatformDashboard({
                   {account?.isActive ? <span className="badge ok">aktif</span> : <span className="badge">bağlı değil</span>}
                 </div>
               </header>
-              <h3 className="sm-username">{account?.accountName || platformLabel(p.id)}</h3>
+              <h3 className="sm-username">
+                {stats?.profileUrl || platformProfileUrl(p.id, account?.username || account?.accountName) ? (
+                  <a
+                    href={stats?.profileUrl || platformProfileUrl(p.id, account?.username || account?.accountName) || '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="sm-username-link"
+                  >
+                    {account?.username || stats?.username || account?.accountName || platformLabel(p.id)} ↗
+                  </a>
+                ) : (
+                  account?.accountName || platformLabel(p.id)
+                )}
+              </h3>
               <p className="muted" style={{ margin: '0.35rem 0 0.65rem' }}>{p.note}</p>
+              {oauthSlot?.callbackUrl ? (
+                <p className="muted" style={{ margin: '0 0 0.5rem', fontSize: '0.72rem' }}>
+                  Callback: <code>{oauthSlot.callbackUrl}</code>
+                </p>
+              ) : null}
               <div className="sm-stats-grid">
-                <StatCell label="Takipçi" value={null} />
-                <StatCell label="Gösterim" value={null} />
-                <StatCell label="Etkileşim" value={null} />
+                <StatCell label="Takipçi" value={stats?.followers} />
+                <StatCell label="Gösterim" value={stats?.impressions} />
+                <StatCell label="Etkileşim" value={stats?.engagement} />
+                <StatCell label="Beğeni" value={stats?.likes} />
+                <StatCell label="Yorum" value={stats?.comments} />
+                <StatCell label="Paylaşım" value={stats?.shares} />
+                <StatCell label="Tıklama" value={stats?.clicks} />
+                <StatCell label="Post sayısı" value={stats?.postsCount} />
               </div>
+              {stats?.fetchedAt ? (
+                <p className="muted sm-sync-time">Son senkron: {formatWhen(stats.fetchedAt)}</p>
+              ) : null}
+              {stats?.error ? <p className="muted sm-sync-error">{stats.error}</p> : null}
               <div className="sm-platform-actions row">
-                {oauthSlot?.configured ? (
+                {oauthSlot?.configured && oauthPlatform ? (
                   <button
                     type="button"
                     className="ok"
                     disabled={busyId === p.id}
-                    onClick={() => onOAuthConnect('YOUTUBE')}
+                    onClick={() => onOAuthConnect(oauthPlatform)}
                   >
                     OAuth bağla
                   </button>
                 ) : null}
-                {oauthSlot?.configured && account?.oauth && onYoutubeTest ? (
+                {oauthSlot?.configured && account?.oauth && p.oauthKey === 'youtube' && onYoutubeTest ? (
                   <button
                     type="button"
                     className="secondary"
@@ -415,7 +485,7 @@ export function SocialPlatformDashboard({
                     API test
                   </button>
                 ) : null}
-                {oauthSlot?.configured && account?.oauth && onYoutubeSync ? (
+                {oauthSlot?.configured && account?.oauth && p.oauthKey === 'youtube' && onYoutubeSync ? (
                   <button
                     type="button"
                     className="ok"
@@ -423,6 +493,16 @@ export function SocialPlatformDashboard({
                     onClick={onYoutubeSync}
                   >
                     Video senkronize
+                  </button>
+                ) : null}
+                {oauthSlot?.configured && account?.oauth && (p.oauthKey === 'facebook' || p.oauthKey === 'instagram') && onMetaTest ? (
+                  <button
+                    type="button"
+                    className="secondary"
+                    disabled={busyId === `meta-test-${p.id}`}
+                    onClick={() => onMetaTest(p.oauthKey === 'facebook' ? 'FACEBOOK' : 'INSTAGRAM')}
+                  >
+                    API test
                   </button>
                 ) : null}
                 {!oauthSlot?.configured ? (
@@ -441,6 +521,13 @@ export function SocialPlatformDashboard({
                   </button>
                 ) : null}
               </div>
+              {account?.oauth && (p.id === 'FACEBOOK' || p.id === 'INSTAGRAM') ? (
+                <p className="muted" style={{ margin: '0.5rem 0 0', fontSize: '0.78rem' }}>
+                  Meta Development mod — yalnızca uygulama admin/test kullanıcıları bağlanabilir. Zaten{' '}
+                  <strong>oauth aktif</strong> görünüyorsa yeniden bağlamak için <strong>Kes</strong> sonra OAuth
+                  bağla. Callback URL Meta Developer → Valid OAuth Redirect URIs ile birebir eşleşmeli.
+                </p>
+              ) : null}
               <ReadyDraftsList drafts={drafts} busyId={busyId} onPublish={onPublishDraft} />
               <RecentPublishedList items={published} />
             </article>

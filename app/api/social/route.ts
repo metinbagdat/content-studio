@@ -150,21 +150,36 @@ async function handleAction(action: string, body: Record<string, unknown>) {
 
   if (action === 'youtube-test') {
     const account = await prisma.socialMediaAccount.findFirst({
-      where: { platform: 'YOUTUBE', isActive: true },
+      where: { platform: 'YOUTUBE', isActive: true, accountId: { not: { startsWith: 'dryrun_' } } },
       orderBy: { updatedAt: 'desc' },
     })
     if (!account) {
       return NextResponse.json({ error: 'YouTube hesabı bağlı değil — OAuth bağla' }, { status: 400 })
     }
-    const cfg =
-      account.config && typeof account.config === 'object'
-        ? (account.config as Record<string, unknown>)
-        : {}
-    if (account.accountId.startsWith('dryrun_') || cfg.dryRun) {
-      return NextResponse.json({ error: 'Dry-run hesap — gerçek OAuth bağla' }, { status: 400 })
-    }
     const token = await getValidAccessToken(account)
     const result = await testYouTubeConnection(token)
+    return NextResponse.json({ result, accountId: account.id, accountName: account.accountName })
+  }
+
+  if (action === 'meta-test') {
+    const platform = String(body.platform || 'FACEBOOK').toUpperCase()
+    if (platform !== 'FACEBOOK' && platform !== 'INSTAGRAM') {
+      return NextResponse.json({ error: 'platform FACEBOOK|INSTAGRAM' }, { status: 400 })
+    }
+    const account = await prisma.socialMediaAccount.findFirst({
+      where: {
+        platform: platform as SocialPlatform,
+        isActive: true,
+        accountId: { not: { startsWith: 'dryrun_' } },
+      },
+      orderBy: { updatedAt: 'desc' },
+    })
+    if (!account) {
+      return NextResponse.json({ error: `${platform} OAuth hesabı yok — OAuth bağla` }, { status: 400 })
+    }
+    const token = await getValidAccessToken(account)
+    const { testMetaConnection } = await import('@/lib/social/metaApi')
+    const result = await testMetaConnection(platform as SocialPlatform, token, account.config)
     return NextResponse.json({ result, accountId: account.id, accountName: account.accountName })
   }
 
@@ -183,13 +198,21 @@ async function handleAction(action: string, body: Record<string, unknown>) {
 
   if (action === 'connect-url') {
     const platform = String(body.platform || '').toUpperCase()
-    const OAUTH_PLATFORMS = ['TWITTER', 'LINKEDIN', 'YOUTUBE'] as const
+    const OAUTH_PLATFORMS = ['TWITTER', 'LINKEDIN', 'YOUTUBE', 'FACEBOOK', 'INSTAGRAM'] as const
     if (!OAUTH_PLATFORMS.includes(platform as (typeof OAUTH_PLATFORMS)[number])) {
-      return NextResponse.json({ error: 'platform TWITTER|LINKEDIN|YOUTUBE' }, { status: 400 })
+      return NextResponse.json({ error: 'platform TWITTER|LINKEDIN|YOUTUBE|FACEBOOK|INSTAGRAM' }, { status: 400 })
     }
     const state = crypto.randomUUID()
     const platformKey =
-      platform === 'TWITTER' ? 'twitter' : platform === 'LINKEDIN' ? 'linkedin' : 'youtube'
+      platform === 'TWITTER'
+        ? 'twitter'
+        : platform === 'LINKEDIN'
+          ? 'linkedin'
+          : platform === 'YOUTUBE'
+            ? 'youtube'
+            : platform === 'FACEBOOK'
+              ? 'facebook'
+              : 'instagram'
     let url: string
     let pkceVerifier: string | undefined
     if (platform === 'TWITTER' && process.env.X_CLIENT_ID) {
@@ -197,7 +220,7 @@ async function handleAction(action: string, body: Record<string, unknown>) {
       pkceVerifier = pkce.verifier
       url = getAuthUrl('TWITTER', state, pkce.challenge)
     } else {
-      url = getAuthUrl(platform as 'TWITTER' | 'LINKEDIN' | 'YOUTUBE', state)
+      url = getAuthUrl(platform as 'TWITTER' | 'LINKEDIN' | 'YOUTUBE' | 'FACEBOOK' | 'INSTAGRAM', state)
     }
     const response = NextResponse.json({ url, state })
     if (pkceVerifier && (platformKey === 'twitter' || platformKey === 'linkedin')) {

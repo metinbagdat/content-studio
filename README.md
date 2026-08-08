@@ -2,7 +2,7 @@
 
 Private ops monorepo for **egitim.today** social + SEO content: source article → AI transforms → human approval → X / LinkedIn (more platforms planned).
 
-**Not** LearnCon (`metinbagdat/learncon`). Do not deploy this on the LearnCon Vercel Hobby project.
+Do not deploy this on the LearnCon Vercel Hobby project. Production: **`studio.egitim.today`** — see [docs/DEPLOY_PRODUCTION.md](docs/DEPLOY_PRODUCTION.md).
 
 Tracking: [docs/ROADMAP.md](docs/ROADMAP.md) · Monorepo plan: [docs/MONOREPO.md](docs/MONOREPO.md) · Issues: [.github/ISSUE_INDEX.md](.github/ISSUE_INDEX.md) · DB changes: [docs/DATABASE.md](docs/DATABASE.md)
 

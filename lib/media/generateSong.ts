@@ -4,6 +4,7 @@ import path from 'path'
 import { prisma } from '../prisma'
 import { synthesizeSpeech } from './tts'
 import { audioStorageDir, writeAudioFile, audioDiskPath } from './tts'
+import { ttsPronunciation } from './pronunciation'
 import { fetchBackgroundMusic } from '../video/pixabayMusic'
 
 if (ffmpegPath) ffmpeg.setFfmpegPath(ffmpegPath)
@@ -51,7 +52,7 @@ export async function generateSongAudio(derivedContentId: string) {
   })
 
   try {
-    const voiceBuffer = await synthesizeSpeech(derived.content.slice(0, 4000))
+    const voiceBuffer = await synthesizeSpeech(ttsPronunciation(derived.content.slice(0, 4000)))
     const voiceFilename = `${media.id}-voice.mp3`
     await writeAudioFile(voiceFilename, voiceBuffer)
     const voicePath = audioDiskPath(voiceFilename)
