@@ -11,6 +11,7 @@ import {
 } from './publishFingerprint'
 import { ensureGeneratedVideo, buildYouTubeMetadata } from './publishVideo'
 import { uploadYouTubeVideo, setYouTubeThumbnail } from './youtubeApi'
+import { publishFacebookPost, publishInstagramPost } from './publishMeta'
 import { prisma } from '../prisma'
 
 export type PublishOptions = {
@@ -135,6 +136,16 @@ export async function publishPost(postId: string, options: PublishOptions = {}):
       platformPostId = yt.platformPostId
       videoAttached = yt.videoAttached
       videoError = yt.videoError
+    } else if (post.platform === 'FACEBOOK') {
+      const fb = await publishFacebook(post, accessToken, requireImage)
+      platformPostId = fb.platformPostId
+      imageAttached = fb.imageAttached
+      imageError = fb.imageError
+    } else if (post.platform === 'INSTAGRAM') {
+      const ig = await publishInstagram(post, accessToken, mediaUrls, requireImage)
+      platformPostId = ig.platformPostId
+      imageAttached = ig.imageAttached
+      imageError = ig.imageError
     } else {
       throw new Error(
         `${post.platform} için gerçek yayın API'si Faz 2'de eklenecek — altyapı (hesap, taslak, otomasyon) hazır, ` +
@@ -396,6 +407,64 @@ async function publishYouTube(
     if (requireVideo) throw new Error(videoError)
     console.warn('[publishYouTube] video upload failed', videoError)
     return { platformPostId: `mock_yt_${Date.now()}`, videoAttached: false, videoError }
+  }
+}
+
+type MetaFlowOutcome = { platformPostId: string; imageAttached: boolean; imageError?: string }
+
+function readAccountConfig(config: unknown): Record<string, unknown> {
+  return config && typeof config === 'object' ? (config as Record<string, unknown>) : {}
+}
+
+async function publishFacebook(
+  post: { postContent: string; derivedContentId: string; account: { config: unknown } },
+  pageAccessToken: string,
+  requireImage: boolean,
+): Promise<MetaFlowOutcome> {
+  if (!pageAccessToken || pageAccessToken === 'dry-run') {
+    return { platformPostId: `mock_fb_${Date.now()}`, imageAttached: false }
+  }
+  const cfg = readAccountConfig(post.account.config)
+  const pageId = String(cfg.pageId || '')
+  if (!pageId) throw new Error('Facebook pageId eksik — hesabı yeniden bağlayın')
+
+  const local = await readPostImageBuffer(post.derivedContentId)
+  try {
+    return await publishFacebookPost(pageId, pageAccessToken, post.postContent, local?.buffer)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    if (requireImage) throw err
+    console.warn('[publishFacebook] failed, retrying text-only', message)
+    return { ...(await publishFacebookPost(pageId, pageAccessToken, post.postContent)), imageError: message }
+  }
+}
+
+async function publishInstagram(
+  post: { postContent: string; derivedContentId: string; account: { config: unknown } },
+  pageAccessToken: string,
+  mediaUrls: string[],
+  requireImage: boolean,
+): Promise<MetaFlowOutcome> {
+  if (!pageAccessToken || pageAccessToken === 'dry-run') {
+    return { platformPostId: `mock_ig_${Date.now()}`, imageAttached: false }
+  }
+  const cfg = readAccountConfig(post.account.config)
+  const igUserId = String(cfg.igUserId || '')
+  if (!igUserId) throw new Error('Instagram igUserId eksik — hesabı yeniden bağlayın')
+
+  const imageUrl = mediaUrls.find((u) => u.startsWith('http'))
+  if (!imageUrl) {
+    const message = 'Instagram görsel gerektirir — herkese açık bir URL bulunamadı'
+    if (requireImage) throw new Error(message)
+    return { platformPostId: `mock_ig_${Date.now()}`, imageAttached: false, imageError: message }
+  }
+
+  try {
+    return await publishInstagramPost(igUserId, pageAccessToken, post.postContent, imageUrl)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    if (requireImage) throw err
+    return { platformPostId: `mock_ig_${Date.now()}`, imageAttached: false, imageError: message }
   }
 }
 
