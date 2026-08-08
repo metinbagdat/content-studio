@@ -393,6 +393,41 @@ export default function SocialPage() {
     }
   }
 
+  async function metaTest(platform: 'FACEBOOK' | 'INSTAGRAM') {
+    setBusyId(`meta-test-${platform}`)
+    try {
+      const res = await fetch('/api/social', {
+        method: 'POST',
+        headers: headers(adminKey, true),
+        body: JSON.stringify({ action: 'meta-test', platform }),
+      })
+      const data = await parseApiJson(res)
+      if (!res.ok) {
+        setMsgType('error')
+        setMsg(String(data.error || 'Meta test başarısız'))
+        return
+      }
+      const r = data.result as { ok?: boolean; pageName?: string; igUsername?: string; error?: string }
+      if (r?.ok) {
+        setMsgType('ok')
+        setMsg(
+          platform === 'FACEBOOK'
+            ? `Facebook OK — sayfa: ${r.pageName || '?'}`
+            : `Instagram OK — @${r.igUsername || '?'}`,
+        )
+      } else {
+        setMsgType('error')
+        setMsg(r?.error || 'Meta test başarısız')
+      }
+      await load()
+    } catch (err) {
+      setMsgType('error')
+      setMsg(`Meta test: ${err instanceof Error ? err.message : String(err)}`)
+    } finally {
+      setBusyId(null)
+    }
+  }
+
   async function oauthConnect(platform: 'TWITTER' | 'LINKEDIN' | 'YOUTUBE' | 'FACEBOOK' | 'INSTAGRAM') {
     setBusyId(platform)
     try {
@@ -848,6 +883,7 @@ export default function SocialPage() {
         onPublishDraft={(id) => publishNow(id)}
         onYoutubeTest={youtubeTest}
         onYoutubeSync={() => youtubeSync(false)}
+        onMetaTest={metaTest}
       />
 
       {accountHealth && accountHealth.brokenCount > 0 ? (

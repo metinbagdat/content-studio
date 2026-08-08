@@ -61,6 +61,22 @@ Instagram hesabınız `metinbaghdat2026` ise: **Profesyonel hesap** + **Facebook
 
 Development modda **`http://localhost:3100` redirect otomatik izinlidir** — Valid OAuth Redirect URIs boş kalabilir.
 
+### Domain verification (egitim.today sitesi)
+
+Meta panelinden alınan kod **API ile çekilemez** — yalnızca Business Manager veya App ayarlarından kopyalanır.
+
+1. [Meta Business Settings → Brand safety → Domains](https://business.facebook.com/settings/owned-domains) veya Developer App → **Settings → Basic**
+2. **Add** → `egitim.today` → doğrulama yöntemi seç (meta-tag önerilir)
+3. Kodu kopyala → **learncon** (egitim.today) projesinde `.env` / Vercel env:
+
+```env
+FACEBOOK_DOMAIN_VERIFICATION="buraya_meta_kod"
+```
+
+4. Deploy sonrası Meta panelinde **Verify** tıkla
+
+Kod `learncon/app/layout.js` metadata + `/facebook-domain-verification.html` route ile yayınlanır.
+
 ### "This app needs at least one supported permission"
 
 Business app'lerde **email + public_profile yetmez**. Çözüm:

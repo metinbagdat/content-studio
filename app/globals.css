@@ -639,6 +639,43 @@ button:disabled {
   padding: 1rem 1.1rem;
 }
 
+.workflow-worker-ops {
+  margin: 0.85rem 0 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(56, 189, 248, 0.06);
+}
+
+.workflow-worker-lead {
+  margin: 0.35rem 0 0.5rem;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.workflow-worker-meta {
+  margin: 0 0 0.65rem;
+  font-size: 0.76rem;
+}
+
+.workflow-worker-actions {
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.workflow-worker-msg {
+  margin: 0.55rem 0 0;
+  font-size: 0.82rem;
+}
+
+.workflow-worker-msg.is-ok {
+  color: var(--ok);
+}
+
+.workflow-worker-msg.is-err {
+  color: var(--danger);
+}
+
 .workflow-steps {
   display: flex;
   flex-wrap: wrap;
