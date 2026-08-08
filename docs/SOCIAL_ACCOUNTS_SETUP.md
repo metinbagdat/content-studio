@@ -164,14 +164,26 @@ NEXT_PUBLIC_APP_URL="http://127.0.0.1:3100"
 
 ---
 
-## 4. Prod callback (ileride)
+## 4. Prod callback — studio.egitim.today
 
-Deploy URL’nize göre güncelle:
+Tam liste ve portal adımları: **[OAUTH_CALLBACKS_PRODUCTION.md](./OAUTH_CALLBACKS_PRODUCTION.md)**
+
 ```
 https://studio.egitim.today/api/social/callback/twitter
 https://studio.egitim.today/api/social/callback/linkedin
+https://studio.egitim.today/api/social/callback/youtube
+https://studio.egitim.today/api/social/callback/facebook
+https://studio.egitim.today/api/social/callback/instagram
 ```
-Developer portal + LinkedIn app’te aynı URL’leri ekle.
+
+| Portal | Menü yolu |
+|--------|-----------|
+| **Meta** | App → Facebook Login for Business → **Settings** → Valid OAuth Redirect URIs |
+| **LinkedIn** | App → **Auth** → Redirect URLs |
+| **Google** | Credentials → OAuth client → Authorized redirect URIs |
+| **X** | App → User authentication → Callback URI |
+
+Vercel'de `NEXT_PUBLIC_APP_URL=https://studio.egitim.today` + yukarıdaki `*_CALLBACK_URL` env'leri.
 
 ---
 

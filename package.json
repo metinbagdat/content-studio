@@ -50,7 +50,7 @@
     "typescript": "^5.8.3"
   },
   "engines": {
-    "node": ">=20"
+    "node": "22.x"
   },
   "overrides": {
     "postcss": "^8.5.25",

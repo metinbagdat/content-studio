@@ -30,22 +30,41 @@ LINKEDIN_ORGANIZATION_ID=""   # şirket sayfası Page ID (opsiyonel)`}
 
       <section className="panel" style={{ marginTop: '1rem' }}>
         <h2>2. Developer portalları</h2>
+        <p className="muted" style={{ marginTop: 0 }}>
+          Production (<code>studio.egitim.today</code>) — callback URL&apos;leri portallara ekleyin:
+        </p>
+        <pre className="pre" style={{ fontSize: '0.8rem' }}>
+          {`https://studio.egitim.today/api/social/callback/twitter
+https://studio.egitim.today/api/social/callback/linkedin
+https://studio.egitim.today/api/social/callback/youtube
+https://studio.egitim.today/api/social/callback/facebook
+https://studio.egitim.today/api/social/callback/instagram`}
+        </pre>
         <ol className="muted" style={{ lineHeight: 1.8 }}>
+          <li>
+            <strong>Meta (FB+IG)</strong> — Facebook Login for Business → Settings → Valid OAuth Redirect URIs
+          </li>
           <li>
             <strong>LinkedIn</strong> —{' '}
             <a href="https://www.linkedin.com/developers/apps" target="_blank" rel="noreferrer">
               Create app
             </a>
-            {' '}· Products: Share on LinkedIn · Redirect = callback URL
+            {' '}· Auth → Redirect URLs
+          </li>
+          <li>
+            <strong>Google (YouTube)</strong> — Cloud Console → Credentials → OAuth redirect URIs
           </li>
           <li>
             <strong>X</strong> —{' '}
             <a href="https://developer.x.com/en/portal/dashboard" target="_blank" rel="noreferrer">
               Developer Portal
             </a>
-            {' '}· OAuth 2.0 · scopes: tweet.read/write, users.read, offline.access
+            {' '}· User authentication → Callback URI
           </li>
         </ol>
+        <p className="muted">
+          Detay: repo <code>docs/OAUTH_CALLBACKS_PRODUCTION.md</code>
+        </p>
       </section>
 
       <section className="panel" style={{ marginTop: '1rem' }}>

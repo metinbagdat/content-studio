@@ -59,7 +59,16 @@ Instagram hesabınız `metinbaghdat2026` ise: **Profesyonel hesap** + **Facebook
 | **Privacy Policy URL** | `https://www.egitim.today` |
 | **Site URL** (Facebook Login) | `https://www.egitim.today` |
 
-Development modda **`http://localhost:3100` redirect otomatik izinlidir** — Valid OAuth Redirect URIs boş kalabilir.
+Development modda **`http://localhost:3100` redirect otomatik izinlidir**.
+
+**Production (`studio.egitim.today`)** — Facebook Login for Business → **Settings** → Valid OAuth Redirect URIs:
+
+```
+https://studio.egitim.today/api/social/callback/facebook
+https://studio.egitim.today/api/social/callback/instagram
+```
+
+Tam tablo: [OAUTH_CALLBACKS_PRODUCTION.md](./OAUTH_CALLBACKS_PRODUCTION.md)
 
 ### Domain verification (egitim.today sitesi)
 
@@ -90,8 +99,9 @@ Business app'lerde **email + public_profile yetmez**. Çözüm:
 4. Kaydet → **config_id** kopyala (sayısal ID)
 5. `.env`:
    ```env
-   META_LOGIN_CONFIG_ID="buraya_config_id"
+   META_LOGIN_CONFIG_ID="1680236466390744"
    ```
+   (pages_show_list configuration — eski `1527817658530867` yerine)
 6. `npm run dev` restart → OAuth tekrar
 
 `config_id` varken kod `scope` yerine `config_id` kullanır.
