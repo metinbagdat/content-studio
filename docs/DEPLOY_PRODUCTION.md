@@ -46,9 +46,10 @@ Repo secrets (Settings → Secrets):
 
 | Secret | Açıklama |
 |--------|----------|
-| `VERCEL_TOKEN` | Vercel → Account → Tokens |
+| `VERCEL_TOKEN` | Vercel → Account → Tokens (GitHub secret adı tam **`VERCEL_TOKEN`** olmalı) |
 | `CONTENT_STUDIO_VERCEL_PROJECT_ID` | Yeni projenin ID'si |
-| `VERCEL_ORG_ID` | Team/personal scope (LearnCon ile aynı olabilir) |
+| `VERCEL_ORG_ID` | Project Settings → General → **Project ID** yanındaki org/user ID (env için) |
+| `VERCEL_TEAM_SLUG` | *(opsiyonel)* Team hesabıysa team slug; personal hesapta **ekleme** |
 
 Deploy: `main` merge/push → otomatik production deploy (GHA).  
 Sadece doküman değişikliklerinde (`docs/**`, `*.md`) deploy atlanır.  
