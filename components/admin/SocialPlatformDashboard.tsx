@@ -121,18 +121,36 @@ function pickPreferredAccount(accounts: PlatformCardAccount[]): PlatformCardAcco
 }
 
 function ReadyDraftsList({
+  platform,
   drafts,
   busyId,
   onPublish,
+  onBulkPublish,
 }: {
+  platform: string
   drafts: ReadyDraft[]
   busyId: string | null
   onPublish: (id: string) => void
+  onBulkPublish?: (platform: string) => void
 }) {
   if (!drafts.length) return null
+  const publishable = drafts.filter((d) => !d.isDryRun)
+  const bulkKey = `bulk-${platform}`
   return (
     <div className="sm-mini-list">
-      <strong className="sm-mini-heading">Hazır taslaklar ({drafts.length})</strong>
+      <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.35rem' }}>
+        <strong className="sm-mini-heading">Hazır taslaklar ({drafts.length})</strong>
+        {publishable.length > 1 && onBulkPublish ? (
+          <button
+            type="button"
+            className="ok sm-mini-btn"
+            disabled={busyId === bulkKey}
+            onClick={() => onBulkPublish(platform)}
+          >
+            {busyId === bulkKey ? 'Yayınlanıyor…' : `Toplu yayınla (${publishable.length})`}
+          </button>
+        ) : null}
+      </div>
       <ul className="sm-mini-items">
         {drafts.slice(0, 4).map((d) => (
           <li key={d.id} className="sm-mini-item">
@@ -194,6 +212,7 @@ export function SocialPlatformDashboard({
   onSyncStats,
   onRepair,
   onPublishDraft,
+  onBulkPublishPlatform,
   onYoutubeTest,
   onYoutubeSync,
   onMetaTest,
@@ -210,6 +229,7 @@ export function SocialPlatformDashboard({
   onSyncStats: () => void
   onRepair: () => void
   onPublishDraft: (id: string) => void
+  onBulkPublishPlatform?: (platform: string) => void
   onYoutubeTest?: () => void
   onYoutubeSync?: () => void
   onMetaTest?: (platform: 'FACEBOOK' | 'INSTAGRAM') => void
@@ -339,7 +359,13 @@ export function SocialPlatformDashboard({
           </p>
         ) : null}
 
-        <ReadyDraftsList drafts={drafts} busyId={busyId} onPublish={onPublishDraft} />
+        <ReadyDraftsList
+          platform={platform}
+          drafts={drafts}
+          busyId={busyId}
+          onPublish={onPublishDraft}
+          onBulkPublish={onBulkPublishPlatform}
+        />
         <RecentPublishedList items={published} />
       </article>
     )
@@ -528,7 +554,13 @@ export function SocialPlatformDashboard({
                   bağla. Callback URL Meta Developer → Valid OAuth Redirect URIs ile birebir eşleşmeli.
                 </p>
               ) : null}
-              <ReadyDraftsList drafts={drafts} busyId={busyId} onPublish={onPublishDraft} />
+              <ReadyDraftsList
+                platform={p.id}
+                drafts={drafts}
+                busyId={busyId}
+                onPublish={onPublishDraft}
+                onBulkPublish={onBulkPublishPlatform}
+              />
               <RecentPublishedList items={published} />
             </article>
           )
