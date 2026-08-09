@@ -9,6 +9,7 @@ Prod base: **`https://studio.egitim.today`**
 | YouTube | `https://studio.egitim.today/api/social/callback/youtube` |
 | Facebook | `https://studio.egitim.today/api/social/callback/facebook` |
 | Instagram | `https://studio.egitim.today/api/social/callback/instagram` |
+| TikTok | `https://studio.egitim.today/api/social/callback/tiktok` |
 
 Vercel env (Production):
 
@@ -19,6 +20,9 @@ LINKEDIN_CALLBACK_URL=https://studio.egitim.today/api/social/callback/linkedin
 YOUTUBE_CALLBACK_URL=https://studio.egitim.today/api/social/callback/youtube
 FACEBOOK_CALLBACK_URL=https://studio.egitim.today/api/social/callback/facebook
 INSTAGRAM_CALLBACK_URL=https://studio.egitim.today/api/social/callback/instagram
+TIKTOK_CALLBACK_URL=https://studio.egitim.today/api/social/callback/tiktok
+TIKTOK_CLIENT_KEY=...
+TIKTOK_CLIENT_SECRET=...
 META_LOGIN_CONFIG_ID=1680236466390744
 ```
 
@@ -85,6 +89,21 @@ https://studio.egitim.today/api/social/callback/youtube
 |------|--------|
 | Callback URI / Redirect URL | `https://studio.egitim.today/api/social/callback/twitter` |
 | Website URL | `https://www.egitim.today` |
+
+---
+
+## 5. TikTok
+
+**Nereye:** [developers.tiktok.com](https://developers.tiktok.com/) → App → **Login Kit** + **Content Posting API**
+
+**Redirect URIs** (ikisini de ekle — local + prod paralel):
+
+```
+https://studio.egitim.today/api/social/callback/tiktok
+http://localhost:3100/api/social/callback/tiktok
+```
+
+**Website URL:** `https://studio.egitim.today`
 
 ---
 
