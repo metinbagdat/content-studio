@@ -23,7 +23,7 @@ https://studio.egitim.today/api/social/callback/tiktok
 
 | Type | Name/Host | Value |
 |------|-----------|--------|
-| TXT | `studio` | TikTok'un verdiği `tiktok-developers-site-verification=...` |
+| TXT | `studio` | `tiktok-developers-site-verification=cZ6afbMSmeXfrvDVHDI20MKXqoy52cVQ` |
 
 Doğrulandıktan sonra Terms, Privacy ve Web URL otomatik geçer.
 
@@ -33,9 +33,9 @@ TikTok hangi prefix'i doğruluyorsa dosya **o prefix altında** olmalı:
 
 | Prefix | Dosya URL |
 |--------|-----------|
-| `https://studio.egitim.today` | `/tiktokNq6NRmactSBBqMFjzTc2qwldDnGCY4iK.txt` |
-| `https://studio.egitim.today/legal/terms` | `/legal/terms/tiktokNq6NRmactSBBqMFjzTc2qwldDnGCY4iK.txt` |
-| `https://studio.egitim.today/legal/privacy` | `/legal/privacy/tiktokNq6NRmactSBBqMFjzTc2qwldDnGCY4iK.txt` |
+| `https://studio.egitim.today` | `/tiktokcZ6afbMSmeXfrvDVHDI20MKXqoy52cVQ.txt` |
+| `https://studio.egitim.today/legal/terms` | `/legal/terms/tiktokcZ6afbMSmeXfrvDVHDI20MKXqoy52cVQ.txt` |
+| `https://studio.egitim.today/legal/privacy` | `/legal/privacy/tiktokcZ6afbMSmeXfrvDVHDI20MKXqoy52cVQ.txt` |
 
 **Hata:** `legal/terms/` için verify edip dosyayı sadece kökte bırakmak → "couldn't find verification signature"
 
