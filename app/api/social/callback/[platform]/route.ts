@@ -48,7 +48,7 @@ export async function GET(
   }
 
   const pkceVerifier =
-    req.cookies.get(pkceCookieName(platformKey as 'twitter' | 'linkedin'))?.value ||
+    req.cookies.get(pkceCookieName(platformKey as 'twitter' | 'linkedin' | 'tiktok'))?.value ||
     (platformKey === 'twitter' ? 'challenge' : undefined)
 
   try {
@@ -200,7 +200,7 @@ export async function GET(
       })
     } else if (platform === 'TIKTOK' && process.env.TIKTOK_CLIENT_KEY && process.env.TIKTOK_CLIENT_SECRET) {
       const redirect = tiktokCallbackUrl(appUrl)
-      const tokens = await exchangeTikTokCode(code, redirect)
+      const tokens = await exchangeTikTokCode(code, redirect, pkceVerifier)
       const user = await fetchTikTokUser(tokens.access_token)
       await upsertOAuthAccount({
         platform: 'TIKTOK',
@@ -240,7 +240,7 @@ export async function GET(
   }
 
   const res = redirectWithMessage(appUrl, 'connected=oauth')
-  if (platformKey === 'twitter' || platformKey === 'linkedin') {
+  if (platformKey === 'twitter' || platformKey === 'linkedin' || platformKey === 'tiktok') {
     res.cookies.set(pkceCookieName(platformKey), '', { maxAge: 0, path: `/api/social/callback/${platformKey}` })
   }
   return res

@@ -23,7 +23,8 @@ import {
 import { getValidAccessToken } from '@/lib/social/tokenRefresh'
 import { testYouTubeConnection } from '@/lib/social/youtubeApi'
 import { syncYouTubeFromApprovedVideos } from '@/lib/social/youtubeBackfill'
-import { generatePkce, pkceCookieName } from '@/lib/social/pkce'
+import { generatePkce, generateTikTokPkce, pkceCookieName } from '@/lib/social/pkce'
+import { tiktokConfigured } from '@/lib/social/tiktokApi'
 
 export const dynamic = 'force-dynamic'
 
@@ -226,6 +227,10 @@ async function handleAction(action: string, body: Record<string, unknown>) {
       const pkce = generatePkce()
       pkceVerifier = pkce.verifier
       url = getAuthUrl('TWITTER', state, pkce.challenge)
+    } else if (platform === 'TIKTOK' && tiktokConfigured()) {
+      const pkce = generateTikTokPkce()
+      pkceVerifier = pkce.verifier
+      url = getAuthUrl('TIKTOK', state, pkce.challenge)
     } else {
       url = getAuthUrl(
         platform as 'TWITTER' | 'LINKEDIN' | 'YOUTUBE' | 'FACEBOOK' | 'INSTAGRAM' | 'TIKTOK',
@@ -233,7 +238,10 @@ async function handleAction(action: string, body: Record<string, unknown>) {
       )
     }
     const response = NextResponse.json({ url, state })
-    if (pkceVerifier && (platformKey === 'twitter' || platformKey === 'linkedin')) {
+    if (
+      pkceVerifier &&
+      (platformKey === 'twitter' || platformKey === 'linkedin' || platformKey === 'tiktok')
+    ) {
       response.cookies.set(pkceCookieName(platformKey), pkceVerifier, {
         httpOnly: true,
         sameSite: 'lax',

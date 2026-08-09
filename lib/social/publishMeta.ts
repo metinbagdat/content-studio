@@ -1,4 +1,4 @@
-import { metaGraphVersion } from './metaApi'
+import { metaGraphVersion, parseMetaApiError } from './metaApi'
 
 function graphBase(): string {
   return `https://graph.facebook.com/${metaGraphVersion()}`
@@ -28,7 +28,7 @@ export async function publishFacebookPost(
       const res = await fetch(`${graphBase()}/${pageId}/photos`, { method: 'POST', body: form })
       if (!res.ok) {
         const body = await res.text()
-        throw new Error(`Facebook photos ${res.status}: ${body.slice(0, 300)}`)
+        throw new Error(parseMetaApiError(res.status, body, 'Facebook photos'))
       }
       const data = (await res.json()) as { post_id?: string; id?: string }
       return { platformPostId: data.post_id || data.id || `fb_${Date.now()}`, imageAttached: true }
@@ -55,7 +55,7 @@ async function publishFacebookTextOnly(
   })
   if (!res.ok) {
     const body = await res.text()
-    throw new Error(`Facebook feed ${res.status}: ${body.slice(0, 300)}`)
+    throw new Error(parseMetaApiError(res.status, body, 'Facebook feed'))
   }
   const data = (await res.json()) as { id?: string }
   return { platformPostId: data.id || `fb_${Date.now()}`, imageAttached: false }
@@ -168,7 +168,7 @@ export async function publishFacebookVideoPost(
   const res = await fetch(`${graphBase()}/${pageId}/videos`, { method: 'POST', body: form })
   if (!res.ok) {
     const body = await res.text()
-    throw new Error(`Facebook video ${res.status}: ${body.slice(0, 300)}`)
+    throw new Error(parseMetaApiError(res.status, body, 'Facebook video'))
   }
   const data = (await res.json()) as { id?: string }
   return { platformPostId: data.id || `fb_vid_${Date.now()}`, videoAttached: true }

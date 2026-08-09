@@ -251,7 +251,7 @@ export async function createSocialDraftsForDerived(
       : {}
   const targetPlatform = meta.platform as SocialPlatform | 'PINTEREST' | undefined
 
-  let platforms: SocialPlatform[] = ['TWITTER', 'LINKEDIN']
+  let platforms: SocialPlatform[] = ['TWITTER', 'LINKEDIN', 'FACEBOOK']
   if (derived.contentType === 'TWITTER_THREAD') platforms = ['TWITTER']
   if (derived.contentType === 'LINKEDIN_CAROUSEL') platforms = ['LINKEDIN']
   if (derived.contentType === 'VIDEO_SCRIPT' || derived.contentType === 'SHORT_VIDEO_SCRIPT') {
@@ -345,6 +345,50 @@ export async function syncSocialDraftsFromApprovedCaptions(opts: { skipImages?: 
     created += posts.length
   }
   return { captions: captions.length, draftsCreated: created }
+}
+
+/** Facebook post rows for approved captions (metadata.platform TWITTER olsa bile). */
+export async function backfillFacebookDraftsFromCaptions(opts: { skipImages?: boolean } = {}) {
+  const fbAccount = await prisma.socialMediaAccount.findFirst({
+    where: {
+      platform: 'FACEBOOK',
+      isActive: true,
+      NOT: { accountId: { startsWith: 'dryrun_' } },
+    },
+  })
+  if (!fbAccount) return { created: 0, reason: 'no_oauth_facebook_account' as const }
+
+  const captions = await prisma.derivedContent.findMany({
+    where: {
+      contentType: 'SOCIAL_CAPTION',
+      status: { in: ['APPROVED', 'PUBLISHED'] },
+    },
+  })
+
+  let created = 0
+  for (const caption of captions) {
+    const existing = await prisma.socialMediaPost.findFirst({
+      where: { derivedContentId: caption.id, accountId: fbAccount.id },
+    })
+    if (existing) continue
+
+    const mediaUrls =
+      !opts.skipImages ? await ensureGeneratedPostImage(caption.id) : []
+
+    await prisma.socialMediaPost.create({
+      data: {
+        derivedContentId: caption.id,
+        accountId: fbAccount.id,
+        platform: 'FACEBOOK',
+        postContent: caption.content,
+        mediaUrls,
+        status: 'DRAFT',
+      },
+    })
+    created += 1
+  }
+
+  return { created, account: fbAccount.accountName }
 }
 
 export async function setDerivedStatus(

@@ -1,6 +1,6 @@
 import type { SocialPlatform } from '@prisma/client'
 import { prisma } from '../prisma'
-import { bulkPublishDraftPosts, syncSocialDraftsFromApprovedCaptions } from '../pipeline'
+import { bulkPublishDraftPosts, syncSocialDraftsFromApprovedCaptions, backfillFacebookDraftsFromCaptions } from '../pipeline'
 import { syncPostImagesFromCaptions, syncPostClipsFromCaptions } from '../social/publishCaption'
 import { syncAllAccountStats, syncAllPublishedPostAnalytics } from '../social/platformStats'
 import { runWorkerTick } from '../worker/runWorkerTick'
@@ -88,26 +88,42 @@ export async function runWorkflowContinueStep(): Promise<ContinueStepResult> {
   }
 
   const sync = await syncSocialDraftsFromApprovedCaptions({ skipImages: true })
+  await backfillFacebookDraftsFromCaptions({ skipImages: true }).catch(() => null)
   await syncPostImagesFromCaptions().catch(() => null)
   const clipSync = await syncPostClipsFromCaptions(5).catch(() => ({ processed: 0, clips: [] }))
 
   const platform = await pickBestPublishPlatform()
   if (platform) {
     const limit = 10
-    const result = await bulkPublishDraftPosts({ platform, limit, includeDryRun: false })
+    const platformsToRun: SocialPlatform[] =
+      platform === 'LINKEDIN'
+        ? ['LINKEDIN', 'FACEBOOK']
+        : platform === 'FACEBOOK'
+          ? ['FACEBOOK', 'LINKEDIN']
+          : [platform]
+    const results: Record<string, Awaited<ReturnType<typeof bulkPublishDraftPosts>>> = {}
+    for (const p of platformsToRun) {
+      const n = await countPublishable(p)
+      if (n === 0) continue
+      results[p] = await bulkPublishDraftPosts({ platform: p, limit, includeDryRun: false })
+    }
     await syncAllAccountStats().catch(() => null)
     await syncAllPublishedPostAnalytics(20).catch(() => null)
     const snapshot = await getWorkflowSnapshot()
+    const summaryParts = Object.entries(results).map(
+      ([p, r]) => `${p}: ${r.published} ok · ${r.failed} err`,
+    )
+    const totalPublished = Object.values(results).reduce((s, r) => s + r.published, 0)
     return {
       action: 'bulk-publish',
-      summary: `${platform}: ${result.published} yayınlandı · ${result.failed} hata · ${result.skipped} atlandı (max ${limit}/adım)`,
+      summary: summaryParts.join(' | ') || `${platform}: 0 yayın`,
       manual:
-        result.published > 0
+        totalPublished > 0
           ? 'Devam için tekrar «Sıradaki adım» veya SM kartında «Toplu yayınla»'
           : undefined,
       href: '/admin/social',
       snapshot,
-      details: { platform, result, draftsSynced: sync.draftsCreated, clipsSynced: clipSync.processed },
+      details: { platforms: results, draftsSynced: sync.draftsCreated, clipsSynced: clipSync.processed },
     }
   }
 

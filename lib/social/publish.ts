@@ -227,6 +227,7 @@ async function publishTwitter(text: string, accessToken: string): Promise<string
   if (!accessToken || accessToken === 'dry-run' || !process.env.X_CLIENT_ID) {
     return `mock_x_${Date.now()}`
   }
+  const { parseXApiError } = await import('./xApi')
   const res = await fetch('https://api.twitter.com/2/tweets', {
     method: 'POST',
     headers: {
@@ -237,7 +238,7 @@ async function publishTwitter(text: string, accessToken: string): Promise<string
   })
   if (!res.ok) {
     const body = await res.text()
-    throw new Error(`X API ${res.status}: ${body}`)
+    throw new Error(parseXApiError(res.status, body))
   }
   const data = (await res.json()) as { data?: { id?: string } }
   return data.data?.id || `x_${Date.now()}`
