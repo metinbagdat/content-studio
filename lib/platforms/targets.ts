@@ -30,6 +30,7 @@ export const DEFAULT_PIPELINE_PLATFORMS: PlatformId[] = [
   'TWITTER',
   'YOUTUBE',
   'LINKEDIN',
+  'FACEBOOK',
   'INSTAGRAM',
   'TIKTOK',
 ]

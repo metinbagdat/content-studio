@@ -38,6 +38,22 @@ export function metaLoginConfigId(): string | undefined {
   return process.env.META_LOGIN_CONFIG_ID?.trim() || process.env.FACEBOOK_LOGIN_CONFIG_ID?.trim()
 }
 
+/** Login Configuration for publish OAuth (pages_manage_posts). Used when META_OAUTH_PUBLISH=true. */
+export function metaLoginConfigIdPublish(): string | undefined {
+  return (
+    process.env.META_LOGIN_CONFIG_ID_PUBLISH?.trim() ||
+    process.env.META_PUBLISH_CONFIG_ID?.trim()
+  )
+}
+
+/** config_id for the next OAuth dialog — publish config when META_OAUTH_PUBLISH=true. */
+export function metaOAuthConfigId(): string | undefined {
+  if (process.env.META_OAUTH_PUBLISH === 'true') {
+    return metaLoginConfigIdPublish() || metaLoginConfigId()
+  }
+  return metaLoginConfigId()
+}
+
 /** Scopes when not using Facebook Login for Business config_id. */
 export function metaOAuthConnectScopes(): string {
   if (process.env.META_OAUTH_SCOPES?.trim()) return process.env.META_OAUTH_SCOPES.trim()
@@ -63,11 +79,36 @@ export function metaOAuthScopes(): string {
   return metaOAuthConnectScopes()
 }
 
+/** Actionable Meta Graph error text (pages_manage_posts, video, etc.). */
+export function parseMetaApiError(status: number, body: string, context = 'Meta'): string {
+  let message = body
+  try {
+    const j = JSON.parse(body) as { error?: { message?: string; code?: number } }
+    message = j.error?.message || body
+    if (message.includes('pages_manage_posts')) {
+      return (
+        `Facebook pages_manage_posts izni yok (${status}). ` +
+        'Vercel: META_OAUTH_PUBLISH=true + META_LOGIN_CONFIG_ID_PUBLISH=919581157862599 → ' +
+        'Sosyal → Facebook → Kes → OAuth bağla (yayın config ile yeniden yetkilendir).'
+      )
+    }
+    if (message.includes('No permission to publish the video')) {
+      return (
+        `Facebook video yayını izni yok (${status}). ` +
+        'pages_manage_posts onayı ve sayfa token yenilemesi gerekir.'
+      )
+    }
+  } catch {
+    /* raw body */
+  }
+  return `${context} ${status}: ${message.slice(0, 280)}`
+}
+
 export function metaAuthUrl(platform: 'FACEBOOK' | 'INSTAGRAM', state: string, appUrl?: string): string {
   const clientId = metaAppId()
   if (!clientId) throw new Error('META_APP_ID eksik')
   const redirect = metaCallbackUrl(platform, appUrl)
-  const configId = metaLoginConfigId()
+  const configId = metaOAuthConfigId()
 
   const params = new URLSearchParams({
     client_id: clientId,
@@ -153,6 +194,20 @@ export async function fetchMetaPages(userToken: string): Promise<MetaPage[]> {
   return json.data || []
 }
 
+/** Page token when me/accounts unavailable (publish-only OAuth config). */
+export async function fetchPageAccessToken(userToken: string, pageId: string): Promise<string> {
+  const json = await graphGet<{ access_token?: string; name?: string }>(pageId, {
+    fields: 'access_token,name',
+    access_token: userToken,
+  })
+  if (!json.access_token) {
+    throw new Error(
+      `Sayfa ${pageId} token alınamadı — META_PAGE_ID doğru mu? OAuth pages_manage_posts config ile yeniden bağlayın.`,
+    )
+  }
+  return json.access_token
+}
+
 export async function fetchInstagramAccount(
   igUserId: string,
   pageToken: string,
@@ -203,7 +258,11 @@ export async function connectMetaPlatform(
     : new Date(Date.now() + 55 * 24 * 60 * 60 * 1000)
 
   if (platform === 'FACEBOOK') {
-    const page = pickPage(pages, preferredPageId)
+    let page = pickPage(pages, preferredPageId)
+    if (!page?.access_token && preferredPageId) {
+      const pageToken = await fetchPageAccessToken(long.access_token, preferredPageId)
+      page = { id: preferredPageId, name: 'Egitim.today', access_token: pageToken }
+    }
     if (!page?.access_token) throw new Error('Sayfa access token alınamadı')
     return {
       platform: 'FACEBOOK',
@@ -217,6 +276,7 @@ export async function connectMetaPlatform(
         pageId: page.id,
         pageName: page.name,
         metaAppId: metaAppId(),
+        oauthConfigId: metaOAuthConfigId(),
       },
     }
   }

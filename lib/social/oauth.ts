@@ -77,7 +77,7 @@ export function getAuthUrl(
     if (!tiktokConfigured()) {
       return `${appUrl}/admin/social?dryRun=tiktok&state=${state}`
     }
-    return tiktokAuthUrl(state, appUrl)
+    return tiktokAuthUrl(state, appUrl, codeChallenge)
   }
 
   return `${appUrl}/admin/social?connected=error&reason=unsupported_platform`

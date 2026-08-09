@@ -25,15 +25,20 @@ export function tiktokOAuthScopes(): string {
   return scopes.join(',')
 }
 
-export function tiktokAuthUrl(state: string, appUrl?: string): string {
+export function tiktokAuthUrl(state: string, appUrl?: string, codeChallenge?: string): string {
   const clientKey = tiktokClientKey()
   if (!clientKey) throw new Error('TIKTOK_CLIENT_KEY eksik')
+  if (!codeChallenge?.trim()) {
+    throw new Error('TikTok OAuth PKCE code_challenge gerekli')
+  }
   const params = new URLSearchParams({
     client_key: clientKey,
     scope: tiktokOAuthScopes(),
     response_type: 'code',
     redirect_uri: tiktokCallbackUrl(appUrl),
     state,
+    code_challenge: codeChallenge,
+    code_challenge_method: 'S256',
   })
   return `https://www.tiktok.com/v2/auth/authorize/?${params}`
 }
@@ -47,21 +52,28 @@ type TikTokTokenResponse = {
   error_description?: string
 }
 
-export async function exchangeTikTokCode(code: string, redirectUri: string): Promise<TikTokTokenResponse> {
+export async function exchangeTikTokCode(
+  code: string,
+  redirectUri: string,
+  codeVerifier?: string,
+): Promise<TikTokTokenResponse> {
   const clientKey = tiktokClientKey()
   const clientSecret = tiktokClientSecret()
   if (!clientKey || !clientSecret) throw new Error('TikTok client credentials eksik')
 
+  const body: Record<string, string> = {
+    client_key: clientKey,
+    client_secret: clientSecret,
+    code,
+    grant_type: 'authorization_code',
+    redirect_uri: redirectUri,
+  }
+  if (codeVerifier) body.code_verifier = codeVerifier
+
   const res = await fetch(`${TIKTOK_API_BASE}/oauth/token/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_key: clientKey,
-      client_secret: clientSecret,
-      code,
-      grant_type: 'authorization_code',
-      redirect_uri: redirectUri,
-    }),
+    body: new URLSearchParams(body),
   })
   const json = (await res.json()) as TikTokTokenResponse
   if (!res.ok || json.error) {

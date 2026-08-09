@@ -163,6 +163,39 @@ NEXT_PUBLIC_APP_URL="http://localhost:3100"
 
 **Development modda** App roles → **Administrator** (Metin Bağdat ✓) yeterli.
 
+**Production / canlı sayfa yayını:** `pages_manage_posts` için **App Review zorunlu**. Onay olmadan 265 taslak FAILED kalır.
+
+### Login Configuration ID'leri (www.egitim.today)
+
+| İzin | Configuration ID | Env |
+|------|-------------------|-----|
+| `pages_show_list` | `1527817658530867` | `META_LOGIN_CONFIG_ID` |
+| `pages_manage_posts` | `919581157862599` | `META_LOGIN_CONFIG_ID_PUBLISH` |
+| `pages_read_engagement` | `1056772926831225` | (OAuth'ta genelde publish config ile gelir) |
+
+**Yayın için Vercel env:**
+
+```env
+META_PAGE_ID="1153725161168373"
+META_LOGIN_CONFIG_ID="1527817658530867"
+META_LOGIN_CONFIG_ID_PUBLISH="919581157862599"
+META_OAUTH_PUBLISH="true"
+```
+
+Deploy sonrası Sosyal → Facebook → **Kes** → **OAuth bağla** (yayın config ile yeni token).
+
+### Data access renewal (7 Ekim 2026)
+
+Meta panelde **Action required: Data access renewal** — yıllık soruları **7 Ekim 2026**'dan önce tamamlayın; aksi halde API erişimi kısıtlanır. App Review ile karıştırmayın; ikisi de gerekli.
+
+### App Review (Facebook toplu yayın)
+
+1. [developers.facebook.com](https://developers.facebook.com) → uygulama → **App Review** → `pages_manage_posts` onaylı olmalı
+2. Vercel env (yukarıdaki gibi) → **Redeploy**
+3. Content Studio → Sosyal → Facebook → **Kes** → **OAuth bağla**
+4. Test: `npx tsx --env-file=.env scripts/diagnose-meta-fb.ts` → `pages_manage_posts` scope'ta görünmeli
+5. Toplu yayın: admin SM kartı veya `scripts/bulk-publish-li-fb.ts`
+
 ---
 
 ## 6. Facebook sayfasını bağlama
