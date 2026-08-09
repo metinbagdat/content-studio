@@ -1,5 +1,6 @@
 /** Which OAuth platforms have client credentials in env (no secrets exposed). */
 import { metaConfigured, metaCallbackUrl, metaOAuthScopes, metaAppId } from './metaApi'
+import { tiktokConfigured, tiktokCallbackUrl, tiktokOAuthScopes, tiktokClientKey } from './tiktokApi'  // YENİ
 
 export function oauthPlatformStatus() {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3100'
@@ -40,6 +41,14 @@ export function oauthPlatformStatus() {
       clientSecretSet: metaConfigured(),
       scopes: metaOAuthScopes(),
     },
+    tiktok: {  // YENİ
+      configured: tiktokConfigured(),
+      callbackUrl: tiktokCallbackUrl(appUrl),
+      clientIdSet: Boolean(tiktokClientKey()),
+      clientSecretSet: tiktokConfigured(),
+      scopes: tiktokOAuthScopes(),
+      audited: process.env.TIKTOK_AUDITED === 'true',
+    },
   }
 }
 
@@ -67,6 +76,8 @@ export function oauthEnvCheck() {
     YOUTUBE_CLIENT_SECRET: Boolean(process.env.YOUTUBE_CLIENT_SECRET?.trim()),
     META_APP_ID: Boolean(metaAppId()),
     META_APP_SECRET: metaConfigured(),
+    TIKTOK_CLIENT_KEY: Boolean(tiktokClientKey()),  // YENİ
+    TIKTOK_CLIENT_SECRET: tiktokConfigured(),  // YENİ
     ready:
       Boolean(process.env.X_CLIENT_ID?.trim() && process.env.X_CLIENT_SECRET?.trim()) &&
       Boolean(process.env.LINKEDIN_CLIENT_ID?.trim() && process.env.LINKEDIN_CLIENT_SECRET?.trim()),

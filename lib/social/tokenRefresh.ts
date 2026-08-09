@@ -115,6 +115,14 @@ async function refreshAccessToken(account: SocialMediaAccount): Promise<string |
     await persistTokens(account.id, tokens.access_token, tokens.refresh_token, tokens.expires_in)
     return tokens.access_token
   }
+  
+  if (account.platform === 'TIKTOK' && process.env.TIKTOK_CLIENT_KEY && process.env.TIKTOK_CLIENT_SECRET) {
+    const { refreshTikTokToken } = await import('./tiktokApi')
+    const tokens = await refreshTikTokToken(refresh)
+    if (!tokens) return null
+    await persistTokens(account.id, tokens.access_token, tokens.refresh_token, tokens.expires_in)
+    return tokens.access_token
+  }
 
   if (
     (account.platform === 'FACEBOOK' || account.platform === 'INSTAGRAM') &&

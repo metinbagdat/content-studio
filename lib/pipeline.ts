@@ -10,7 +10,7 @@ import { generateAtomizationPlan, totalPlannedPieces } from './atomization/plan'
 import { generateAllDerivatives } from './atomization/generateDerivatives'
 import { buildDistributionCalendar } from './scheduling/distributionCalendar'
 import { enqueuePipelineJob, enqueuePublishJob } from './queue'
-import { ensureGeneratedPostImage, publishCaptionWithImages } from './social/publishCaption'
+import { ensureGeneratedPostImage, ensureGeneratedPostMedia, publishCaptionWithImages } from './social/publishCaption'
 import { buildYouTubePostContent } from './social/publishVideo'
 import { preparePostForPublish } from './social/preparePublish'
 import { DEFAULT_PIPELINE_PLATFORMS, normalizePlatforms } from './platforms/targets'
@@ -425,7 +425,7 @@ export async function bulkSetDerivedStatus(
             result.mediaGenerated += 1
           }
           if (derived.contentType === 'SOCIAL_CAPTION') {
-            await ensureGeneratedPostImage(id)
+            await ensureGeneratedPostMedia(id)
             result.mediaGenerated += 1
             try {
               const { generateAiImageVariations } = await import('./image/generateAiImage')

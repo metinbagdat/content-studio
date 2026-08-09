@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
 import { generatePodcastAudio } from '@/lib/media/generatePodcast'
-import { generatePostImage } from '@/lib/media/generatePostImage'
+import { generatePostClip } from '@/lib/media/generatePostClip'
 import { generateAiImageVariations } from '@/lib/image/generateAiImage'
 import { generateVideoVariants } from '@/lib/video/generateVideo'
 import { generateSongAudio } from '@/lib/media/generateSong'
@@ -22,7 +22,16 @@ export async function POST(req: NextRequest) {
       if (!derivedContentId) {
         return NextResponse.json({ error: 'derivedContentId required' }, { status: 400 })
       }
+      const { generatePostImage } = await import('@/lib/media/generatePostImage')
       const result = await generatePostImage(derivedContentId)
+      return NextResponse.json(result, { status: result.reused ? 200 : 201 })
+    }
+
+    if (kind === 'post-clip' || kind === 'clip') {
+      if (!derivedContentId) {
+        return NextResponse.json({ error: 'derivedContentId required' }, { status: 400 })
+      }
+      const result = await generatePostClip(derivedContentId)
       return NextResponse.json(result, { status: result.reused ? 200 : 201 })
     }
 

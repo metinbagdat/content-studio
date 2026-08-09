@@ -11,7 +11,8 @@ import {
 } from './publishFingerprint'
 import { ensureGeneratedVideo, buildYouTubeMetadata } from './publishVideo'
 import { uploadYouTubeVideo, setYouTubeThumbnail } from './youtubeApi'
-import { publishFacebookPost, publishInstagramPost } from './publishMeta'
+import { publishFacebookPost, publishInstagramPost, publishInstagramReel, publishFacebookVideoPost } from './publishMeta'
+import { uploadTikTokVideo } from './tiktokApi'
 import { prisma } from '../prisma'
 
 export type PublishOptions = {
@@ -137,15 +138,24 @@ export async function publishPost(postId: string, options: PublishOptions = {}):
       videoAttached = yt.videoAttached
       videoError = yt.videoError
     } else if (post.platform === 'FACEBOOK') {
-      const fb = await publishFacebook(post, accessToken, requireImage)
+      const fb = await publishFacebook(post, accessToken, requireImage, mediaUrls)
       platformPostId = fb.platformPostId
-      imageAttached = fb.imageAttached
+      imageAttached = fb.imageAttached ?? false
       imageError = fb.imageError
+      videoAttached = fb.videoAttached ?? false
+      videoError = fb.videoError
     } else if (post.platform === 'INSTAGRAM') {
       const ig = await publishInstagram(post, accessToken, mediaUrls, requireImage)
       platformPostId = ig.platformPostId
-      imageAttached = ig.imageAttached
+      imageAttached = ig.imageAttached ?? false
       imageError = ig.imageError
+      videoAttached = ig.videoAttached ?? false
+      videoError = ig.videoError
+	} else if (post.platform === 'TIKTOK') {
+      const tt = await publishTikTok(post, accessToken, requireVideo)
+      platformPostId = tt.platformPostId
+      videoAttached = tt.videoAttached
+      videoError = tt.videoError
     } else {
       throw new Error(
         `${post.platform} için gerçek yayın API'si Faz 2'de eklenecek — altyapı (hesap, taslak, otomasyon) hazır, ` +
@@ -410,7 +420,13 @@ async function publishYouTube(
   }
 }
 
-type MetaFlowOutcome = { platformPostId: string; imageAttached: boolean; imageError?: string }
+type MetaFlowOutcome = {
+  platformPostId: string
+  imageAttached?: boolean
+  imageError?: string
+  videoAttached?: boolean
+  videoError?: string
+}
 
 function readAccountConfig(config: unknown): Record<string, unknown> {
   return config && typeof config === 'object' ? (config as Record<string, unknown>) : {}
@@ -420,6 +436,7 @@ async function publishFacebook(
   post: { postContent: string; derivedContentId: string; account: { config: unknown } },
   pageAccessToken: string,
   requireImage: boolean,
+  mediaUrls: string[] = [],
 ): Promise<MetaFlowOutcome> {
   if (!pageAccessToken || pageAccessToken === 'dry-run') {
     return { platformPostId: `mock_fb_${Date.now()}`, imageAttached: false }
@@ -428,9 +445,34 @@ async function publishFacebook(
   const pageId = String(cfg.pageId || '')
   if (!pageId) throw new Error('Facebook pageId eksik — hesabı yeniden bağlayın')
 
+  const { readPostClipBuffer } = await import('../media/generatePostClip')
+  const clip = await readPostClipBuffer(post.derivedContentId)
+  if (clip) {
+    try {
+      const out = await publishFacebookVideoPost(
+        pageId,
+        pageAccessToken,
+        post.postContent,
+        clip.buffer,
+      )
+      return { platformPostId: out.platformPostId, videoAttached: true }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      console.warn('[publishFacebook] animated clip failed, falling back to image', message)
+      if (requireImage && !mediaUrls.some((u) => u.includes('/image'))) {
+        return {
+          platformPostId: `mock_fb_${Date.now()}`,
+          videoAttached: false,
+          videoError: message,
+        }
+      }
+    }
+  }
+
   const local = await readPostImageBuffer(post.derivedContentId)
   try {
-    return await publishFacebookPost(pageId, pageAccessToken, post.postContent, local?.buffer)
+    const out = await publishFacebookPost(pageId, pageAccessToken, post.postContent, local?.buffer)
+    return { platformPostId: out.platformPostId, imageAttached: out.imageAttached, imageError: out.imageError }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     if (requireImage) throw err
@@ -452,19 +494,61 @@ async function publishInstagram(
   const igUserId = String(cfg.igUserId || '')
   if (!igUserId) throw new Error('Instagram igUserId eksik — hesabı yeniden bağlayın')
 
-  const imageUrl = mediaUrls.find((u) => u.startsWith('http'))
+  const clipUrl = mediaUrls.find((u) => u.startsWith('https://') && u.includes('/video'))
+  if (clipUrl) {
+    try {
+      const reel = await publishInstagramReel(
+        igUserId,
+        pageAccessToken,
+        post.postContent,
+        clipUrl,
+      )
+      return { platformPostId: reel.platformPostId, videoAttached: true }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      console.warn('[publishInstagram] reel failed, falling back to image', message)
+    }
+  }
+
+  const imageUrl = mediaUrls.find(
+    (u) => u.startsWith('http') && (u.includes('/image') || !u.includes('/video')),
+  )
   if (!imageUrl) {
-    const message = 'Instagram görsel gerektirir — herkese açık bir URL bulunamadı'
+    const message = 'Instagram görsel veya klip gerektirir — herkese açık bir URL bulunamadı'
     if (requireImage) throw new Error(message)
     return { platformPostId: `mock_ig_${Date.now()}`, imageAttached: false, imageError: message }
   }
 
   try {
-    return await publishInstagramPost(igUserId, pageAccessToken, post.postContent, imageUrl)
+    const out = await publishInstagramPost(igUserId, pageAccessToken, post.postContent, imageUrl)
+    return { platformPostId: out.platformPostId, imageAttached: out.imageAttached, imageError: out.imageError }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     if (requireImage) throw err
     return { platformPostId: `mock_ig_${Date.now()}`, imageAttached: false, imageError: message }
+  }
+}
+
+async function publishTikTok(
+  post: { derivedContentId: string; postContent: string },
+  accessToken: string,
+  requireVideo: boolean,
+): Promise<YouTubePublishOutcome> {
+  if (!accessToken || accessToken === 'dry-run' || !process.env.TIKTOK_CLIENT_KEY) {
+    return { platformPostId: `mock_tt_${Date.now()}`, videoAttached: false }
+  }
+  try {
+    const video = await ensureGeneratedVideo(post.derivedContentId)
+    const { readFile } = await import('fs/promises')
+    const buffer = await readFile(video.diskPath)
+    const result = await uploadTikTokVideo(accessToken, buffer, post.postContent)
+    const suffix = result.isDraft ? ' (taslak — TikTok uygulamasından onaylanmalı)' : ''
+    return { platformPostId: `${result.publishId}${suffix}`, videoAttached: true }
+  } catch (err) {
+    const videoError = err instanceof Error ? err.message : String(err)
+    if (requireVideo) throw new Error(videoError)
+    console.warn('[publishTikTok] failed', videoError)
+    return { platformPostId: `mock_tt_${Date.now()}`, videoAttached: false, videoError }
   }
 }
 

@@ -1,13 +1,13 @@
 import type { SocialPlatform } from '@prisma/client'
 import { prisma } from '../prisma'
 import { bulkPublishDraftPosts, syncSocialDraftsFromApprovedCaptions } from '../pipeline'
-import { syncPostImagesFromCaptions } from '../social/publishCaption'
+import { syncPostImagesFromCaptions, syncPostClipsFromCaptions } from '../social/publishCaption'
 import { syncAllAccountStats, syncAllPublishedPostAnalytics } from '../social/platformStats'
 import { runWorkerTick } from '../worker/runWorkerTick'
 import { getWorkflowSnapshot, type WorkflowSnapshot } from './status'
 
 /** Platforms with working OAuth publish in prod (Instagram needs public image URL). */
-const AUTO_PUBLISH_PLATFORMS: SocialPlatform[] = ['TWITTER', 'LINKEDIN', 'FACEBOOK', 'YOUTUBE']
+const AUTO_PUBLISH_PLATFORMS: SocialPlatform[] = ['LINKEDIN', 'FACEBOOK', 'TWITTER', 'YOUTUBE']
 
 export type ContinueStepResult = {
   action: string
@@ -31,10 +31,14 @@ async function countPublishable(platform: SocialPlatform): Promise<number> {
   })
 }
 
+/** Skip platforms with known API blocks (X 403 until developer portal tier fixed). */
+const SKIP_AUTO_PUBLISH = new Set<SocialPlatform>(['TWITTER'])
+
 async function pickBestPublishPlatform(): Promise<SocialPlatform | null> {
   let best: SocialPlatform | null = null
   let bestCount = 0
   for (const platform of AUTO_PUBLISH_PLATFORMS) {
+    if (SKIP_AUTO_PUBLISH.has(platform)) continue
     const n = await countPublishable(platform)
     if (n > bestCount) {
       bestCount = n
@@ -85,6 +89,7 @@ export async function runWorkflowContinueStep(): Promise<ContinueStepResult> {
 
   const sync = await syncSocialDraftsFromApprovedCaptions({ skipImages: true })
   await syncPostImagesFromCaptions().catch(() => null)
+  const clipSync = await syncPostClipsFromCaptions(5).catch(() => ({ processed: 0, clips: [] }))
 
   const platform = await pickBestPublishPlatform()
   if (platform) {
@@ -102,7 +107,7 @@ export async function runWorkflowContinueStep(): Promise<ContinueStepResult> {
           : undefined,
       href: '/admin/social',
       snapshot,
-      details: { platform, result, draftsSynced: sync.draftsCreated },
+      details: { platform, result, draftsSynced: sync.draftsCreated, clipsSynced: clipSync.processed },
     }
   }
 

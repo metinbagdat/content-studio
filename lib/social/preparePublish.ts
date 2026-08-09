@@ -1,5 +1,5 @@
 import { prisma } from '../prisma'
-import { ensureGeneratedPostImage } from './publishCaption'
+import { ensureGeneratedPostMedia } from './publishCaption'
 import { readPostImageBuffer } from '../media/generatePostImage'
 import { readPublishMetrics } from './publishFingerprint'
 import { resolveVideoMediaUrls } from './publishVideo'
@@ -23,16 +23,16 @@ export async function preparePostForPublish(postId: string): Promise<string[]> {
   let mediaUrls =
     post.mediaUrls.filter((u) => u.startsWith('http')).length > 0
       ? post.mediaUrls
-      : await ensureGeneratedPostImage(post.derivedContentId)
+      : await ensureGeneratedPostMedia(post.derivedContentId)
 
   if (!mediaUrls.length) {
-    mediaUrls = await ensureGeneratedPostImage(post.derivedContentId)
+    mediaUrls = await ensureGeneratedPostMedia(post.derivedContentId)
   }
 
   if (post.platform === 'LINKEDIN') {
     const local = await readPostImageBuffer(post.derivedContentId)
     if (!local) {
-      mediaUrls = await ensureGeneratedPostImage(post.derivedContentId)
+      mediaUrls = await ensureGeneratedPostMedia(post.derivedContentId)
     }
   }
 

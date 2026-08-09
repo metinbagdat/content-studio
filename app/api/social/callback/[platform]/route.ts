@@ -5,6 +5,7 @@ import { upsertDryRunAccount, upsertOAuthAccount } from '@/lib/social/oauth'
 import { connectMetaPlatform } from '@/lib/social/metaApi'
 import { pkceCookieName } from '@/lib/social/pkce'
 import { syncSocialDraftsFromApprovedCaptions } from '@/lib/pipeline'
+import { exchangeTikTokCode, fetchTikTokUser, tiktokCallbackUrl } from '@/lib/social/tiktokApi'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,6 +15,7 @@ const PLATFORM_MAP: Record<string, SocialPlatform> = {
   youtube: 'YOUTUBE',
   facebook: 'FACEBOOK',
   instagram: 'INSTAGRAM',
+  tiktok: 'TIKTOK',
 }
 
 function redirectWithMessage(appUrl: string, query: string) {
@@ -196,6 +198,19 @@ export async function GET(
           customUrl: channel.snippet?.customUrl,
         },
       })
+    } else if (platform === 'TIKTOK' && process.env.TIKTOK_CLIENT_KEY && process.env.TIKTOK_CLIENT_SECRET) {
+      const redirect = tiktokCallbackUrl(appUrl)
+      const tokens = await exchangeTikTokCode(code, redirect)
+      const user = await fetchTikTokUser(tokens.access_token)
+      await upsertOAuthAccount({
+        platform: 'TIKTOK',
+        accountId: user.open_id,
+        accountName: user.display_name || 'TikTok',
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token,
+        tokenExpiry: tokens.expires_in ? new Date(Date.now() + tokens.expires_in * 1000) : undefined,
+        config: { oauth: true, openId: user.open_id, displayName: user.display_name },
+      })
     } else if (
       (platform === 'FACEBOOK' || platform === 'INSTAGRAM') &&
       (process.env.META_APP_ID || process.env.FACEBOOK_CLIENT_ID) &&
@@ -215,7 +230,7 @@ export async function GET(
       await upsertDryRunAccount(platform, `Dry-run ${platform}`)
       return redirectWithMessage(appUrl, 'connected=dry')
     }
-    if (platform !== 'YOUTUBE' && platform !== 'FACEBOOK' && platform !== 'INSTAGRAM') {
+    if (platform !== 'YOUTUBE' && platform !== 'FACEBOOK' && platform !== 'INSTAGRAM' && platform !== 'TIKTOK') {
       await syncSocialDraftsFromApprovedCaptions({ skipImages: true })
     }
   } catch (err) {
