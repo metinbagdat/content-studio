@@ -643,9 +643,10 @@ export function SocialPlatformDashboard({
               ) : null}
               {p.id === 'TIKTOK' && oauthSlot?.configured ? (
                 <p className="muted" style={{ margin: '0.5rem 0 0', fontSize: '0.78rem' }}>
-                  TikTok Developer Portal → Redirect URI: <code>{oauthSlot.callbackUrl}</code>. Onaysız uygulama{' '}
-                  <code>video.upload</code> kullanır — video TikTok uygulamasında onay bekler. Doğrudan yayın için{' '}
-                  <code>TIKTOK_AUDITED=true</code> + <code>video.publish</code> scope gerekir.
+                  Redirect URI: <code>{oauthSlot.callbackUrl}</code>
+                  {' '}({(oauthSlot as { redirectMode?: string }).redirectMode === 'desktop' ? 'Desktop/PKCE' : 'Web/https'})
+                  . Localhost → Login Kit <strong>Desktop</strong> tab + Sandbox test hesabı (Web tab https-only → client_key hatası).
+                  Onaysız: <code>video.upload</code> (TikTok inbox). Onaylı: <code>TIKTOK_AUDITED=true</code>.
                 </p>
               ) : null}
               <ReadyDraftsList

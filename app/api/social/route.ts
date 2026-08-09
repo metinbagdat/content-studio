@@ -24,7 +24,13 @@ import { getValidAccessToken } from '@/lib/social/tokenRefresh'
 import { testYouTubeConnection } from '@/lib/social/youtubeApi'
 import { syncYouTubeFromApprovedVideos } from '@/lib/social/youtubeBackfill'
 import { generatePkce, generateTikTokPkce, pkceCookieName } from '@/lib/social/pkce'
-import { tiktokConfigured } from '@/lib/social/tiktokApi'
+import {
+  tiktokConfigured,
+  validateTikTokOAuthRedirect,
+  tiktokCallbackUrl,
+  tiktokLocalhostSetupHint,
+  tiktokOAuthRedirectMode,
+} from '@/lib/social/tiktokApi'
 
 export const dynamic = 'force-dynamic'
 
@@ -228,6 +234,10 @@ async function handleAction(action: string, body: Record<string, unknown>) {
       pkceVerifier = pkce.verifier
       url = getAuthUrl('TWITTER', state, pkce.challenge)
     } else if (platform === 'TIKTOK' && tiktokConfigured()) {
+      const redirectError = validateTikTokOAuthRedirect(tiktokCallbackUrl())
+      if (redirectError) {
+        return NextResponse.json({ error: redirectError, redirectUri: tiktokCallbackUrl() }, { status: 400 })
+      }
       const pkce = generateTikTokPkce()
       pkceVerifier = pkce.verifier
       url = getAuthUrl('TIKTOK', state, pkce.challenge)
@@ -237,7 +247,11 @@ async function handleAction(action: string, body: Record<string, unknown>) {
         state,
       )
     }
-    const response = NextResponse.json({ url, state })
+    const response = NextResponse.json({
+      url,
+      state,
+      ...(platform === 'TIKTOK' ? { localhostHint: tiktokLocalhostSetupHint(tiktokCallbackUrl()) } : {}),
+    })
     if (
       pkceVerifier &&
       (platformKey === 'twitter' || platformKey === 'linkedin' || platformKey === 'tiktok')

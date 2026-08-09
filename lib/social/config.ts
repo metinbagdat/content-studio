@@ -44,6 +44,8 @@ export function oauthPlatformStatus() {
     tiktok: {  // YENİ
       configured: tiktokConfigured(),
       callbackUrl: tiktokCallbackUrl(appUrl),
+      redirectMode: tiktokOAuthRedirectMode(tiktokCallbackUrl(appUrl)),
+      localhostHint: tiktokLocalhostSetupHint(tiktokCallbackUrl(appUrl)),
       clientIdSet: Boolean(tiktokClientKey()),
       clientSecretSet: tiktokConfigured(),
       scopes: tiktokOAuthScopes(),

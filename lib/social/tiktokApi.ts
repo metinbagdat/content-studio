@@ -12,9 +12,48 @@ export function tiktokConfigured(): boolean {
   return Boolean(tiktokClientKey() && tiktokClientSecret())
 }
 
+function normalizeTikTokRedirectUri(uri: string): string {
+  const trimmed = uri.trim()
+  if (process.env.TIKTOK_REDIRECT_TRAILING_SLASH === 'true' && !trimmed.endsWith('/')) {
+    return `${trimmed}/`
+  }
+  if (process.env.TIKTOK_REDIRECT_TRAILING_SLASH === 'false' && trimmed.endsWith('/')) {
+    return trimmed.replace(/\/+$/, '')
+  }
+  return trimmed
+}
+
+/** OAuth redirect — must match TikTok portal exactly (Web=https, Desktop=localhost+PKCE). */
 export function tiktokCallbackUrl(appUrl?: string): string {
-  const base = appUrl || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3100'
-  return process.env.TIKTOK_CALLBACK_URL?.trim() || `${base}/api/social/callback/tiktok`
+  if (process.env.TIKTOK_CALLBACK_URL?.trim()) {
+    return normalizeTikTokRedirectUri(process.env.TIKTOK_CALLBACK_URL)
+  }
+  const base = (appUrl || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3100').replace(/\/$/, '')
+  return normalizeTikTokRedirectUri(`${base}/api/social/callback/tiktok`)
+}
+
+export function tiktokOAuthRedirectMode(redirectUri = tiktokCallbackUrl()): 'desktop' | 'web' {
+  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//i.test(redirectUri)) return 'desktop'
+  return 'web'
+}
+
+/** Pre-flight check — TikTok often surfaces redirect mismatches as a misleading client_key error. */
+export function validateTikTokOAuthRedirect(redirectUri = tiktokCallbackUrl()): string | null {
+  const key = tiktokClientKey()
+  if (!key) return 'TIKTOK_CLIENT_KEY eksik — .env.local kontrol edin, npm run dev yeniden başlatın'
+  if (key.length < 10) return 'TIKTOK_CLIENT_KEY geçersiz görünüyor — TikTok Developer Portal → Credentials'
+  if (!redirectUri.startsWith('http://') && !redirectUri.startsWith('https://')) {
+    return 'Geçersiz redirect URI'
+  }
+  return null
+}
+
+export function tiktokLocalhostSetupHint(redirectUri = tiktokCallbackUrl()): string | null {
+  if (!/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//i.test(redirectUri)) return null
+  return (
+    'Localhost: Login Kit → Desktop (Web tab değil) → ' +
+    `${redirectUri} — Sandbox → test TikTok hesabı. URI portal ile birebir eşleşmeli.`
+  )
 }
 
 /** video.publish requires app audit approval; video.upload (draft/inbox) works unaudited. */

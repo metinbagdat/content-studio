@@ -5,12 +5,14 @@ TikTok entegrasyonu PR #28 ile eklendi. Dry-run kartı, env tanımlı değilse v
 ## 1. TikTok Developer Portal
 
 1. [developers.tiktok.com](https://developers.tiktok.com/) → **Manage apps** → Create app
-2. **Login Kit** → Redirect URI (**tam URL**, `...` değil):
+2. **Login Kit** → Redirect URI — **tab önemli**:
 
-```
-http://localhost:3100/api/social/callback/tiktok
-https://studio.egitim.today/api/social/callback/tiktok
-```
+| Ortam | Tab | URI |
+|-------|-----|-----|
+| Local | **Desktop** | `http://localhost:3100/api/social/callback/tiktok` |
+| Prod | **Web** | `https://studio.egitim.today/api/social/callback/tiktok` |
+
+Web tab yalnızca `https://` kabul eder. Local `client_key` hatası genelde URI'nin Web tab'da veya Sandbox test hesabı eksik olmasından kaynaklanır.
 
 3. **Content Posting API** etkinleştir
 4. **URL property doğrulama** — iki yol:
@@ -101,9 +103,10 @@ Vercel'de env ekledikten sonra **Redeploy** gerekir.
 
 ## 6. Sorun giderme
 
-- **dry-run** → env eksik veya redeploy/dev restart gerekli
-- **Redirect URI mismatch** → portal URI = callback birebir
-- **OAuth not authorized** → test user listesine hesap ekle
+- **dry-run** → env eksik veya `npm run dev` restart gerekli
+- **client_key (local)** → URI **Desktop** tab'da mı? Sandbox test hesabı eklendi mi? Portal URI = `oauthSlot.callbackUrl` birebir
+- **Redirect URI mismatch** → portal URI = callback birebir (sondaki `/` dahil; gerekirse `TIKTOK_REDIRECT_TRAILING_SLASH=true`)
+- **OAuth not authorized** → Sandbox test user listesine hesap ekle
 - **Upload OK, feed'de yok** → onaysız mod: TikTok app → Inbox
 
 Paralel kurulum: [LOCAL_AND_PROD.md](./LOCAL_AND_PROD.md)
