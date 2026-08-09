@@ -27,6 +27,14 @@ type OAuthStatus = {
     clientSecretSet?: boolean
     scopes?: string
   }
+  tiktok?: {
+    configured: boolean
+    callbackUrl: string
+    clientIdSet?: boolean
+    clientSecretSet?: boolean
+    scopes?: string
+    audited?: boolean
+  }
 }
 
 type EnvCheck = {
@@ -38,6 +46,8 @@ type EnvCheck = {
   YOUTUBE_CLIENT_SECRET: boolean
   META_APP_ID: boolean
   META_APP_SECRET: boolean
+  TIKTOK_CLIENT_KEY?: boolean
+  TIKTOK_CLIENT_SECRET?: boolean
   ready: boolean
 }
 
@@ -482,7 +492,7 @@ export default function SocialPage() {
     }
   }
 
-  async function oauthConnect(platform: 'TWITTER' | 'LINKEDIN' | 'YOUTUBE' | 'FACEBOOK' | 'INSTAGRAM') {
+  async function oauthConnect(platform: 'TWITTER' | 'LINKEDIN' | 'YOUTUBE' | 'FACEBOOK' | 'INSTAGRAM' | 'TIKTOK') {
     setBusyId(platform)
     try {
       const res = await fetch('/api/social', {

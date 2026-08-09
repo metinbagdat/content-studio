@@ -56,13 +56,15 @@ type EnvCheck = {
   YOUTUBE_CLIENT_SECRET: boolean
   META_APP_ID: boolean
   META_APP_SECRET: boolean
+  TIKTOK_CLIENT_KEY?: boolean
+  TIKTOK_CLIENT_SECRET?: boolean
   ready: boolean
 }
 
 type PipelinePlatformDef = {
   id: string
   note: string
-  oauthKey?: 'youtube' | 'facebook' | 'instagram'
+  oauthKey?: 'youtube' | 'facebook' | 'instagram' | 'tiktok'
 }
 
 const PIPELINE_PLATFORMS: PipelinePlatformDef[] = [
@@ -81,7 +83,12 @@ const PIPELINE_PLATFORMS: PipelinePlatformDef[] = [
     oauthKey: 'instagram',
     note: 'Meta OAuth — IG Business hesabı (Facebook sayfasına bağlı olmalı).',
   },
-  { id: 'TIKTOK', note: 'Pipeline kısa video script üretir. Yayın için TikTok API entegrasyonu Faz 2.' },
+  {
+    id: 'TIKTOK',
+    oauthKey: 'tiktok',
+    note:
+      'OAuth bağla → kısa video script MP4 yüklenir. Onaysız uygulamada video TikTok gelen kutusuna düşer (uygulamadan onayla).',
+  },
 ]
 
 function StatCell({ label, value }: { label: string; value: string | number | null | undefined }) {
@@ -291,12 +298,12 @@ export function SocialPlatformDashboard({
   onMetaTest,
 }: {
   accounts: PlatformCardAccount[]
-  oauth: { twitter: OAuthSlot; linkedin: OAuthSlot; youtube?: OAuthSlot; facebook?: OAuthSlot; instagram?: OAuthSlot } | null
+  oauth: { twitter: OAuthSlot; linkedin: OAuthSlot; youtube?: OAuthSlot; facebook?: OAuthSlot; instagram?: OAuthSlot; tiktok?: OAuthSlot } | null
   envCheck: EnvCheck | null
   busyId: string | null
   readyDraftsByPlatform: Record<string, ReadyDraft[]>
   recentPublishedByPlatform: Record<string, RecentPublished[]>
-  onOAuthConnect: (p: 'TWITTER' | 'LINKEDIN' | 'YOUTUBE' | 'FACEBOOK' | 'INSTAGRAM') => void
+  onOAuthConnect: (p: 'TWITTER' | 'LINKEDIN' | 'YOUTUBE' | 'FACEBOOK' | 'INSTAGRAM' | 'TIKTOK') => void
   onDryConnect: (p: string) => void
   onDisconnect: (id: string) => void
   onSyncStats: () => void
@@ -461,6 +468,8 @@ export function SocialPlatformDashboard({
             <EnvRow label="YOUTUBE_CLIENT_SECRET" ok={envCheck.YOUTUBE_CLIENT_SECRET} />
             <EnvRow label="META_APP_ID" ok={envCheck.META_APP_ID} />
             <EnvRow label="META_APP_SECRET" ok={envCheck.META_APP_SECRET} />
+            <EnvRow label="TIKTOK_CLIENT_KEY" ok={Boolean(envCheck.TIKTOK_CLIENT_KEY)} />
+            <EnvRow label="TIKTOK_CLIENT_SECRET" ok={Boolean(envCheck.TIKTOK_CLIENT_SECRET)} />
             <p className="row" style={{ marginTop: '0.65rem' }}>
               {envCheck.ready ? (
                 <span className="badge ok">OAuth env tamam — kartlardan OAuth bağla</span>
@@ -509,7 +518,9 @@ export function SocialPlatformDashboard({
                 ? oauth?.facebook
                 : p.oauthKey === 'instagram'
                   ? oauth?.instagram
-                  : undefined
+                  : p.oauthKey === 'tiktok'
+                    ? oauth?.tiktok
+                    : undefined
           const oauthPlatform =
             p.id === 'YOUTUBE'
               ? 'YOUTUBE'
@@ -517,9 +528,11 @@ export function SocialPlatformDashboard({
                 ? 'FACEBOOK'
                 : p.id === 'INSTAGRAM'
                   ? 'INSTAGRAM'
-                  : null
+                  : p.id === 'TIKTOK'
+                    ? 'TIKTOK'
+                    : null
           const connState = oauthConnectionState(account, Boolean(oauthSlot?.configured))
-          const pipelineDim = connState !== 'connected' && p.id !== 'TIKTOK'
+          const pipelineDim = connState !== 'connected'
           return (
             <article
               className={`sm-platform-card panel ${cardConnectionClass(connState)} ${pipelineDim ? 'sm-pipeline-only' : ''}`}
@@ -626,6 +639,13 @@ export function SocialPlatformDashboard({
                   Meta Development mod — yalnızca uygulama admin/test kullanıcıları bağlanabilir. Zaten{' '}
                   <strong>oauth aktif</strong> görünüyorsa yeniden bağlamak için <strong>Kes</strong> sonra OAuth
                   bağla. Callback URL Meta Developer → Valid OAuth Redirect URIs ile birebir eşleşmeli.
+                </p>
+              ) : null}
+              {p.id === 'TIKTOK' && oauthSlot?.configured ? (
+                <p className="muted" style={{ margin: '0.5rem 0 0', fontSize: '0.78rem' }}>
+                  TikTok Developer Portal → Redirect URI: <code>{oauthSlot.callbackUrl}</code>. Onaysız uygulama{' '}
+                  <code>video.upload</code> kullanır — video TikTok uygulamasında onay bekler. Doğrudan yayın için{' '}
+                  <code>TIKTOK_AUDITED=true</code> + <code>video.publish</code> scope gerekir.
                 </p>
               ) : null}
               <ReadyDraftsList
