@@ -5,22 +5,43 @@ TikTok entegrasyonu PR #28 ile eklendi. Dry-run kartı, env tanımlı değilse v
 ## 1. TikTok Developer Portal
 
 1. [developers.tiktok.com](https://developers.tiktok.com/) → **Manage apps** → Create app
-2. **Products** ekle:
-   - **Login Kit** (OAuth giriş)
-   - **Content Posting API** (video yükleme — bazen ayrı onay/başvuru ister)
-3. **Redirect URI** — **ikisini de** ekle (local öncelik + prod paralel):
+2. **Login Kit** → Redirect URI (**tam URL**, `...` değil):
 
 ```
 http://localhost:3100/api/social/callback/tiktok
 https://studio.egitim.today/api/social/callback/tiktok
 ```
 
-4. **App details** (genelde zorunlu):
-   - **Website URL:** `https://studio.egitim.today`
-   - **Privacy Policy URL** ve **Terms of Service URL** (review için)
-   - **App icon / category** doldur
-5. **Test users / Sandbox:** Review öncesi yalnızca portalda eklediğiniz TikTok hesapları OAuth yapabilir
-6. **Content Posting API erişimi:** Ürün kartında "Apply" varsa başvurun; onaysız modda `video.upload` (inbox) çalışır
+3. **Content Posting API** etkinleştir
+4. **URL property doğrulama** — iki yol:
+
+### A) Domain (önerilen — tek seferde tüm path'ler)
+
+- Property type: **Domain** → `studio.egitim.today`
+- Method: **DNS TXT**
+- DNS panelinde (egitim.today zone):
+
+| Type | Name/Host | Value |
+|------|-----------|--------|
+| TXT | `studio` | TikTok'un verdiği `tiktok-developers-site-verification=...` |
+
+Doğrulandıktan sonra Terms, Privacy ve Web URL otomatik geçer.
+
+### B) URL prefix (signature file)
+
+TikTok hangi prefix'i doğruluyorsa dosya **o prefix altında** olmalı:
+
+| Prefix | Dosya URL |
+|--------|-----------|
+| `https://studio.egitim.today` | `/tiktokNq6NRmactSBBqMFjzTc2qwldDnGCY4iK.txt` |
+| `https://studio.egitim.today/legal/terms` | `/legal/terms/tiktokNq6NRmactSBBqMFjzTc2qwldDnGCY4iK.txt` |
+| `https://studio.egitim.today/legal/privacy` | `/legal/privacy/tiktokNq6NRmactSBBqMFjzTc2qwldDnGCY4iK.txt` |
+
+**Hata:** `legal/terms/` için verify edip dosyayı sadece kökte bırakmak → "couldn't find verification signature"
+
+5. **App details:** Website URL, Privacy/Terms URL, app icon, category
+6. **Test users / Sandbox:** Review öncesi portalda test TikTok hesabı ekleyin
+7. **Content Posting API:** Ürün kartında "Apply" varsa başvurun
 
 ## 2. Env — yerel (.env.local) + Vercel Environment Variables
 
