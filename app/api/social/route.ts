@@ -200,9 +200,12 @@ async function handleAction(action: string, body: Record<string, unknown>) {
 
   if (action === 'connect-url') {
     const platform = String(body.platform || '').toUpperCase()
-    const OAUTH_PLATFORMS = ['TWITTER', 'LINKEDIN', 'YOUTUBE', 'FACEBOOK', 'INSTAGRAM'] as const
+    const OAUTH_PLATFORMS = ['TWITTER', 'LINKEDIN', 'YOUTUBE', 'FACEBOOK', 'INSTAGRAM', 'TIKTOK'] as const
     if (!OAUTH_PLATFORMS.includes(platform as (typeof OAUTH_PLATFORMS)[number])) {
-      return NextResponse.json({ error: 'platform TWITTER|LINKEDIN|YOUTUBE|FACEBOOK|INSTAGRAM' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'platform TWITTER|LINKEDIN|YOUTUBE|FACEBOOK|INSTAGRAM|TIKTOK' },
+        { status: 400 },
+      )
     }
     const state = crypto.randomUUID()
     const platformKey =
@@ -214,7 +217,9 @@ async function handleAction(action: string, body: Record<string, unknown>) {
             ? 'youtube'
             : platform === 'FACEBOOK'
               ? 'facebook'
-              : 'instagram'
+              : platform === 'INSTAGRAM'
+                ? 'instagram'
+                : 'tiktok'
     let url: string
     let pkceVerifier: string | undefined
     if (platform === 'TWITTER' && process.env.X_CLIENT_ID) {
@@ -222,7 +227,10 @@ async function handleAction(action: string, body: Record<string, unknown>) {
       pkceVerifier = pkce.verifier
       url = getAuthUrl('TWITTER', state, pkce.challenge)
     } else {
-      url = getAuthUrl(platform as 'TWITTER' | 'LINKEDIN' | 'YOUTUBE' | 'FACEBOOK' | 'INSTAGRAM', state)
+      url = getAuthUrl(
+        platform as 'TWITTER' | 'LINKEDIN' | 'YOUTUBE' | 'FACEBOOK' | 'INSTAGRAM' | 'TIKTOK',
+        state,
+      )
     }
     const response = NextResponse.json({ url, state })
     if (pkceVerifier && (platformKey === 'twitter' || platformKey === 'linkedin')) {
