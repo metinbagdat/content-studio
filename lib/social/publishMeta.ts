@@ -23,7 +23,7 @@ export async function publishFacebookPost(
       const form = new FormData()
       form.append('caption', message)
       form.append('access_token', pageAccessToken)
-      form.append('source', new Blob([imageBuffer]), 'image.png')
+      form.append('source', new Blob([new Uint8Array(imageBuffer)]), 'image.png')
 
       const res = await fetch(`${graphBase()}/${pageId}/photos`, { method: 'POST', body: form })
       if (!res.ok) {
@@ -101,4 +101,75 @@ export async function publishInstagramPost(
   }
   const published = (await publishRes.json()) as { id?: string }
   return { platformPostId: published.id || `ig_${Date.now()}`, imageAttached: true }
+}
+
+export type MetaVideoPublishOutcome = {
+  platformPostId: string
+  videoAttached: boolean
+  videoError?: string
+}
+
+/** Instagram Reels — requires public HTTPS video URL (Meta fetches server-side). */
+export async function publishInstagramReel(
+  igUserId: string,
+  pageAccessToken: string,
+  caption: string,
+  videoUrl: string,
+): Promise<MetaVideoPublishOutcome> {
+  if (!videoUrl.startsWith('https://')) {
+    throw new Error('Instagram Reels için HTTPS video URL gerekli')
+  }
+  if (videoUrl.includes('localhost')) {
+    throw new Error('Instagram localhost video URL\'lerine erişemez — production kullanın')
+  }
+
+  const createRes = await fetch(`${graphBase()}/${igUserId}/media`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      media_type: 'REELS',
+      video_url: videoUrl,
+      caption,
+      access_token: pageAccessToken,
+    }),
+  })
+  if (!createRes.ok) {
+    const body = await createRes.text()
+    throw new Error(`Instagram reel create ${createRes.status}: ${body.slice(0, 300)}`)
+  }
+  const created = (await createRes.json()) as { id?: string }
+  if (!created.id) throw new Error('Instagram reel container ID alınamadı')
+
+  const publishRes = await fetch(`${graphBase()}/${igUserId}/media_publish`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ creation_id: created.id, access_token: pageAccessToken }),
+  })
+  if (!publishRes.ok) {
+    const body = await publishRes.text()
+    throw new Error(`Instagram reel publish ${publishRes.status}: ${body.slice(0, 300)}`)
+  }
+  const published = (await publishRes.json()) as { id?: string }
+  return { platformPostId: published.id || `ig_reel_${Date.now()}`, videoAttached: true }
+}
+
+/** Facebook Page video post — direct binary upload (no public URL needed). */
+export async function publishFacebookVideoPost(
+  pageId: string,
+  pageAccessToken: string,
+  message: string,
+  videoBuffer: Buffer,
+): Promise<MetaVideoPublishOutcome> {
+  const form = new FormData()
+  form.append('description', message)
+  form.append('access_token', pageAccessToken)
+  form.append('source', new Blob([new Uint8Array(videoBuffer)]), 'clip.mp4')
+
+  const res = await fetch(`${graphBase()}/${pageId}/videos`, { method: 'POST', body: form })
+  if (!res.ok) {
+    const body = await res.text()
+    throw new Error(`Facebook video ${res.status}: ${body.slice(0, 300)}`)
+  }
+  const data = (await res.json()) as { id?: string }
+  return { platformPostId: data.id || `fb_vid_${Date.now()}`, videoAttached: true }
 }

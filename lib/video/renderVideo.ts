@@ -50,7 +50,7 @@ async function buildSceneClip(
     `[2:v]${bgFill},boxblur=8:2,eq=brightness=-0.08,zoompan=z='min(zoom+0.0018,1.4)':x='iw/2-(iw/zoom/2)-20*cos(on/22)':y='ih/2-(ih/zoom/2)+10*sin(on/26)':d=${frames}:s=${width}x${height}:fps=${fps}[bg2]`,
     `[bg0][bg1]overlay=0:0[bg01]`,
     `[bg01][bg2]overlay=0:0[bgall]`,
-    `[3:v]${fgFit},fps=${fps}[fg]`,
+    `[3:v]${fgFit},zoompan=z='min(zoom+0.0008,1.06)':x='iw/2-(iw/zoom/2)+8*sin(on/40)':y='ih/2-(ih/zoom/2)+5*cos(on/35)':d=${frames}:s=${width}x${height}:fps=${fps}[fg]`,
     `[bgall][fg]overlay=0:0[outv]`,
   ].join(';')
 

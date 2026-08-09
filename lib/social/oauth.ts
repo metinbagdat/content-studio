@@ -3,11 +3,12 @@ import { prisma } from '../prisma'
 import { encryptSecret } from '../crypto'
 import { linkedinOAuthScopes, youtubeOAuthScopes } from './config'
 import { metaConfigured, metaAuthUrl } from './metaApi'
+import { tiktokConfigured, tiktokAuthUrl } from './tiktokApi'
 
-export type OAuthConnectPlatform = 'TWITTER' | 'LINKEDIN' | 'YOUTUBE' | 'FACEBOOK' | 'INSTAGRAM'
+export type OAuthConnectPlatform = 'TWITTER' | 'LINKEDIN' | 'YOUTUBE' | 'FACEBOOK' | 'INSTAGRAM' | 'TIKTOK'
 
 /**
- * OAuth helpers for X + LinkedIn + YouTube.
+ * OAuth helpers for X + LinkedIn + YouTube + Meta + TikTok.
  * Without client credentials, connectAccount stores a dry-run account for local testing.
  */
 
@@ -70,6 +71,13 @@ export function getAuthUrl(
       return `${appUrl}/admin/social?dryRun=${platform.toLowerCase()}&state=${state}`
     }
     return metaAuthUrl(platform, state, appUrl)
+  }
+
+  if (platform === 'TIKTOK') {
+    if (!tiktokConfigured()) {
+      return `${appUrl}/admin/social?dryRun=tiktok&state=${state}`
+    }
+    return tiktokAuthUrl(state, appUrl)
   }
 
   return `${appUrl}/admin/social?connected=error&reason=unsupported_platform`

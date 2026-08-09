@@ -1,9 +1,32 @@
 import { prisma } from '../prisma'
 import { generatePostImage } from '../media/generatePostImage'
+import { generatePostClip, socialAnimationEnabled } from '../media/generatePostClip'
 import { defaultPostImageUrl } from './brandImage'
 
 function isCustomUrl(url: string): boolean {
   return url.startsWith('http://') || url.startsWith('https://')
+}
+
+/** Auto-generate Ken Burns MP4 clip for caption (after PNG exists). */
+export async function ensureGeneratedPostClip(derivedContentId: string): Promise<string | null> {
+  if (!socialAnimationEnabled()) return null
+  try {
+    const result = await generatePostClip(derivedContentId)
+    return result.publicUrl
+  } catch (err) {
+    console.warn('[ensureGeneratedPostClip]', derivedContentId, err)
+    return null
+  }
+}
+
+/** Image + optional animated clip URLs for publish rows. */
+export async function ensureGeneratedPostMedia(derivedContentId: string): Promise<string[]> {
+  const imageUrls = await ensureGeneratedPostImage(derivedContentId)
+  const clipUrl = await ensureGeneratedPostClip(derivedContentId)
+  if (clipUrl && !imageUrls.includes(clipUrl)) {
+    return [...imageUrls, clipUrl]
+  }
+  return imageUrls
 }
 
 /** Auto-generate branded PNG for caption if no custom image set. */
@@ -60,7 +83,7 @@ export async function syncCaptionToSocial(
     throw new Error('SOCIAL_CAPTION bulunamadı')
   }
 
-  const mediaUrls = await ensureGeneratedPostImage(derivedContentId)
+  const mediaUrls = await ensureGeneratedPostMedia(derivedContentId)
   await syncPostRowsFromCaption(derivedContentId, caption.content, mediaUrls)
 
   if (!opts.publish) {
@@ -147,7 +170,7 @@ export async function publishCaptionWithImages(derivedContentId: string) {
 
 /** When caption text changes — update platform posts (delete old + publish new). */
 export async function updatePublishedSocialPosts(derivedContentId: string, postContent: string) {
-  const mediaUrls = await ensureGeneratedPostImage(derivedContentId)
+  const mediaUrls = await ensureGeneratedPostMedia(derivedContentId)
   await syncPostRowsFromCaption(derivedContentId, postContent, mediaUrls)
 
   const posts = await prisma.socialMediaPost.findMany({
@@ -183,6 +206,54 @@ export async function syncPostImagesFromCaptions() {
   return { captions: captions.length, postsUpdated, images }
 }
 
+/** Backfill animated clips gradually (expensive — Ken Burns via ffmpeg). */
+export async function syncPostClipsFromCaptions(limit = 5) {
+  if (!socialAnimationEnabled()) {
+    return { processed: 0, clips: [] as Array<{ derivedContentId: string; clipUrl: string | null }> }
+  }
+
+  const captions = await prisma.derivedContent.findMany({
+    where: {
+      contentType: 'SOCIAL_CAPTION',
+      status: { in: ['APPROVED', 'PUBLISHED'] },
+    },
+    take: limit * 4,
+    orderBy: { createdAt: 'desc' },
+  })
+
+  const pending = captions
+    .filter((c) => {
+      const meta =
+        c.metadata && typeof c.metadata === 'object'
+          ? (c.metadata as Record<string, unknown>)
+          : {}
+      const clipUrl = typeof meta.clipUrl === 'string' ? meta.clipUrl : ''
+      return !clipUrl.startsWith('http')
+    })
+    .slice(0, limit)
+
+  const clips: Array<{ derivedContentId: string; clipUrl: string | null }> = []
+  for (const caption of pending) {
+    const clipUrl = await ensureGeneratedPostClip(caption.id)
+    clips.push({ derivedContentId: caption.id, clipUrl })
+    if (clipUrl) {
+      const post = await prisma.socialMediaPost.findFirst({
+        where: { derivedContentId: caption.id },
+        select: { mediaUrls: true },
+      })
+      const urls = post?.mediaUrls?.length
+        ? [...post.mediaUrls.filter((u) => !u.includes('/video')), clipUrl]
+        : [clipUrl]
+      await prisma.socialMediaPost.updateMany({
+        where: { derivedContentId: caption.id },
+        data: { mediaUrls: urls },
+      })
+    }
+  }
+
+  return { processed: pending.length, clips }
+}
+
 /** Replace platform post (delete old + publish new) — same DB row. */
 export async function updatePostOnPlatform(postId: string) {
   const post = await prisma.socialMediaPost.findUnique({
@@ -192,7 +263,7 @@ export async function updatePostOnPlatform(postId: string) {
   if (!post) throw new Error('Post not found')
   if (!post.account.isActive) throw new Error('Hesap pasif')
 
-  const mediaUrls = await ensureGeneratedPostImage(post.derivedContentId)
+  const mediaUrls = await ensureGeneratedPostMedia(post.derivedContentId)
   await prisma.socialMediaPost.update({
     where: { id: postId },
     data: { mediaUrls },
