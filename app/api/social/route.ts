@@ -29,7 +29,6 @@ import {
   validateTikTokOAuthRedirect,
   tiktokCallbackUrl,
   tiktokLocalhostSetupHint,
-  tiktokOAuthRedirectMode,
 } from '@/lib/social/tiktokApi'
 
 export const dynamic = 'force-dynamic'
