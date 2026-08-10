@@ -12,10 +12,22 @@ TikTok entegrasyonu PR #28 ile eklendi. Dry-run kartı, env tanımlı değilse v
 | Local | **Desktop** | `http://localhost:3100/api/social/callback/tiktok` |
 | Prod | **Web** | `https://studio.egitim.today/api/social/callback/tiktok` |
 
-Web tab yalnızca `https://` kabul eder. Local `client_key` hatası genelde URI'nin Web tab'da veya Sandbox test hesabı eksik olmasından kaynaklanır.
+**Desktop kapalıysa:** App → **Settings** (veya Login Kit yapılandırması) → **Platforms** → **Desktop** kutusunu işaretleyin → kaydedin → Login Kit’te Desktop Redirect URI alanı açılır.
 
-3. **Content Posting API** etkinleştir
-4. **URL property doğrulama** — iki yol:
+Web tab yalnızca `https://` kabul eder. Local `client_key` hatası genelde URI’nin Web tab’da veya Sandbox test hesabı eksik olmasından kaynaklanır.
+
+3. **Sandbox** (review öncesi OAuth)
+
+Portal → uygulama → **Sandbox** sekmesi:
+
+1. **Add account** → TikTok ile giriş yapın (test edeceğiniz hesap)
+2. Login Kit redirect URI’leri Sandbox’ta da tanımlı olmalı (Desktop + Web)
+3. OAuth yalnızca bu Sandbox hesabıyla çalışır (review onaylanana kadar)
+
+Sandbox alanları boşsa: önce Desktop platformunu açın, redirect URI ekleyin, sonra Sandbox’a test hesabı ekleyin.
+
+4. **Content Posting API** etkinleştir
+5. **URL property doğrulama** — iki yol:
 
 ### A) Domain (önerilen — tek seferde tüm path'ler)
 
@@ -55,6 +67,9 @@ Aynı `TIKTOK_CLIENT_KEY` ve `TIKTOK_CLIENT_SECRET` **her iki yerde** de olmalı
 NEXT_PUBLIC_APP_URL=http://localhost:3100
 TIKTOK_CLIENT_KEY=your_client_key
 TIKTOK_CLIENT_SECRET=your_client_secret
+# Portal URI ile birebir (Desktop tab, sondaki / dahil):
+TIKTOK_CALLBACK_URL=http://localhost:3100/api/social/callback/tiktok/
+TIKTOK_REDIRECT_TRAILING_SLASH=true
 ```
 
 **Prod** (Vercel → Settings → Environment Variables → Production):
@@ -104,7 +119,8 @@ Vercel'de env ekledikten sonra **Redeploy** gerekir.
 ## 6. Sorun giderme
 
 - **dry-run** → env eksik veya `npm run dev` restart gerekli
-- **client_key (local)** → URI **Desktop** tab'da mı? Sandbox test hesabı eklendi mi? Portal URI = `oauthSlot.callbackUrl` birebir
+- **client_key (local)** → Desktop platform açık mı? URI Desktop tab’da mı? Sandbox test hesabı eklendi mi?
+- **studio.egitim.today açılmıyor (NXDOMAIN)** → DNS: `studio` CNAME → `cname.vercel-dns.com` (Vercel → Domains). Son deploy başarılı olmalı.
 - **Redirect URI mismatch** → portal URI = callback birebir (sondaki `/` dahil; gerekirse `TIKTOK_REDIRECT_TRAILING_SLASH=true`)
 - **OAuth not authorized** → Sandbox test user listesine hesap ekle
 - **Upload OK, feed'de yok** → onaysız mod: TikTok app → Inbox

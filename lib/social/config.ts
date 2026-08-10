@@ -1,6 +1,13 @@
 /** Which OAuth platforms have client credentials in env (no secrets exposed). */
 import { metaConfigured, metaCallbackUrl, metaOAuthScopes, metaAppId } from './metaApi'
-import { tiktokConfigured, tiktokCallbackUrl, tiktokOAuthScopes, tiktokClientKey } from './tiktokApi'  // YENİ
+import {
+  tiktokConfigured,
+  tiktokCallbackUrl,
+  tiktokOAuthScopes,
+  tiktokClientKey,
+  tiktokOAuthRedirectMode,
+  tiktokLocalhostSetupHint,
+} from './tiktokApi'
 
 export function oauthPlatformStatus() {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3100'
