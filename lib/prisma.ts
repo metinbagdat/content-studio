@@ -38,8 +38,13 @@ function databaseUrl(): string {
     if (isNextBuildPhase()) return BUILD_PLACEHOLDER_URL
     throw new Error('DATABASE_URL must start with postgresql:// or postgres://')
   }
-  const limit = process.env.PRISMA_CONNECTION_LIMIT?.trim() || '5'
+  const isVercel = Boolean(process.env.VERCEL)
+  const defaultLimit = isVercel ? '1' : '5'
+  const limit = process.env.PRISMA_CONNECTION_LIMIT?.trim() || defaultLimit
   let out = appendQueryParam(url, 'connection_limit', limit)
+  if (/:6543\//.test(url) || process.env.DATABASE_PGBOUNCER === 'true') {
+    out = appendQueryParam(out, 'pgbouncer', 'true')
+  }
   out = appendQueryParam(out, 'connect_timeout', '15')
   out = appendQueryParam(out, 'pool_timeout', '30')
   return out
