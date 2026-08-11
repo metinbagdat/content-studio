@@ -95,3 +95,34 @@ Medya URL'leri (`/api/media/...`) üretildiği ortamın `NEXT_PUBLIC_APP_URL`'in
 - [ ] Prod deploy — `main` merge → GitHub Actions → Vercel
 
 Detay: [OAUTH_CALLBACKS_PRODUCTION.md](./OAUTH_CALLBACKS_PRODUCTION.md), [TIKTOK_SETUP.md](./TIKTOK_SETUP.md)
+
+## Local-first üretim (Supabase kota)
+
+Medya dosyaları **Supabase Storage'a gitmez** — `storage/images`, `storage/videos`, `storage/audio` yerel diskte kalır. DB yalnızca taslak/metin/OAuth token metadata tutar.
+
+Kota uyarısı genelde org düzeyinde (disk, egress, bağlantı). Prod'da ağır işleri kapatın, üretim + yayını local'den yapın:
+
+| Ortam | Rol |
+|-------|-----|
+| **Local** (`npm run dev` + `npm run worker`) | Video/klip/podcast üretimi, toplu yayın, Facebook/LinkedIn/YouTube |
+| **Prod** (`studio.egitim.today`) | OAuth callback, Instagram (localhost URL erişemez), isteğe bağlı okuma |
+
+**Vercel Production env (kota için öneri):**
+
+```env
+SOCIAL_AUTOPILOT=false
+SOCIAL_AUTO_PUBLISH=false
+DISCOVERY_CRON_ENABLED=false
+```
+
+Günlük cron (`/api/cron/daily`) yalnızca `CRON_SECRET` tanımlıysa çalışır — prod'da tanımlamayın veya `SOCIAL_AUTOPILOT=false` ile sınırlayın.
+
+**Local akış:**
+
+1. `.env.local` → `NEXT_PUBLIC_APP_URL=http://localhost:3100`
+2. Terminal 1: `npm run dev` — Terminal 2: `npm run worker`
+3. `/admin/social` → görsel/klip/video üret → **Şimdi yayınla**
+4. Facebook 403 → `.env.local`: `META_OAUTH_PUBLISH=true`, `META_LOGIN_CONFIG_ID_PUBLISH=919581157862599` → Facebook **Kes** → **OAuth bağla**
+5. YouTube ffprobe hatası → dev sunucuyu yeniden başlatın (`npm run dev:clean`)
+
+**Prod admin paneli:** Vercel'deki `ADMIN_API_KEY` ile giriş — `admin123` prod'da çalışmaz.

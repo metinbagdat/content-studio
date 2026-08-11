@@ -1,9 +1,9 @@
 import { readdir, mkdir, access } from 'fs/promises'
 import path from 'path'
-import ffmpegPath from 'ffmpeg-static'
 import ffmpeg from 'fluent-ffmpeg'
+import { configureFfmpeg } from '@/lib/media/ffmpegPaths'
 
-if (ffmpegPath) ffmpeg.setFfmpegPath(ffmpegPath)
+configureFfmpeg()
 
 function musicLibraryDir(): string {
   return path.join(process.cwd(), 'storage', 'music-library')

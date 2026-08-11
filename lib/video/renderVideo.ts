@@ -1,10 +1,10 @@
-import ffmpegPath from 'ffmpeg-static'
 import ffmpeg from 'fluent-ffmpeg'
 import { mkdir, writeFile, rm } from 'fs/promises'
 import path from 'path'
+import { configureFfmpeg } from '@/lib/media/ffmpegPaths'
 import { videoWorkDir } from './videoStorage'
 
-if (ffmpegPath) ffmpeg.setFfmpegPath(ffmpegPath)
+configureFfmpeg()
 
 export type AspectRatio = '16:9' | '9:16' | '1:1'
 

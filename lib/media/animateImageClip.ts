@@ -1,9 +1,9 @@
-import ffmpegPath from 'ffmpeg-static'
 import ffmpeg from 'fluent-ffmpeg'
+import { configureFfmpeg } from '@/lib/media/ffmpegPaths'
 import type { AspectRatio } from '../video/renderVideo'
 import { dimensionsForAspect } from '../video/renderVideo'
 
-if (ffmpegPath) ffmpeg.setFfmpegPath(ffmpegPath)
+configureFfmpeg()
 
 export function aspectFromDimensions(width: number, height: number): AspectRatio {
   const ratio = width / height

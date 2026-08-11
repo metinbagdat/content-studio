@@ -1,14 +1,14 @@
 import { unlink, mkdtemp, writeFile, rm, readFile } from 'fs/promises'
 import { tmpdir } from 'os'
 import path from 'path'
-import ffmpegPath from 'ffmpeg-static'
 import ffmpeg from 'fluent-ffmpeg'
+import { configureFfmpeg } from '@/lib/media/ffmpegPaths'
 import { prisma } from '../prisma'
 import { extractPodcastSpeechParts, estimateSpeechDurationSec } from './podcastText'
 import { synthesizeSpeech, writeAudioFile, ttsModeLabel, audioDiskPath, audioStorageDir } from './tts'
 import { fetchBackgroundMusic } from '../video/pixabayMusic'
 
-if (ffmpegPath) ffmpeg.setFfmpegPath(ffmpegPath)
+configureFfmpeg()
 
 export { getMediaFile, listMedia } from './mediaDb'
 

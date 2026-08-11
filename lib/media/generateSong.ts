@@ -1,5 +1,5 @@
-import ffmpegPath from 'ffmpeg-static'
 import ffmpeg from 'fluent-ffmpeg'
+import { configureFfmpeg } from '@/lib/media/ffmpegPaths'
 import path from 'path'
 import { prisma } from '../prisma'
 import { synthesizeSpeech } from './tts'
@@ -7,7 +7,7 @@ import { audioStorageDir, writeAudioFile, audioDiskPath } from './tts'
 import { ttsPronunciation } from './pronunciation'
 import { fetchBackgroundMusic } from '../video/pixabayMusic'
 
-if (ffmpegPath) ffmpeg.setFfmpegPath(ffmpegPath)
+configureFfmpeg()
 
 function mixVoiceAndMusic(voicePath: string, musicPath: string, outputPath: string): Promise<void> {
   return new Promise((resolve, reject) => {

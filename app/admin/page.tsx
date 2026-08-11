@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { adminApiErrorMessage } from '@/lib/adminApiHint'
 import { DEFAULT_ADMIN_API_KEY } from '@/lib/adminKey'
 import {
   DEFAULT_PIPELINE_PLATFORMS,
@@ -65,7 +66,7 @@ export default function AdminPipelinePage() {
     ])
     if (!sRes.ok || !pRes.ok) {
       setMsgError(true)
-      setMsg(`Yetkisiz veya API hatası — ADMIN_API_KEY = ${DEFAULT_ADMIN_API_KEY} olmalı`)
+      setMsg(adminApiErrorMessage([sRes.status, pRes.status]))
       return
     }
     const s = await sRes.json()

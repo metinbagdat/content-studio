@@ -1,12 +1,12 @@
 import { mkdir, writeFile, rm, readFile } from 'fs/promises'
 import path from 'path'
-import ffmpegPath from 'ffmpeg-static'
 import ffmpeg from 'fluent-ffmpeg'
+import { configureFfmpeg } from '@/lib/media/ffmpegPaths'
 import { synthesizeSpeech, audioDiskPath } from './tts'
 import { sanitizeSpeechText } from './speechText'
 import { getAudioDurationSec } from '../video/audioDuration'
 
-if (ffmpegPath) ffmpeg.setFfmpegPath(ffmpegPath)
+configureFfmpeg()
 
 const DEFAULT_PAUSE_SEC = 1.2
 const DEFAULT_OUTRO_PAD_SEC = 3
