@@ -9,8 +9,7 @@ function appendQueryParam(url: string, key: string, value: string): string {
 }
 
 function normalizeDatabaseUrl(raw: string): string {
-  let url = raw.trim()
-  // Vercel UI: users often paste .env lines or wrap in quotes
+  let url = raw.trim().replace(/^\uFEFF/, '')
   if (url.startsWith('DATABASE_URL=')) url = url.slice('DATABASE_URL='.length).trim()
   if (
     (url.startsWith('"') && url.endsWith('"')) ||
@@ -21,12 +20,22 @@ function normalizeDatabaseUrl(raw: string): string {
   return url
 }
 
+const BUILD_PLACEHOLDER_URL = 'postgresql://build:build@127.0.0.1:5432/postgres?schema=public'
+
+function isNextBuildPhase(): boolean {
+  return process.env.NEXT_PHASE === 'phase-production-build'
+}
+
 /** Supabase session pooler (~15 total) — budget per Node process (dev + worker ≈ 10). */
 function databaseUrl(): string {
   const raw = process.env.DATABASE_URL
-  if (!raw?.trim()) throw new Error('DATABASE_URL is not set')
+  if (!raw?.trim()) {
+    if (isNextBuildPhase()) return BUILD_PLACEHOLDER_URL
+    throw new Error('DATABASE_URL is not set')
+  }
   const url = normalizeDatabaseUrl(raw)
   if (!/^postgres(ql)?:\/\//i.test(url)) {
+    if (isNextBuildPhase()) return BUILD_PLACEHOLDER_URL
     throw new Error('DATABASE_URL must start with postgresql:// or postgres://')
   }
   const limit = process.env.PRISMA_CONNECTION_LIMIT?.trim() || '5'

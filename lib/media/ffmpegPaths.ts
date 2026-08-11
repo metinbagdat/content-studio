@@ -1,24 +1,29 @@
-import { createRequire } from 'module'
 import { existsSync } from 'fs'
+import { arch, platform } from 'os'
 import path from 'path'
 import ffmpeg from 'fluent-ffmpeg'
 
 let configured = false
 
-function resolvePkgBinary(pkg: string): string | null {
-  try {
-    const require = createRequire(path.join(process.cwd(), 'package.json'))
-    const mod = require(pkg) as { path?: string; default?: { path?: string } }
-    const candidates = [mod?.path, mod?.default?.path].filter(
-      (p): p is string => typeof p === 'string' && p.length > 0,
-    )
-    for (const p of candidates) {
-      if (existsSync(p)) return p
-    }
-  } catch {
-    /* package missing at runtime */
-  }
-  return null
+function binaryRelPath(exe: string): string {
+  const os = platform()
+  const cpu = arch() === 'x64' ? 'x64' : arch()
+  if (os === 'win32') return path.join('bin', 'win32', cpu, exe)
+  if (os === 'darwin') return path.join('bin', os, cpu, exe)
+  return path.join('bin', 'linux', cpu, exe)
+}
+
+function resolvePkgBinary(pkg: 'ffmpeg-static' | 'ffprobe-static'): string | null {
+  const exe =
+    pkg === 'ffmpeg-static'
+      ? platform() === 'win32'
+        ? 'ffmpeg.exe'
+        : 'ffmpeg'
+      : platform() === 'win32'
+        ? 'ffprobe.exe'
+        : 'ffprobe'
+  const candidate = path.join(process.cwd(), 'node_modules', pkg, binaryRelPath(exe))
+  return existsSync(candidate) ? candidate : null
 }
 
 /** Idempotent — resolves binaries from node_modules (Next vendor-chunks break ffprobe paths). */
