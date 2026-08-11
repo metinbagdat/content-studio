@@ -2,10 +2,23 @@ import { createHash } from 'crypto'
 
 const PROD_APP_URL = 'https://studio.egitim.today'
 
+function normalizeDatabaseUrl(raw: string): string {
+  let url = raw.trim()
+  if (url.startsWith('DATABASE_URL=')) url = url.slice('DATABASE_URL='.length).trim()
+  if (
+    (url.startsWith('"') && url.endsWith('"')) ||
+    (url.startsWith("'") && url.endsWith("'"))
+  ) {
+    url = url.slice(1, -1).trim()
+  }
+  return url
+}
+
 /** Stable hash of DB host + database name — same value on local & prod when sharing Supabase. */
 export function databaseFingerprint(): string | null {
-  const url = process.env.DATABASE_URL?.trim()
-  if (!url) return null
+  const raw = process.env.DATABASE_URL?.trim()
+  if (!raw) return null
+  const url = normalizeDatabaseUrl(raw)
   try {
     const normalized = url.replace(/^postgresql:/, 'http:')
     const u = new URL(normalized)
