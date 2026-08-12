@@ -19,5 +19,8 @@ Open GitHub issues from bodies below when the Issues API is available. Until the
 | [10-image-resize.md](./issue-bodies/10-image-resize.md) | CS-10 | Resize |
 | [11-platform-captions.md](./issue-bodies/11-platform-captions.md) | CS-02 | All-platform captions |
 | [12-infographic-format.md](./issue-bodies/12-infographic-format.md) | CS-11 | Infographic text format |
+| [13-sm-marketing-automation-epic.md](./issue-bodies/13-sm-marketing-automation-epic.md) | CS-SM-EPIC | SM marketing automation → [#31](https://github.com/metinbagdat/content-studio/issues/31) |
+| [14-meta-app-review-sandbox.md](./issue-bodies/14-meta-app-review-sandbox.md) | CS-SM-00 | Meta App Review / sandbox → [#32](https://github.com/metinbagdat/content-studio/issues/32) |
+| [15-audience-segmentation.md](./issue-bodies/15-audience-segmentation.md) | CS-SM-01 | Audience segments → [#33](https://github.com/metinbagdat/content-studio/issues/33) |
 
 LearnCon growth (referral, onboarding, SEO site, payments): **not** opened here — see `docs/ROADMAP.md` section B → `metinbagdat/learncon`.
