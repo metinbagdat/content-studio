@@ -14,10 +14,11 @@ export async function GET() {
   } catch (err) {
     db = 'down'
     const msg = err instanceof Error ? err.message : String(err)
-    if (/Authentication failed|P1000/i.test(msg)) dbError = 'auth_failed'
+    if (/ECIRCUITBREAKER|too many authentication failures/i.test(msg)) dbError = 'circuit_breaker'
+    else if (/Authentication failed|P1000/i.test(msg)) dbError = 'auth_failed'
     else if (/Can't reach|P1001/i.test(msg)) dbError = 'unreachable'
     else if (/timed out|P1002/i.test(msg)) dbError = 'timeout'
-    else if (/quota|exceeded|restricted/i.test(msg)) dbError = 'quota'
+    else if (/quota|exceeded|restricted|EMAXCONNSESSION|max clients/i.test(msg)) dbError = 'quota'
     else dbError = 'unknown'
   }
   return NextResponse.json({
