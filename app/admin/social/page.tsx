@@ -190,29 +190,46 @@ export default function SocialPage() {
   }, [adminKey])
 
   async function bulkPublish(includeDryRun: boolean) {
+    const batchLimit = 50
     setBulkPublishBusy(true)
     setMsgType('info')
-    setMsg('Toplu yayınlama çalışıyor…')
-    const res = await fetch('/api/social', {
-      method: 'POST',
-      headers: headers(adminKey, true),
-      body: JSON.stringify({ action: 'bulk-publish', includeDryRun }),
-    })
-    const data = await parseApiJson(res)
-    setBulkPublishBusy(false)
-    if (!res.ok) {
+    setMsg(`Toplu yayınlama çalışıyor (max ${batchLimit}/tur)…`)
+    try {
+      const res = await fetch('/api/social', {
+        method: 'POST',
+        headers: headers(adminKey, true),
+        body: JSON.stringify({
+          action: 'bulk-publish',
+          includeDryRun,
+          platform: 'FACEBOOK',
+          limit: batchLimit,
+        }),
+      })
+      const data = await parseApiJson(res)
+      if (!res.ok) {
+        setMsgType('error')
+        setMsg(String(data.error || 'Toplu yayın başarısız'))
+        return
+      }
+      const r = data.result as
+        | { attempted: number; published: number; skipped: number; failed: number; errors: string[] }
+        | undefined
+      setMsgType(r?.failed ? 'error' : 'ok')
+      setMsg(
+        `Toplu yayın (FB, max ${batchLimit}): ${r?.published ?? 0} yayınlandı · ${r?.skipped ?? 0} atlandı · ${r?.failed ?? 0} başarısız` +
+          (r?.errors?.length ? ` — ${r.errors[0]}` : '') +
+          ' · Kalan için tekrar tıklayın',
+      )
+      setDiagnostics((data.diagnostics as DraftDiagnostics) || null)
+      await load()
+    } catch (err) {
       setMsgType('error')
-      setMsg(String(data.error || 'Toplu yayın başarısız'))
-      return
+      setMsg(
+        `Sunucuya ulaşılamadı (timeout / dev yeniden başladı). Meta hız limiti varsa 30–60 dk bekleyin; sonra Facebook kartındaki «Toplu yayınla» ile tekrar deneyin. (${err instanceof Error ? err.message : String(err)})`,
+      )
+    } finally {
+      setBulkPublishBusy(false)
     }
-    const r = data.result as { attempted: number; published: number; skipped: number; failed: number; errors: string[] } | undefined
-    setMsgType(r?.failed ? 'error' : 'ok')
-    setMsg(
-      `Toplu yayın: ${r?.published ?? 0} yayınlandı · ${r?.skipped ?? 0} atlandı · ${r?.failed ?? 0} başarısız` +
-        (r?.errors?.length ? ` — ${r.errors[0]}` : ''),
-    )
-    setDiagnostics((data.diagnostics as DraftDiagnostics) || null)
-    await load()
   }
 
   async function bulkPublishPlatform(platform: string) {
@@ -228,10 +245,11 @@ export default function SocialPage() {
       setMsg('Yayınlanacak taslak yok')
       return
     }
+    const batchLimit = 50
     if (
       !confirm(
         `${platform}: ${count} taslak${includeDryRun ? ' (dry-run dahil)' : ''} yayınlanacak. Devam?` +
-          (count > 25 ? ' (max 25/durak — kalan için tekrar tıklayın)' : ''),
+          (count > batchLimit ? ` (max ${batchLimit}/durak — kalan için tekrar tıklayın)` : ''),
       )
     ) {
       return
@@ -244,7 +262,7 @@ export default function SocialPage() {
       const res = await fetch('/api/social', {
         method: 'POST',
         headers: headers(adminKey, true),
-        body: JSON.stringify({ action: 'bulk-publish', includeDryRun, platform, limit: 25 }),
+        body: JSON.stringify({ action: 'bulk-publish', includeDryRun, platform, limit: batchLimit }),
       })
       const data = await parseApiJson(res)
       if (!res.ok) {
@@ -257,7 +275,7 @@ export default function SocialPage() {
       setMsg(
         `${platform}: ${r?.published ?? 0} yayınlandı · ${r?.skipped ?? 0} atlandı · ${r?.failed ?? 0} hata` +
           (r?.errors?.length ? ` — ${r.errors[0]}` : '') +
-          (count > 25 ? ' · Kalan taslaklar için tekrar tıklayın' : ''),
+          (count > batchLimit ? ' · Kalan taslaklar için tekrar tıklayın' : ''),
       )
       setDiagnostics((data.diagnostics as DraftDiagnostics) || null)
       await load()

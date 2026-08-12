@@ -32,6 +32,8 @@ import {
 } from '@/lib/social/tiktokApi'
 
 export const dynamic = 'force-dynamic'
+/** Bulk publish can take minutes (Meta gap + uploads). Local/dev: long; Vercel Hobby still caps ~60s. */
+export const maxDuration = 300
 
 export async function GET(req: NextRequest) {
   if (!requireAdmin(req)) {

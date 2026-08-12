@@ -92,6 +92,12 @@ export function parseMetaApiError(status: number, body: string, context = 'Meta'
         'Sosyal → Facebook → Kes → OAuth bağla (yayın config ile yeniden yetkilendir).'
       )
     }
+    if (/belirli bir süre|spam|ne sıklıkta/i.test(message)) {
+      return (
+        `Facebook hız/spam limiti (${status}). ` +
+        'Kısa sürede çok post atıldı — 30–60 dk bekleyip tekrar deneyin (batch arası otomatik yavaşlatıldı).'
+      )
+    }
     if (message.includes('No permission to publish the video')) {
       return (
         `Facebook video yayını izni yok (${status}). ` +

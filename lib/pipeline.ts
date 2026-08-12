@@ -534,6 +534,8 @@ export async function bulkPublishDraftPosts(
   const result: BulkPublishResult = { attempted: 0, published: 0, skipped: 0, failed: 0, errors: [] }
   const { publishPost } = await import('./social/publish')
   const maxAttempts = options.limit && options.limit > 0 ? options.limit : undefined
+  // Meta spam/rate limits: pause between Facebook/IG publishes
+  const metaGapMs = Number(process.env.META_BULK_PUBLISH_GAP_MS?.trim() || '2500')
 
   for (const post of posts) {
     if (maxAttempts != null && result.attempted >= maxAttempts) break
@@ -551,6 +553,14 @@ export async function bulkPublishDraftPosts(
       continue
     }
 
+    if (
+      result.attempted > 0 &&
+      metaGapMs > 0 &&
+      (post.platform === 'FACEBOOK' || post.platform === 'INSTAGRAM')
+    ) {
+      await new Promise((r) => setTimeout(r, metaGapMs))
+    }
+
     result.attempted += 1
     try {
       await preparePostForPublish(post.id)
@@ -564,6 +574,11 @@ export async function bulkPublishDraftPosts(
       result.failed += 1
       const msg = err instanceof Error ? err.message : String(err)
       result.errors.push(`${post.platform} ${post.id.slice(0, 8)}: ${msg}`)
+      // Meta temporary spam block — stop this batch early
+      if (/belirli bir süre|spam|rate.?limit|#4\b|code.?4/i.test(msg)) {
+        result.errors.push('Meta hız limiti — batch durdu; 30–60 dk sonra tekrar deneyin')
+        break
+      }
     }
   }
 
