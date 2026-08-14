@@ -1,0 +1,48 @@
+name: Set prod egress guards
+
+# One-shot: Hobby egress — disable discovery/analytics/autopilot on Vercel Production.
+on:
+  workflow_dispatch:
+
+jobs:
+  set-env:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Upsert Production env
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ secrets.CONTENT_STUDIO_VERCEL_PROJECT_ID }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+        run: |
+          set -euo pipefail
+          test -n "${VERCEL_TOKEN:-}" || { echo "Missing VERCEL_TOKEN"; exit 1; }
+          test -n "${VERCEL_PROJECT_ID:-}" || { echo "Missing CONTENT_STUDIO_VERCEL_PROJECT_ID"; exit 1; }
+
+          TEAM_QS=""
+          if [ -n "${VERCEL_ORG_ID:-}" ]; then
+            TEAM_QS="&teamId=${VERCEL_ORG_ID}"
+          fi
+
+          upsert() {
+            local key="$1"
+            local value="$2"
+            echo "Upsert $key=$value (production)"
+            curl -sS -X POST \
+              "https://api.vercel.com/v10/projects/${VERCEL_PROJECT_ID}/env?upsert=true${TEAM_QS}" \
+              -H "Authorization: Bearer ${VERCEL_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -d "{\"key\":\"${key}\",\"value\":\"${value}\",\"type\":\"plain\",\"target\":[\"production\"]}" \
+              | tee /tmp/vercel-env-out.json
+            echo
+            if grep -qiE '"error"|Unauthorized|forbidden' /tmp/vercel-env-out.json; then
+              echo "Failed upserting $key"
+              exit 1
+            fi
+          }
+
+          upsert DISCOVERY_CRON_ENABLED false
+          upsert ANALYTICS_SYNC_ENABLED false
+          upsert SOCIAL_AUTOPILOT false
+          upsert SOCIAL_AUTO_PUBLISH false
+
+          echo "OK — Production egress guards set"

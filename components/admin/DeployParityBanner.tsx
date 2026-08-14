@@ -12,6 +12,8 @@ type Parity = {
   gitCommit: string | null
   environment: string
   sharedDataNote: string
+  dbHost?: 'supabase' | 'local'
+  egressWarning?: string | null
 }
 
 export function DeployParityBanner({ adminKey }: { adminKey: string }) {
@@ -32,14 +34,15 @@ export function DeployParityBanner({ adminKey }: { adminKey: string }) {
 
   useEffect(() => {
     load()
-    const t = setInterval(load, 60_000)
+    const t = setInterval(load, 5 * 60_000)
     return () => clearInterval(t)
   }, [load])
 
   if (!parity) return null
 
   const envLabel = parity.isProduction ? 'Production' : 'Local dev'
-  const dbOk = parity.databaseFingerprint && parity.databaseSynced
+  const egressRisk = Boolean(parity.egressWarning)
+  const dbOk = parity.databaseFingerprint && parity.databaseSynced && !egressRisk
 
   return (
     <section
@@ -50,17 +53,21 @@ export function DeployParityBanner({ adminKey }: { adminKey: string }) {
         <span className={`badge ${parity.isProduction ? 'ok' : ''}`}>{envLabel}</span>
         <code className="deploy-parity-url">{parity.appUrl}</code>
         {parity.gitCommit ? <span className="muted">build {parity.gitCommit}</span> : null}
+        <span className={`badge ${parity.dbHost === 'supabase' && !parity.isProduction ? 'danger' : 'ok'}`}>
+          DB {parity.dbHost === 'supabase' ? 'Supabase' : 'local'}
+        </span>
         {parity.databaseFingerprint ? (
           <span className={dbOk ? 'badge ok' : 'badge danger'} title={parity.sharedDataNote}>
-            DB {parity.databaseFingerprint}
-            {dbOk ? ' · paylaşımlı' : ' · fingerprint uyuşmuyor'}
+            {parity.databaseFingerprint}
+            {dbOk ? ' · ok' : ' · kontrol'}
           </span>
         ) : (
           <span className="badge danger">DATABASE_URL yok</span>
         )}
         {!parity.isProduction ? (
           <span className="muted deploy-parity-hint">
-            Prod: {parity.prodUrl} — aynı Supabase → workflow sayıları eşit kalır
+            {parity.egressWarning ||
+              `Günlük iş: Docker :5434 (sıfır egress). Prod: ${parity.prodUrl}`}
           </span>
         ) : null}
       </div>

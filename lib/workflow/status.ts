@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client'
 import { prisma } from '../prisma'
 import { socialPostPublicUrl } from '../social/postUrl'
 import { toImagePreviewPath } from '../social/imagePreview'
@@ -101,18 +102,30 @@ export async function getWorkflowSnapshot(): Promise<WorkflowSnapshot> {
       where: { status: 'PUBLISHED' },
       orderBy: { publishedAt: 'desc' },
       take: 10,
-      include: {
-        account: { select: { accountName: true, accountId: true, config: true } },
+      select: {
+        id: true,
+        platform: true,
+        publishedAt: true,
+        createdAt: true,
+        platformPostId: true,
+        mediaUrls: true,
+        account: { select: { accountName: true, accountId: true } },
       },
     }),
   ])
 
+  const previewRows =
+    recentPublished.length === 0
+      ? []
+      : await prisma.$queryRaw<Array<{ id: string; preview: string | null }>>`
+          SELECT id, LEFT("postContent", 140) AS preview
+          FROM "SocialMediaPost"
+          WHERE id IN (${Prisma.join(recentPublished.map((p) => Prisma.sql`${p.id}`))})
+        `
+  const previewById = new Map(previewRows.map((r) => [r.id, r.preview || '']))
+
   const publishedFeed: PublishedFeedItem[] = recentPublished.map((p) => {
-    const cfg =
-      p.account.config && typeof p.account.config === 'object'
-        ? (p.account.config as Record<string, unknown>)
-        : {}
-    const isDryRun = Boolean(cfg.dryRun) || p.account.accountId.startsWith('dryrun_')
+    const isDryRun = p.account.accountId.startsWith('dryrun_')
     const isMockPost = Boolean(p.platformPostId?.startsWith('mock_'))
     const platformLabel =
       p.platform === 'TWITTER' ? 'X' : p.platform === 'LINKEDIN' ? 'LinkedIn' : p.platform
@@ -122,7 +135,7 @@ export async function getWorkflowSnapshot(): Promise<WorkflowSnapshot> {
       platformLabel,
       publishedAt: (p.publishedAt || p.createdAt).toISOString(),
       publicUrl: socialPostPublicUrl(p.platform, p.platformPostId),
-      preview: p.postContent.slice(0, 140).replace(/\s+/g, ' ').trim(),
+      preview: (previewById.get(p.id) || '').replace(/\s+/g, ' ').trim(),
       accountName: p.account.accountName,
       isDryRun,
       isMockPost,

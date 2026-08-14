@@ -1,5 +1,7 @@
 # Supabase setup — Content Studio
 
+**Hobby egress:** local `npm run dev` + worker’ı session pooler’a bağlamak kotayı yer. Günlük iş için Docker `localhost:5434` — [LOCAL_AND_PROD.md](./LOCAL_AND_PROD.md).
+
 Second Supabase project for **Content Studio** (`C:\Users\mb\content-studio`), separate from LearnCon (`byghnzxatojxsmrgfcmq`).
 
 ## Current project (2026-07-21)

@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 /** Vercel Hobby: daily tick should finish under ~60s; full profile may need local worker. */
 export const maxDuration = 60
 
-const PROFILES: WorkerTickProfile[] = ['quick', 'daily', 'full']
+const PROFILES: WorkerTickProfile[] = ['quick', 'maintain', 'daily', 'full']
 
 export async function POST(req: NextRequest) {
   if (!requireAdmin(req)) {
@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}))
   const profile = String(body.profile || 'daily') as WorkerTickProfile
   if (!PROFILES.includes(profile)) {
-    return NextResponse.json({ error: 'profile quick|daily|full' }, { status: 400 })
+    return NextResponse.json({ error: 'profile quick|maintain|daily|full' }, { status: 400 })
   }
 
   const discoveryLimit = body.discoveryLimit != null ? Number(body.discoveryLimit) : undefined

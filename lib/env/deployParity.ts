@@ -39,6 +39,8 @@ export type DeployParityInfo = {
   gitCommit: string | null
   environment: string
   sharedDataNote: string
+  dbHost: 'supabase' | 'local'
+  egressWarning: string | null
 }
 
 export function getDeployParityInfo(): DeployParityInfo {
@@ -47,6 +49,8 @@ export function getDeployParityInfo(): DeployParityInfo {
   const fp = databaseFingerprint()
   const expected = process.env.DEPLOY_PARITY_DB_FINGERPRINT?.trim()
   const databaseSynced = Boolean(fp && (!expected || fp === expected))
+  const supabase = /supabase\.(co|com)|pooler\.supabase/i.test(process.env.DATABASE_URL || '')
+  const localAgainstSupabase = supabase && !process.env.VERCEL && !isProduction
 
   return {
     appUrl,
@@ -59,7 +63,12 @@ export function getDeployParityInfo(): DeployParityInfo {
       process.env.GIT_COMMIT?.slice(0, 7) ||
       null,
     environment: process.env.VERCEL_ENV || (isProduction ? 'production' : 'development'),
-    sharedDataNote:
-      'Aynı DATABASE_URL kullanıldığında local ve prod aynı workflow sayılarını görür (taslak, yayın, OAuth).',
+    sharedDataNote: localAgainstSupabase
+      ? 'Local → Supabase = Hobby egress. docker compose Postgres (localhost:5434) kullanın.'
+      : 'Prod Supabase; günlük local iş Docker :5434 (sıfır egress).',
+    dbHost: supabase ? 'supabase' : 'local',
+    egressWarning: localAgainstSupabase
+      ? 'npm run dev Supabase’e bağlı — 5GB Hobby egress kotasına yazılıyor. DATABASE_URL=postgresql://content:content@localhost:5434/content_studio'
+      : null,
   }
 }

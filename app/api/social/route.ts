@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import type { SocialPlatform } from '@prisma/client'
-import { prisma } from '@/lib/prisma'
+import { Prisma, type SocialPlatform } from '@prisma/client'
+import { prisma, withPrismaRetry } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/auth'
 import { schedulePost, syncSocialDraftsFromApprovedCaptions, bulkPublishDraftPosts } from '@/lib/pipeline'
 import { getDraftDiagnostics } from '@/lib/social/draftDiagnostics'
@@ -13,13 +13,13 @@ import { auditSocialAccounts, repairMissingSocialAccounts } from '@/lib/social/a
 import { getAuthUrl, upsertDryRunAccount, deactivateAccount } from '@/lib/social/oauth'
 import { oauthEnvCheck, oauthPlatformStatus } from '@/lib/social/config'
 import {
-  getAccountStatsFromConfig,
   getTopPerformingPosts,
   pickPreferredAccount,
   syncAccountStats,
   syncAllAccountStats,
   syncAllPublishedPostAnalytics,
 } from '@/lib/social/platformStats'
+import { loadAccountPublicRows } from '@/lib/social/accountPublic'
 import { getValidAccessToken } from '@/lib/social/tokenRefresh'
 import { testYouTubeConnection } from '@/lib/social/youtubeApi'
 import { syncYouTubeFromApprovedVideos } from '@/lib/social/youtubeBackfill'
@@ -50,13 +50,24 @@ export async function GET(req: NextRequest) {
 
 async function handleGet() {
   const [accounts, posts, accountHealth, diagnostics, topPerformers] = await Promise.all([
-    prisma.socialMediaAccount.findMany({ orderBy: { createdAt: 'desc' } }),
+    loadAccountPublicRows(),
     prisma.socialMediaPost.findMany({
       orderBy: { createdAt: 'desc' },
-      take: 150,
-      include: {
+      take: 80,
+      select: {
+        id: true,
+        platform: true,
+        status: true,
+        createdAt: true,
+        publishedAt: true,
+        scheduledAt: true,
+        platformPostId: true,
+        derivedContentId: true,
+        error: true,
+        mediaUrls: true,
+        metrics: true,
         account: {
-          select: { accountName: true, platform: true, isActive: true, accountId: true, config: true },
+          select: { accountName: true, platform: true, isActive: true, accountId: true },
         },
       },
     }),
@@ -64,6 +75,15 @@ async function handleGet() {
     getDraftDiagnostics(),
     getTopPerformingPosts(5),
   ])
+  const previewRows =
+    posts.length === 0
+      ? []
+      : await prisma.$queryRaw<Array<{ id: string; preview: string | null }>>`
+          SELECT id, LEFT("postContent", 160) AS preview
+          FROM "SocialMediaPost"
+          WHERE id IN (${Prisma.join(posts.map((p) => Prisma.sql`${p.id}`))})
+        `
+  const previewById = new Map(previewRows.map((r) => [r.id, r.preview || '']))
   return NextResponse.json({
     oauth: oauthPlatformStatus(),
     envCheck: oauthEnvCheck(),
@@ -71,11 +91,9 @@ async function handleGet() {
     diagnostics,
     topPerformers,
     accounts: accounts.map((a) => {
-      const cfg = a.config && typeof a.config === 'object' ? (a.config as Record<string, unknown>) : {}
-      const stats = getAccountStatsFromConfig(a.config)
       const username =
-        (typeof cfg.username === 'string' ? `@${cfg.username.replace(/^@/, '')}` : null) ||
-        stats?.username ||
+        (typeof a.username === 'string' ? `@${a.username.replace(/^@/, '')}` : null) ||
+        a.stats?.username ||
         (a.accountName.startsWith('@') ? a.accountName : null)
       return {
         id: a.id,
@@ -85,25 +103,22 @@ async function handleGet() {
         accountId: a.accountId,
         isActive: a.isActive,
         lastSyncAt: a.lastSyncAt,
-        dryRun: Boolean(cfg.dryRun) || a.accountId.startsWith('dryrun_'),
-        oauth: Boolean(cfg.oauth),
+        dryRun: a.dryRun,
+        oauth: a.oauth,
         tokenExpiry: a.tokenExpiry,
-        stats,
-        organizationId: typeof cfg.organizationId === 'string' ? cfg.organizationId : null,
-        linkedinAuthorUrn: typeof cfg.linkedinAuthorUrn === 'string' ? cfg.linkedinAuthorUrn : null,
+        stats: a.stats,
+        organizationId: a.organizationId,
+        linkedinAuthorUrn: a.linkedinAuthorUrn,
       }
     }),
     posts: posts.map((p) => {
       const m = readPublishMetrics(p.metrics)
       const analytics = (m as { analytics?: Record<string, unknown> }).analytics
-      const cfg =
-        p.account.config && typeof p.account.config === 'object'
-          ? (p.account.config as Record<string, unknown>)
-          : {}
-      const isDryRun = Boolean(cfg.dryRun) || p.account.accountId.startsWith('dryrun_')
+      const isDryRun = p.account.accountId.startsWith('dryrun_')
       const isMockPost = Boolean(p.platformPostId?.startsWith('mock_'))
       return {
         ...p,
+        postContent: previewById.get(p.id) || '',
         account: {
           accountName: p.account.accountName,
           platform: p.account.platform,
@@ -322,7 +337,12 @@ async function handleAction(action: string, body: Record<string, unknown>) {
       }
     }
     await syncAllPublishedPostAnalytics(30).catch(() => {})
-    const diagnostics = await getDraftDiagnostics()
+    let diagnostics = null
+    try {
+      diagnostics = await withPrismaRetry(() => getDraftDiagnostics())
+    } catch (err) {
+      console.warn('[bulk-publish diagnostics]', err)
+    }
     return NextResponse.json({ result, diagnostics })
   }
 

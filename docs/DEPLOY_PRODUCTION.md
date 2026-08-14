@@ -19,6 +19,13 @@ CRON_SECRET=<openssl rand -hex 32>
 BRAND_URL=https://www.egitim.today
 BRAND_NAME=egitim.today
 
+# Hobby egress — prod'da kapalı (local Docker + worker kullan)
+DISCOVERY_CRON_ENABLED=false
+ANALYTICS_SYNC_ENABLED=false
+SOCIAL_AUTOPILOT=false
+SOCIAL_AUTO_PUBLISH=false
+DISCOVERY_DAILY_LIMIT=2
+
 # OAuth — callback'ler otomatik: https://studio.egitim.today/api/social/callback/*
 X_CLIENT_ID=...
 X_CLIENT_SECRET=...
@@ -33,10 +40,9 @@ META_APP_SECRET=...
 META_LOGIN_CONFIG_ID=1680236466390744
 
 GROQ_API_KEY=...
-SOCIAL_AUTOPILOT=true
-SOCIAL_AUTO_PUBLISH=false
-DISCOVERY_DAILY_LIMIT=2
 ```
+
+`vercel.json` `crons: []` — günlük Vercel Cron kapalı (Supabase egress + Hobby cron kotası). Yeniden açmak için schedule ekle ve bayrakları bilinçli aç.
 
 OAuth provider konsollarında redirect URI'leri prod URL ile güncelle → **[OAUTH_CALLBACKS_PRODUCTION.md](./OAUTH_CALLBACKS_PRODUCTION.md)**
 
@@ -87,7 +93,7 @@ NEXT_PUBLIC_CONTENT_STUDIO_URL=https://studio.egitim.today/admin
 
 | Ne zaman | Ne yapılır |
 |----------|------------|
-| **06:00 TR** | Vercel cron → günlük bakım (otomatik) |
+| **Günlük** | Local worker veya Admin «Günlük bakım» (Vercel cron kapalı — egress) |
 | **Onay sonrası** | Takvimde zamanla veya «Şimdi yayınla» |
 | **Acil zamanlanmış** | Admin → «Zamanlanmışları yayınla» |
 | **Video üretimi** | Yerelde «Tam tur» veya `npm run worker` (opsiyonel) |

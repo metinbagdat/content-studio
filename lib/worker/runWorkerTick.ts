@@ -6,7 +6,7 @@ import { drainDuePosts } from '../social/publish'
 import { syncSocialDraftsFromApprovedCaptions } from '../pipeline'
 import { repairMissingSocialAccounts } from '../social/accountAudit'
 
-export type WorkerTickProfile = 'quick' | 'daily' | 'full'
+export type WorkerTickProfile = 'quick' | 'maintain' | 'daily' | 'full'
 
 export type WorkerTickOptions = {
   profile?: WorkerTickProfile
@@ -42,19 +42,25 @@ export async function runWorkerTick(options: WorkerTickOptions = {}): Promise<Wo
   let analytics: AnalyticsSyncResult | null = null
   let discovery: DiscoveryResult | null = null
 
-  const runPipeline = profile !== 'quick'
-  const runDiscovery = profile === 'daily' || profile === 'full'
+  const drainPipeline = profile !== 'quick'
+  const runDraftRepair = profile === 'daily' || profile === 'maintain'
+  const runAutopilot = profile === 'full' || profile === 'maintain'
+  const runAnalytics =
+    (profile === 'daily' || profile === 'full') && process.env.ANALYTICS_SYNC_ENABLED !== 'false'
+  const runDiscovery =
+    (profile === 'daily' || profile === 'full') && process.env.DISCOVERY_CRON_ENABLED !== 'false'
 
-  if (runPipeline) {
+  try {
+    publishJobs = await drainDbPublishJobs(profile === 'quick' ? 3 : profile === 'full' ? 5 : 3)
+  } catch (err) {
+    errors.push(`publishQueue: ${err instanceof Error ? err.message : String(err)}`)
+  }
+
+  if (drainPipeline) {
     try {
       pipelineJobs = await drainDbPipelineJobs(profile === 'full' ? 3 : 2)
     } catch (err) {
       errors.push(`pipeline: ${err instanceof Error ? err.message : String(err)}`)
-    }
-    try {
-      publishJobs = await drainDbPublishJobs(profile === 'full' ? 5 : 3)
-    } catch (err) {
-      errors.push(`publishQueue: ${err instanceof Error ? err.message : String(err)}`)
     }
   }
 
@@ -64,9 +70,7 @@ export async function runWorkerTick(options: WorkerTickOptions = {}): Promise<Wo
     errors.push(`duePosts: ${err instanceof Error ? err.message : String(err)}`)
   }
 
-  if (profile === 'quick') {
-    /* quick = scheduled publish only */
-  } else if (profile === 'daily') {
+  if (runDraftRepair) {
     try {
       await repairMissingSocialAccounts()
       const sync = await syncSocialDraftsFromApprovedCaptions({ skipImages: true })
@@ -74,20 +78,9 @@ export async function runWorkerTick(options: WorkerTickOptions = {}): Promise<Wo
     } catch (err) {
       errors.push(`drafts: ${err instanceof Error ? err.message : String(err)}`)
     }
-    try {
-      analytics = await runScheduledAnalyticsSync()
-    } catch (err) {
-      errors.push(`analytics: ${err instanceof Error ? err.message : String(err)}`)
-    }
-    if (runDiscovery) {
-      try {
-        const limit = options.discoveryLimit ?? Number(process.env.DISCOVERY_DAILY_LIMIT || 2)
-        discovery = await runContentDiscovery({ limit, triggerPipeline: true })
-      } catch (err) {
-        errors.push(`discovery: ${err instanceof Error ? err.message : String(err)}`)
-      }
-    }
-  } else {
+  }
+
+  if (runAutopilot && process.env.SOCIAL_AUTOPILOT !== 'false') {
     try {
       autopilot = await runSocialAutopilot(8)
       draftsSynced = autopilot.draftsSynced
@@ -95,18 +88,24 @@ export async function runWorkerTick(options: WorkerTickOptions = {}): Promise<Wo
     } catch (err) {
       errors.push(`autopilot: ${err instanceof Error ? err.message : String(err)}`)
     }
+  }
+
+  if (runAnalytics) {
     try {
       analytics = await runScheduledAnalyticsSync()
     } catch (err) {
       errors.push(`analytics: ${err instanceof Error ? err.message : String(err)}`)
     }
-    if (runDiscovery) {
-      try {
-        const limit = options.discoveryLimit ?? Number(process.env.DISCOVERY_DAILY_LIMIT || 3)
-        discovery = await runContentDiscovery({ limit, triggerPipeline: true })
-      } catch (err) {
-        errors.push(`discovery: ${err instanceof Error ? err.message : String(err)}`)
-      }
+  }
+
+  if (runDiscovery) {
+    try {
+      const limit =
+        options.discoveryLimit ??
+        Number(process.env.DISCOVERY_DAILY_LIMIT || (profile === 'daily' ? 2 : 3))
+      discovery = await runContentDiscovery({ limit, triggerPipeline: true })
+    } catch (err) {
+      errors.push(`discovery: ${err instanceof Error ? err.message : String(err)}`)
     }
   }
 

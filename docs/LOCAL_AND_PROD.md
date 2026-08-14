@@ -16,23 +16,21 @@ Evet — **Vercel env = Environment Variables**. Production ortamına ekleyin; r
 ```
 ┌─────────────────────┐     ┌──────────────────────────┐
 │ localhost:3100      │     │ studio.egitim.today      │
-│ NEXT_PUBLIC_APP_URL │     │ NEXT_PUBLIC_APP_URL=prod │
-│ .env.local          │     │ Vercel env variables     │
-└─────────┬───────────┘     └────────────┬─────────────┘
-          │                              │
-          └──────────┬───────────────────┘
-                     ▼
-            Aynı DATABASE_URL (Supabase)
-            → taslak, OAuth, yayın paylaşılır
+│ Docker Postgres     │     │ Vercel + Supabase        │
+│ :5434 (günlük iş)   │     │ (OAuth + prod yayın)     │
+└─────────────────────┘     └──────────────────────────┘
 ```
+
+Aynı Supabase URL’yi local + prod paylaşmak **Hobby egress kotasını yer** (DB → senin PC’ne giden her satır). Günlük `npm run dev` için local Docker kullan.
 
 ## Yerel kurulum (öncelik)
 
-1. `.env.example` → `.env.local` kopyala, secret'ları doldur
-2. `NEXT_PUBLIC_APP_URL=http://localhost:3100`
-3. Terminal 1: `npm run dev`
-4. Terminal 2: `npm run worker` (zamanlanmış yayın için)
-5. `/admin/social` → OAuth env satırları yeşil olmalı
+1. `docker compose up -d postgres`
+2. `.env` + `.env.local`: `DATABASE_URL=postgresql://content:content@localhost:5434/content_studio?schema=public`
+3. `npx prisma db push`
+4. `NEXT_PUBLIC_APP_URL=http://localhost:3100`
+5. Terminal 1: `npm run dev` — worker’ı yalnızca yayın varken aç
+6. `/admin/social` → OAuth env satırları yeşil olmalı
 
 ```powershell
 npm run env:parity   # DB fingerprint — isteğe bağlı banner doğrulama
@@ -45,7 +43,7 @@ Vercel → **Environment Variables** → **Production**:
 | Değişken | Local | Prod |
 |----------|-------|------|
 | `NEXT_PUBLIC_APP_URL` | `http://localhost:3100` | `https://studio.egitim.today` |
-| `DATABASE_URL` | aynı Supabase URL | **aynı** |
+| `DATABASE_URL` | `localhost:5434` (Docker) | Supabase session pooler |
 | `TOKEN_ENCRYPTION_KEY` | aynı (32+ char) | **aynı** (OAuth token decrypt) |
 | `X_CLIENT_ID` / `SECRET` | aynı | aynı |
 | `LINKEDIN_*` | aynı | aynı |
@@ -70,7 +68,7 @@ Local ve prod **aynı OAuth uygulamasını** kullanabilir; developer portalda **
 | Meta FB/IG | `http://localhost:3100/.../facebook` | `https://studio.egitim.today/...` |
 | TikTok | `http://localhost:3100/.../tiktok` | `https://studio.egitim.today/...` |
 
-OAuth'u **local'de önce** bağlayın; aynı DB'de prod da görür.
+OAuth’u prod DB’de bağlamak için geçici olarak Supabase URL kullanın, sonra local Docker’a dönün. Aksi halde local ve prod hesapları ayrılır.
 
 ## Platform bazlı local kısıtlar
 
@@ -98,24 +96,44 @@ Detay: [OAUTH_CALLBACKS_PRODUCTION.md](./OAUTH_CALLBACKS_PRODUCTION.md), [TIKTOK
 
 ## Local-first üretim (Supabase kota)
 
-Medya dosyaları **Supabase Storage'a gitmez** — `storage/images`, `storage/videos`, `storage/audio` yerel diskte kalır. DB yalnızca taslak/metin/OAuth token metadata tutar.
+**Egress = Supabase’ten çıkan trafik.** `npm run dev` / `npm run worker` `DATABASE_URL` Supabase ise her Prisma sorgusu (admin sayfası, 15s worker tick, analytics) Hobby 5 GB kotasına yazılır. Disk/MAU değil — senin 15 GB bu.
 
-Kota uyarısı genelde org düzeyinde (disk, egress, bağlantı). Prod'da ağır işleri kapatın, üretim + yayını local'den yapın:
+**14 Aug 2026 sonrası 402 olmaması için:**
+
+1. Local Postgres: `docker compose up -d postgres`
+2. `.env` + `.env.local`:
+   `DATABASE_URL=postgresql://content:content@localhost:5434/content_studio?schema=public`
+3. `npx prisma db push` (veya `npx prisma migrate deploy`)
+4. Worker’ı yalnızca yayın yaparken aç; sürekli açık tutma (özellikle eski `full` 15s tick)
+5. Prod Vercel’de kalsın: `SOCIAL_AUTOPILOT=false`, `DISCOVERY_CRON_ENABLED=false`, `ANALYTICS_SYNC_ENABLED=false`
+
+OAuth token / taslakları bir kez kopyalamak istersen (tek seferlik egress):
+
+```powershell
+# pg_dump + psql — şifre .env’deki Supabase URL’den
+```
+
+Medya dosyaları **Supabase Storage'a gitmez** — `storage/images`, `storage/videos`, `storage/audio` yerel diskte kalır.
+
+Kota uyarısı org düzeyinde (disk, egress, bağlantı). Prod'da ağır işleri kapatın, üretim + yayını local Docker’dan yapın:
 
 | Ortam | Rol |
 |-------|-----|
 | **Local** (`npm run dev` + `npm run worker`) | Video/klip/podcast üretimi, toplu yayın, Facebook/LinkedIn/YouTube |
 | **Prod** (`studio.egitim.today`) | OAuth callback, Instagram (localhost URL erişemez), isteğe bağlı okuma |
 
-**Vercel Production env (kota için öneri):**
+**Vercel Production env (kota için zorunlu):**
 
 ```env
 SOCIAL_AUTOPILOT=false
 SOCIAL_AUTO_PUBLISH=false
 DISCOVERY_CRON_ENABLED=false
+ANALYTICS_SYNC_ENABLED=false
 ```
 
-Günlük cron (`/api/cron/daily`) yalnızca `CRON_SECRET` tanımlıysa çalışır — prod'da tanımlamayın veya `SOCIAL_AUTOPILOT=false` ile sınırlayın.
+`vercel.json` → `crons: []` (Hobby günlük cron kapalı). Discovery / analytics yalnızca local worker’da, bayraklar `true` iken.
+
+Günlük cron route (`/api/cron/daily`) hâlâ kodda; yeniden açmak için `vercel.json`’a schedule ekle + yukarıdaki bayrakları bilinçli aç.
 
 **Local akış:**
 

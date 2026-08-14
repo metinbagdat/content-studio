@@ -58,3 +58,46 @@ export const prisma =
   })
 
 globalForPrisma.prisma = prisma
+
+/** True when Prisma talks to hosted Supabase (billed egress). Local Docker is not billed. */
+export function isSupabaseDatabaseUrl(raw = process.env.DATABASE_URL): boolean {
+  if (!raw?.trim()) return false
+  return /supabase\.(co|com)|pooler\.supabase/i.test(normalizeDatabaseUrl(raw))
+}
+
+if (isSupabaseDatabaseUrl() && !process.env.VERCEL) {
+  console.warn(
+    '[egress] DATABASE_URL is Supabase. Local `npm run dev` / `npm run worker` count toward Hobby 5GB egress. Use docker compose Postgres (localhost:5434) for daily work — see docs/LOCAL_AND_PROD.md',
+  )
+}
+
+export function isPrismaConnectionError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err)
+  return /Server has closed the connection|Can't reach database|Connection reset|P1017|P1001|P1002|ECONNRESET|max clients|EMAXCONNSESSION|ECIRCUITBREAKER/i.test(
+    msg,
+  )
+}
+
+export async function ensurePrismaConnected(): Promise<void> {
+  try {
+    await prisma.$queryRaw`SELECT 1`
+  } catch {
+    await prisma.$disconnect().catch(() => {})
+    await prisma.$connect()
+  }
+}
+
+export async function withPrismaRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
+  let last: unknown
+  for (let i = 0; i < attempts; i++) {
+    try {
+      if (i > 0) await ensurePrismaConnected()
+      return await fn()
+    } catch (err) {
+      last = err
+      if (!isPrismaConnectionError(err) || i === attempts - 1) throw err
+      await new Promise((r) => setTimeout(r, 400 * (i + 1)))
+    }
+  }
+  throw last
+}

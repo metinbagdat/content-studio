@@ -1,5 +1,4 @@
-import type { SocialMediaAccount, SocialPlatform } from '@prisma/client'
-import type { Prisma } from '@prisma/client'
+import { Prisma, type SocialMediaAccount, type SocialPlatform } from '@prisma/client'
 import { prisma } from '../prisma'
 import { linkedinAuthorUrn } from './config'
 import { getValidAccessToken } from './tokenRefresh'
@@ -687,7 +686,6 @@ export async function getTopPerformingPosts(limit = 5): Promise<TopPerformingPos
     select: {
       id: true,
       platform: true,
-      postContent: true,
       publishedAt: true,
       createdAt: true,
       platformPostId: true,
@@ -703,11 +701,21 @@ export async function getTopPerformingPosts(limit = 5): Promise<TopPerformingPos
     .filter((x): x is { post: (typeof posts)[number]; analytics: PostAnalytics } => Boolean(x.analytics))
 
   withAnalytics.sort((a, b) => (b.analytics.engagement ?? 0) - (a.analytics.engagement ?? 0))
+  const top = withAnalytics.slice(0, limit)
+  const previewById = new Map<string, string>()
+  if (top.length) {
+    const previewRows = await prisma.$queryRaw<Array<{ id: string; preview: string | null }>>`
+      SELECT id, LEFT("postContent", 160) AS preview
+      FROM "SocialMediaPost"
+      WHERE id IN (${Prisma.join(top.map((t) => Prisma.sql`${t.post.id}`))})
+    `
+    for (const r of previewRows) previewById.set(r.id, r.preview || '')
+  }
 
-  return withAnalytics.slice(0, limit).map(({ post, analytics }) => ({
+  return top.map(({ post, analytics }) => ({
     id: post.id,
     platform: post.platform,
-    postContent: post.postContent,
+    postContent: previewById.get(post.id) || '',
     publishedAt: (post.publishedAt || post.createdAt).toISOString(),
     platformPostId: post.platformPostId,
     engagement: analytics.engagement ?? 0,

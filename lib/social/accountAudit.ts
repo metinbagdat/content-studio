@@ -34,22 +34,36 @@ function platformLabel(platform: SocialPlatform): string {
   return platform === 'TWITTER' ? 'X' : platform === 'LINKEDIN' ? 'LinkedIn' : platform
 }
 
-function isDryRunAccount(accountId: string, config: unknown): boolean {
-  const cfg = config && typeof config === 'object' ? (config as Record<string, unknown>) : {}
-  return accountId.startsWith('dryrun_') || Boolean(cfg.dryRun)
-}
-
-function isOAuthAccount(config: unknown): boolean {
-  const cfg = config && typeof config === 'object' ? (config as Record<string, unknown>) : {}
-  return Boolean(cfg.oauth)
-}
-
 export async function auditSocialAccounts(): Promise<AccountAudit> {
   const oauth = oauthPlatformStatus()
-  const accounts = await prisma.socialMediaAccount.findMany({
-    where: { platform: { in: PUBLISH_PLATFORMS }, isActive: true },
-    orderBy: { updatedAt: 'desc' },
-  })
+  const accounts = await prisma.$queryRaw<
+    Array<{
+      id: string
+      platform: SocialPlatform
+      accountName: string
+      accountId: string
+      tokenExpiry: Date | null
+      dryRun: boolean
+      oauth: boolean
+      hasRefreshToken: boolean
+    }>
+  >`
+    SELECT
+      id,
+      platform,
+      "accountName",
+      "accountId",
+      "tokenExpiry",
+      (
+        COALESCE(config->>'dryRun', 'false') IN ('true', 't', '1')
+        OR "accountId" LIKE 'dryrun_%'
+      ) AS "dryRun",
+      COALESCE(config->>'oauth', 'false') IN ('true', 't', '1') AS oauth,
+      ("refreshToken" IS NOT NULL AND length("refreshToken") > 0) AS "hasRefreshToken"
+    FROM "SocialMediaAccount"
+    WHERE platform IN ('TWITTER', 'LINKEDIN') AND "isActive" = true
+    ORDER BY "updatedAt" DESC
+  `
 
   const failedByAccount = await prisma.socialMediaPost.groupBy({
     by: ['accountId'],
@@ -66,8 +80,8 @@ export async function auditSocialAccounts(): Promise<AccountAudit> {
     const oauthConfigured =
       platform === 'TWITTER' ? oauth.twitter.configured : oauth.linkedin.configured
     const platformAccounts = accounts.filter((a) => a.platform === platform)
-    const real = platformAccounts.find((a) => !isDryRunAccount(a.accountId, a.config))
-    const dry = platformAccounts.find((a) => isDryRunAccount(a.accountId, a.config))
+    const real = platformAccounts.find((a) => !a.dryRun)
+    const dry = platformAccounts.find((a) => a.dryRun)
     const active = real || dry
 
     if (!active) {
@@ -85,8 +99,8 @@ export async function auditSocialAccounts(): Promise<AccountAudit> {
     }
 
     const failedPosts = failedMap.get(active.id) ?? 0
-    const dryRun = isDryRunAccount(active.accountId, active.config)
-    const oauthAccount = isOAuthAccount(active.config) || (!dryRun && Boolean(active.refreshToken))
+    const dryRun = active.dryRun
+    const oauthAccount = active.oauth || (!dryRun && active.hasRefreshToken)
 
     let status: AccountSlotStatus = 'ok'
     let detail = active.accountName
@@ -162,6 +176,7 @@ export async function bootstrapFaz2DryRunAccounts(): Promise<string[]> {
   for (const platform of FAZ2_DRY_RUN_PLATFORMS) {
     const existing = await prisma.socialMediaAccount.findFirst({
       where: { platform, isActive: true },
+      select: { id: true },
     })
     if (existing) continue
     await upsertDryRunAccount(platform, `Dry-run ${platform}`)
