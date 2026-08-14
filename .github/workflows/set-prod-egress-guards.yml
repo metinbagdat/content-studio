@@ -1,6 +1,6 @@
 name: Set prod egress guards
 
-# One-shot: Hobby egress — disable discovery/analytics/autopilot on Vercel Production.
+# Hobby egress — disable discovery/analytics/autopilot on Vercel Production.
 on:
   workflow_dispatch:
 
@@ -20,29 +20,89 @@ jobs:
 
           TEAM_QS=""
           if [ -n "${VERCEL_ORG_ID:-}" ]; then
-            TEAM_QS="&teamId=${VERCEL_ORG_ID}"
+            TEAM_QS="?teamId=${VERCEL_ORG_ID}"
+            TEAM_AMP="&teamId=${VERCEL_ORG_ID}"
+          else
+            TEAM_AMP=""
           fi
 
-          upsert() {
-            local key="$1"
-            local value="$2"
-            echo "Upsert $key=$value (production)"
-            curl -sS -X POST \
-              "https://api.vercel.com/v10/projects/${VERCEL_PROJECT_ID}/env?upsert=true${TEAM_QS}" \
-              -H "Authorization: Bearer ${VERCEL_TOKEN}" \
-              -H "Content-Type: application/json" \
-              -d "{\"key\":\"${key}\",\"value\":\"${value}\",\"type\":\"plain\",\"target\":[\"production\"]}" \
-              | tee /tmp/vercel-env-out.json
-            echo
-            if grep -qiE '"error"|Unauthorized|forbidden' /tmp/vercel-env-out.json; then
-              echo "Failed upserting $key"
-              exit 1
-            fi
+          AUTH="Authorization: Bearer ${VERCEL_TOKEN}"
+          BASE="https://api.vercel.com/v9/projects/${VERCEL_PROJECT_ID}/env"
+
+          # Snapshot current envs
+          curl -sS "${BASE}${TEAM_QS}" -H "${AUTH}" > /tmp/envs.json
+          python3 - <<'PY'
+          import json, os, subprocess, sys
+
+          token = os.environ["VERCEL_TOKEN"]
+          project = os.environ["VERCEL_PROJECT_ID"]
+          team = os.environ.get("VERCEL_ORG_ID") or ""
+          team_q = f"?teamId={team}" if team else ""
+          team_amp = f"&teamId={team}" if team else ""
+          auth = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+          base = f"https://api.vercel.com/v9/projects/{project}/env"
+
+          keys = {
+              "DISCOVERY_CRON_ENABLED": "false",
+              "ANALYTICS_SYNC_ENABLED": "false",
+              "SOCIAL_AUTOPILOT": "false",
+              "SOCIAL_AUTO_PUBLISH": "false",
           }
 
-          upsert DISCOVERY_CRON_ENABLED false
-          upsert ANALYTICS_SYNC_ENABLED false
-          upsert SOCIAL_AUTOPILOT false
-          upsert SOCIAL_AUTO_PUBLISH false
+          with open("/tmp/envs.json", encoding="utf-8") as f:
+              data = json.load(f)
+          envs = data.get("envs") or data if isinstance(data, list) else data.get("envs", [])
 
-          echo "OK — Production egress guards set"
+          def req(method, url, payload=None):
+              import urllib.request
+              body = None if payload is None else json.dumps(payload).encode()
+              r = urllib.request.Request(url, data=body, headers=auth, method=method)
+              with urllib.request.urlopen(r) as res:
+                  return json.load(res)
+
+          for key, value in keys.items():
+              prod = [e for e in envs if e.get("key") == key and "production" in (e.get("target") or [])]
+              if prod:
+                  env_id = prod[0]["id"]
+                  print(f"PATCH production {key}={value} id={env_id}")
+                  out = req("PATCH", f"{base}/{env_id}{team_q}", {"value": value, "target": ["production"]})
+                  print(json.dumps({"key": key, "id": out.get("id"), "target": out.get("target")}, ensure_ascii=False))
+              else:
+                  print(f"POST production {key}={value}")
+                  # v10 upsert with explicit production target
+                  url = f"https://api.vercel.com/v10/projects/{project}/env?upsert=true{team_amp}"
+                  out = req("POST", url, {
+                      "key": key,
+                      "value": value,
+                      "type": "plain",
+                      "target": ["production"],
+                  })
+                  created = out.get("created") or out
+                  print(json.dumps({"key": key, "id": created.get("id"), "target": created.get("target")}, ensure_ascii=False))
+                  if created.get("target") != ["production"]:
+                      # Force-correct target if API ignored it
+                      env_id = created["id"]
+                      print(f"  correcting target → production for {env_id}")
+                      out2 = req("PATCH", f"{base}/{env_id}{team_q}", {"value": value, "target": ["production"]})
+                      print(json.dumps({"key": key, "id": out2.get("id"), "target": out2.get("target")}, ensure_ascii=False))
+
+          # Verify
+          import urllib.request
+          ver = urllib.request.Request(f"{base}{team_q}", headers={"Authorization": f"Bearer {token}"})
+          with urllib.request.urlopen(ver) as res:
+              verify = json.load(res)
+          envs2 = verify.get("envs") or []
+          print("--- verify production ---")
+          ok = True
+          for key, value in keys.items():
+              hits = [e for e in envs2 if e.get("key") == key and "production" in (e.get("target") or [])]
+              if not hits:
+                  print(f"MISSING production: {key}")
+                  ok = False
+              else:
+                  # value may be encrypted; presence is enough
+                  print(f"OK production: {key} id={hits[0].get('id')} type={hits[0].get('type')}")
+          if not ok:
+              sys.exit(1)
+          print("OK — Production egress guards set")
+          PY
