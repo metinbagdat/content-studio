@@ -116,7 +116,7 @@ export function WorkerOpsPanel({
       {status ? (
         <p className="muted workflow-worker-meta">
           Mod: {status.mode === 'serverless' ? 'Vercel (serverless)' : 'yerel'} · cron:{' '}
-          {status.cronEnabled ? 'aktif' : 'CRON_SECRET yok — yalnızca manuel'}
+          {status.cronEnabled ? 'aktif' : 'kapalı (manuel)'}
           {status.cronNote ? ` · ${status.cronNote}` : ''}
         </p>
       ) : null}

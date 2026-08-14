@@ -69,8 +69,21 @@ export function AdminWorkflowChrome({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     loadWorkflow()
-    const t = setInterval(loadWorkflow, 30_000)
-    return () => clearInterval(t)
+    const t = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        loadWorkflow()
+      }
+    }, 30 * 60_000) // 30 dakika
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') loadWorkflow()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+
+    return () => {
+      clearInterval(t)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
   }, [loadWorkflow])
 
   const stepMap = new Map(workflow?.steps.map((s) => [s.id, s]) ?? [])

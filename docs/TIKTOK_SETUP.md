@@ -120,7 +120,8 @@ Vercel'de env ekledikten sonra **Redeploy** gerekir.
 
 - **dry-run** → env eksik veya `npm run dev` restart gerekli
 - **client_key (local)** → Desktop platform açık mı? URI Desktop tab’da mı? Sandbox test hesabı eklendi mi?
-- **studio.egitim.today açılmıyor (NXDOMAIN)** → DNS: `studio` CNAME → `cname.vercel-dns.com` (Vercel → Domains). Son deploy başarılı olmalı.
+- **studio DNS conflict (TXT+CNAME)** → TikTok TXT sil, CNAME ekle (`scripts/fix-studio-dns-vercel.ps1`)
+- **studio.egitim.today açılmıyor** → CNAME `studio` → content-studio Vercel hedefi
 - **Redirect URI mismatch** → portal URI = callback birebir (sondaki `/` dahil; gerekirse `TIKTOK_REDIRECT_TRAILING_SLASH=true`)
 - **OAuth not authorized** → Sandbox test user listesine hesap ekle
 - **Upload OK, feed'de yok** → onaysız mod: TikTok app → Inbox

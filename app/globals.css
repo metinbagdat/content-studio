@@ -892,6 +892,62 @@ button:disabled {
   margin-bottom: 1rem;
 }
 
+.sm-host-legend {
+  margin-bottom: 0.85rem;
+}
+
+.sm-host-legend-local {
+  border-color: rgba(234, 179, 8, 0.45);
+}
+
+.sm-host-legend-prod {
+  border-color: rgba(34, 197, 94, 0.35);
+}
+
+.sm-host-legend h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1.05rem;
+}
+
+.sm-host-legend-list {
+  margin: 0.35rem 0 0;
+  padding-left: 1.1rem;
+  font-size: 0.84rem;
+}
+
+.sm-host-legend-list li {
+  margin: 0.2rem 0;
+}
+
+.sm-host-note {
+  margin: 0.4rem 0 0.65rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.sm-host-badge {
+  display: inline-block;
+  margin-right: 0.4rem;
+  font-weight: 650;
+}
+
+.sm-host-ok {
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.28);
+}
+
+.sm-host-limited {
+  background: rgba(234, 179, 8, 0.12);
+  border: 1px solid rgba(234, 179, 8, 0.35);
+}
+
+.sm-host-warn {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.32);
+}
+
 .sm-env-panel {
   margin-bottom: 1rem;
 }

@@ -10,6 +10,19 @@ import { TopPerformersPanel, type TopPerformingPost } from '@/components/admin/T
 import { PlatformIconLink } from '@/components/admin/PlatformIconLink'
 import { DEFAULT_ADMIN_API_KEY } from '@/lib/adminKey'
 
+function oauthErrorHint(reason: string): string {
+  if (reason === 'unauthorized_scope_error') {
+    return 'LinkedIn şirket sayfası izni (w_organization_social) bu uygulamada yok. LINKEDIN_ORG_POST=false yapın, npm run dev yeniden başlatın, sonra OAuth bağla.'
+  }
+  if (reason === 'access_denied' || /invalid.?scope/i.test(reason) || reason === 'email') {
+    return 'Facebook Login for Business `email` iznini kabul etmez. Meta → Facebook Login for Business → Configurations → email kutusunu kaldır (yalnızca pages_show_list / pages_manage_posts). Sonra OAuth bağla.'
+  }
+  if (reason === 'redirect_uri_mismatch' || reason === 'invalid_redirect_uri') {
+    return `${reason} — developer portalda callback URL tam eşleşmeli (localhost:3100).`
+  }
+  return reason || 'bilinmeyen hata'
+}
+
 type OAuthStatus = {
   twitter: { configured: boolean; callbackUrl: string; clientIdSet?: boolean; clientSecretSet?: boolean }
   linkedin: {
@@ -299,8 +312,8 @@ export default function SocialPage() {
     if (connected === 'oauth') setMsg('OAuth bağlantısı başarılı — taslaklar senkronize edildi')
     else if (connected === 'dry') setMsg('Dry-run hesap bağlandı (gerçek SM’de görünmez)')
     else if (connected === 'error') {
-      const reason = params.get('reason')
-      setMsg(`OAuth hatası${reason ? `: ${reason}` : ''}`)
+      const reason = params.get('reason') || ''
+      setMsg(`OAuth hatası: ${oauthErrorHint(reason)}`)
     }
     if (connected) window.history.replaceState({}, '', '/admin/social')
   }, [])

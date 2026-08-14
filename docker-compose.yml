@@ -11,7 +11,7 @@ services:
       POSTGRES_PASSWORD: content
       POSTGRES_DB: content_studio
     ports:
-      - "5433:5432"
+      - "5434:5432"
     volumes:
       - cs_pg_data:/var/lib/postgresql/data
     healthcheck:

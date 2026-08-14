@@ -54,11 +54,14 @@ export function metaOAuthConfigId(): string | undefined {
   return metaLoginConfigId()
 }
 
-/** Scopes when not using Facebook Login for Business config_id. */
+/** Scopes when not using Facebook Login for Business config_id. Never request `email` — Business login rejects it. */
 export function metaOAuthConnectScopes(): string {
-  if (process.env.META_OAUTH_SCOPES?.trim()) return process.env.META_OAUTH_SCOPES.trim()
-  // Business apps need ≥1 business permission beyond email/public_profile
-  return ['public_profile', 'email', 'pages_show_list'].join(',')
+  const raw = process.env.META_OAUTH_SCOPES?.trim() || 'public_profile,pages_show_list'
+  return raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s && s !== 'email')
+    .join(',')
 }
 
 /** Full publish scopes — enable in Meta App Review first, then set META_OAUTH_SCOPES in .env */

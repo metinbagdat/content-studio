@@ -39,7 +39,9 @@ export async function GET(
   }
 
   if (oauthError) {
-    return redirectWithMessage(appUrl, `connected=error&reason=${encodeURIComponent(oauthError)}`)
+    const desc = req.nextUrl.searchParams.get('error_description') || oauthError
+    const reason = /email/i.test(desc) ? 'email' : oauthError
+    return redirectWithMessage(appUrl, `connected=error&reason=${encodeURIComponent(reason)}`)
   }
 
   if (!code) {

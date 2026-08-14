@@ -2,6 +2,7 @@
 
 import { PlatformIconLink } from '@/components/admin/PlatformIconLink'
 import { platformLabel, platformProfileUrl } from '@/lib/social/platformLinks'
+import { isLocalOauthHost, OAUTH_HOST_HINTS } from '@/lib/social/oauthHostHints'
 
 export type PlatformAccountStats = {
   username: string | null
@@ -71,17 +72,17 @@ const PIPELINE_PLATFORMS: PipelinePlatformDef[] = [
   {
     id: 'YOUTUBE',
     oauthKey: 'youtube',
-    note: 'OAuth bağla → Video senkronize ile watermark\'lı MP4 yükler.',
+    note: 'OAuth bağla → Video senkronize ile watermark\'lı MP4 yükler. Localhost callback çalışır.',
   },
   {
     id: 'FACEBOOK',
     oauthKey: 'facebook',
-    note: 'Meta OAuth — egitim.today Facebook sayfasından paylaşım (Development mod).',
+    note: 'Meta OAuth — egitim.today Facebook sayfasından paylaşım. Localhost OAuth yok; prod’dan bağla.',
   },
   {
     id: 'INSTAGRAM',
     oauthKey: 'instagram',
-    note: 'Meta OAuth — IG Business hesabı (Facebook sayfasına bağlı olmalı).',
+    note: 'Meta OAuth — IG Business. Localhost OAuth/yayın yok (Meta görsel URL alamaz); prod’dan bağla.',
   },
   {
     id: 'TIKTOK',
@@ -116,6 +117,20 @@ function formatWhen(iso: string): string {
   } catch {
     return iso
   }
+}
+
+function PlatformOauthHostNote({ platform, isLocal }: { platform: string; isLocal: boolean }) {
+  const hint = OAUTH_HOST_HINTS[platform]
+  if (!hint) return null
+  const tone =
+    hint.kind === 'prod_only' ? 'sm-host-warn' : hint.kind === 'local_limited' ? 'sm-host-limited' : 'sm-host-ok'
+  const badge = isLocal ? hint.badge : hint.kind === 'prod_only' ? 'Prod OAuth: evet' : 'Prod OAuth: evet'
+  return (
+    <p className={`sm-host-note ${tone}`}>
+      <span className="sm-host-badge">{badge}</span>
+      {isLocal ? hint.local : hint.prod}
+    </p>
+  )
 }
 
 function pickPreferredAccount(accounts: PlatformCardAccount[]): PlatformCardAccount | undefined {
@@ -170,6 +185,7 @@ function OAuthConnectButton({
   oauthConfigured,
   busyId,
   onConnect,
+  hostBlocked,
 }: {
   platform: string
   label?: string
@@ -177,9 +193,22 @@ function OAuthConnectButton({
   oauthConfigured: boolean
   busyId: string | null
   onConnect: () => void
+  hostBlocked?: boolean
 }) {
   if (!oauthConfigured) {
     return <span className="badge danger">env eksik</span>
+  }
+  if (hostBlocked && state !== 'connected') {
+    return (
+      <a
+        className="btn secondary"
+        href="https://studio.egitim.today/admin/social"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        Prod’da bağla
+      </a>
+    )
   }
   if (state === 'connected') {
     return (
@@ -316,6 +345,12 @@ export function SocialPlatformDashboard({
 }) {
   const twitterAccount = pickPreferredAccount(accounts.filter((a) => a.platform === 'TWITTER' && a.isActive))
   const linkedinAccount = pickPreferredAccount(accounts.filter((a) => a.platform === 'LINKEDIN' && a.isActive))
+  const isLocal = isLocalOauthHost(
+    oauth?.facebook?.callbackUrl ||
+      oauth?.twitter?.callbackUrl ||
+      oauth?.linkedin?.callbackUrl ||
+      oauth?.youtube?.callbackUrl,
+  )
 
   function accountForPlatform(platform: string) {
     return pickPreferredAccount(accounts.filter((a) => a.platform === platform && a.isActive))
@@ -375,6 +410,8 @@ export function SocialPlatformDashboard({
         {stats?.displayName && stats.displayName !== username ? (
           <p className="muted sm-display-name">{stats.displayName}</p>
         ) : null}
+
+        <PlatformOauthHostNote platform={platform} isLocal={isLocal} />
 
         <div className="sm-stats-grid">
           <StatCell label="Takipçi" value={stats?.followers} />
@@ -452,6 +489,37 @@ export function SocialPlatformDashboard({
 
   return (
     <div className="sm-dashboard">
+      <section className={`panel sm-host-legend ${isLocal ? 'sm-host-legend-local' : 'sm-host-legend-prod'}`}>
+        <h2>{isLocal ? 'Localhost — hangi OAuth çalışır' : 'Prod — hangi OAuth çalışır'}</h2>
+        <p className="muted" style={{ marginTop: 0 }}>
+          {isLocal ? (
+            <>
+              Local Docker (<code>:5434</code>) prod Supabase’ten ayrı. Prod’da bağlı FB/IG burada görünmez.
+              Facebook/Instagram OAuth yalnızca{' '}
+              <a href="https://studio.egitim.today/admin/social" target="_blank" rel="noopener noreferrer">
+                studio.egitim.today
+              </a>
+              .
+            </>
+          ) : (
+            <>
+              Bu ortam prod. Local <code>npm run dev</code> ayrı veritabanı kullanır — orada bu hesaplar boş görünür
+              (kota: local Docker).
+            </>
+          )}
+        </p>
+        <ul className="sm-host-legend-list">
+          <li>
+            <span className="badge ok">Local evet</span> X, YouTube, TikTok (Desktop/PKCE)
+          </li>
+          <li>
+            <span className="badge">Local sınırlı</span> LinkedIn — kişisel profil; şirket sayfası local’de yok
+          </li>
+          <li>
+            <span className="badge danger">Local hayır</span> Facebook, Instagram — yalnızca prod
+          </li>
+        </ul>
+      </section>
       <section className="panel sm-env-panel">
         <h2>OAuth env kontrolü</h2>
         <p className="muted" style={{ marginTop: 0 }}>
@@ -493,11 +561,15 @@ export function SocialPlatformDashboard({
               <strong>X:</strong> Developer Portal → kredi yükle → başarısız postlar otomatik yeniden denenecek
             </li>
             <li>
-              <strong>LinkedIn şirket sayfası:</strong> Page ID → <code>LINKEDIN_ORGANIZATION_ID</code> +{' '}
-              <code>LINKEDIN_ORG_POST=true</code> → Kes → OAuth yeniden bağla
+              <strong>LinkedIn:</strong> <code>unauthorized_scope_error</code> →{' '}
+              <code>LINKEDIN_ORG_POST=false</code> (kişisel profil). Şirket sayfası için LinkedIn’de Community
+              Management API + <code>w_organization_social</code> onaylı olmalı.
             </li>
             <li>
-              <strong>Worker:</strong> <code>npm run worker</code> açık olmalı (zamanlanmış yayın)
+              <strong>Facebook / Instagram:</strong> local OAuth yok —{' '}
+              <a href="https://studio.egitim.today/admin/social" target="_blank" rel="noopener noreferrer">
+                studio.egitim.today
+              </a>
             </li>
           </ul>
         ) : null}
@@ -559,6 +631,7 @@ export function SocialPlatformDashboard({
                 )}
               </h3>
               <p className="muted" style={{ margin: '0.35rem 0 0.65rem' }}>{p.note}</p>
+              <PlatformOauthHostNote platform={p.id} isLocal={isLocal} />
               {oauthSlot?.callbackUrl ? (
                 <p className="muted" style={{ margin: '0 0 0.5rem', fontSize: '0.72rem' }}>
                   Callback: <code>{oauthSlot.callbackUrl}</code>
@@ -585,6 +658,7 @@ export function SocialPlatformDashboard({
                     state={connState}
                     oauthConfigured={Boolean(oauthSlot?.configured)}
                     busyId={busyId}
+                    hostBlocked={isLocal && (p.id === 'FACEBOOK' || p.id === 'INSTAGRAM')}
                     onConnect={() => onOAuthConnect(oauthPlatform)}
                   />
                 ) : null}

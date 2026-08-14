@@ -46,10 +46,12 @@ export default function PrivacyPage() {
         (Vercel) ile çalışır. Veriler yalnızca hizmetin sunulması için paylaşılır.
       </p>
 
-      <h2>6. Haklarınız</h2>
+      <h2 id="veri-silme">6. Haklarınız ve veri silme</h2>
       <p>
-        OAuth bağlantısını Sosyal ekranından kesebilir, hesabınızla ilişkili token&apos;ların
-        silinmesini talep edebilirsiniz.
+        OAuth bağlantısını Sosyal ekranından («Kes») kesebilirsiniz. Token ve yayın kayıtlarının
+        silinmesi için <a href="mailto:metinbagdat@gmail.com">metinbagdat@gmail.com</a> adresine
+        yazın; talep 30 gün içinde işlenir. Bu sayfa Meta «User data deletion instructions» URL&apos;si
+        olarak kullanılır.
       </p>
 
       <h2>7. İletişim</h2>

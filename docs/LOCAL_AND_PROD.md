@@ -72,14 +72,16 @@ OAuth’u prod DB’de bağlamak için geçici olarak Supabase URL kullanın, so
 
 ## Platform bazlı local kısıtlar
 
-| Platform | Local | Not |
-|----------|-------|-----|
-| LinkedIn | ✅ | Görsel buffer upload |
-| Facebook | ✅ | Binary upload |
-| YouTube | ✅ | Video dosyadan |
-| TikTok | ✅ | localhost redirect kayıtlıysa |
-| X | ⚠️ | API tier / 403 — env'den bağımsız |
-| Instagram | ⚠️ | Meta localhost görsel URL'sine erişemez → prod'dan yayınla veya ngrok |
+Local Docker ve prod **ayrı veritabanı**. Prod’da bağlı hesap local’de görünmez.
+
+| Platform | Local OAuth | Not |
+|----------|-------------|-----|
+| X | ✅ | Localhost callback |
+| YouTube | ✅ | Localhost callback; MP4 dosyadan |
+| TikTok | ✅ | Login Kit **Desktop/PKCE** + localhost |
+| LinkedIn | ⚠️ kişisel | `LINKEDIN_ORG_POST=false`. Şirket sayfası (`w_organization_social`) local’de `unauthorized_scope_error` |
+| Facebook | ❌ prod | Meta Login for Business localhost http kaydetmez. `studio.egitim.today` |
+| Instagram | ❌ prod | Aynı Meta kısıtı + localhost görsel URL’sine erişemez |
 
 Medya URL'leri (`/api/media/...`) üretildiği ortamın `NEXT_PUBLIC_APP_URL`'ini kullanır. IG prod yayını için prod'da görsel/klip üretin.
 

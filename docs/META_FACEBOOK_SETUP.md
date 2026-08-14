@@ -106,11 +106,21 @@ Business app'lerde **email + public_profile yetmez**. Çözüm:
 
 `config_id` varken kod `scope` yerine `config_id` kullanır.
 
+### "Invalid Scopes: email" / "Bu içeriğe şu anda ulaşılamıyor"
+
+Facebook Login for Business **`email` iznini desteklemez**. Kod artık `email` göndermez; asıl kaynak genelde Login Configuration:
+
+1. [Facebook Login for Business → Configurations](https://developers.facebook.com/apps/1309132857965857/fb-login/configurations/)
+2. `919581157862599` (yayın) ve `1527817658530867` (liste) aç
+3. **User permissions** içinden `email` kutusunu kaldır (gerekirse `public_profile` de)
+4. Sayfa izinleri kalsın: `pages_show_list`, `pages_manage_posts`
+5. Kaydet → Content Studio’da Facebook **OAuth bağla**
+
 ---
 
 Bu izinler geçerlidir ama **app'e eklenmeden** OAuth'ta istenemez. Content Studio varsayılan olarak yalnızca **bağlantı scope'ları** kullanır:
 
-- `public_profile`, `email`, `pages_show_list`, `pages_read_engagement`, `instagram_basic`
+- `public_profile`, `pages_show_list` (`email` yok — Business Login reddeder)
 
 Meta → **App Review → Permissions and Features** → yukarıdakiler için **Standard Access** / Add.
 
@@ -157,7 +167,7 @@ NEXT_PUBLIC_APP_URL="http://localhost:3100"
 
 ## 5. İzinler (scopes)
 
-**Bağlantı (varsayılan):** `public_profile`, `email`, `pages_show_list`, `pages_read_engagement`, `instagram_basic`
+**Bağlantı (varsayılan):** `public_profile`, `pages_show_list` — `email` yok.
 
 **Yayın (App Review sonrası):** + `pages_manage_posts`, `instagram_content_publish` → `META_OAUTH_PUBLISH=true`
 

@@ -4,7 +4,7 @@ import {
   SocialPlatform,
   type Prisma,
 } from '@prisma/client'
-import { prisma } from './prisma'
+import { prisma, ensurePrismaConnected, isPrismaConnectionError } from './prisma'
 import { FAZ1_KINDS, generateTransform, toContentType } from './ai/transform'
 import { generateAtomizationPlan, totalPlannedPieces } from './atomization/plan'
 import { generateAllDerivatives } from './atomization/generateDerivatives'
@@ -563,6 +563,7 @@ export async function bulkPublishDraftPosts(
 
     result.attempted += 1
     try {
+      await ensurePrismaConnected()
       await preparePostForPublish(post.id)
       const r = await publishPost(post.id, { requireImage: post.platform === 'LINKEDIN' })
       if (r.skipped) {
@@ -571,8 +572,24 @@ export async function bulkPublishDraftPosts(
         result.published += 1
       }
     } catch (err) {
-      result.failed += 1
       const msg = err instanceof Error ? err.message : String(err)
+      if (isPrismaConnectionError(err)) {
+        try {
+          await ensurePrismaConnected()
+          await preparePostForPublish(post.id)
+          const r = await publishPost(post.id, { requireImage: post.platform === 'LINKEDIN' })
+          if (r.skipped) result.skipped += 1
+          else result.published += 1
+          continue
+        } catch (retryErr) {
+          result.failed += 1
+          result.errors.push(
+            `${post.platform} ${post.id.slice(0, 8)}: ${retryErr instanceof Error ? retryErr.message : String(retryErr)}`,
+          )
+          continue
+        }
+      }
+      result.failed += 1
       result.errors.push(`${post.platform} ${post.id.slice(0, 8)}: ${msg}`)
       // Meta temporary spam block — stop this batch early
       if (/belirli bir süre|spam|rate.?limit|#4\b|code.?4/i.test(msg)) {

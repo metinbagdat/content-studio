@@ -9,13 +9,16 @@ export async function GET(req: NextRequest) {
   }
 
   const onVercel = process.env.VERCEL === '1'
+  const cronEnabled = false
   return NextResponse.json({
     mode: onVercel ? 'serverless' : 'local',
     workerProcessRequired: false,
     recommendedProfile: 'daily',
-    cronEnabled: Boolean(process.env.CRON_SECRET?.trim()),
-    cronSchedule: '0 3 * * *',
-    cronNote: '06:00 TR — günlük bakım (zamanlanmış yayın + metrik + discovery)',
+    cronEnabled,
+    cronSchedule: null,
+    cronNote: onVercel
+      ? 'Vercel cron kapalı (Hobby egress). Admin butonları veya local worker.'
+      : 'Zamanlanmış yayın: npm run worker veya aşağıdaki butonlar. Discovery/analytics local worker cron’unda.',
     appUrl: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3100',
   })
 }

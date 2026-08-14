@@ -42,7 +42,7 @@ async function main() {
   console.log('1. "Manage everything on your Page" → Ekle  (pages_show_list gelir)')
   console.log('2. "Manage messaging & content on Instagram" → Ekle  (instagram_basic gelir)')
   console.log('3. Tekrar: npx tsx --env-file=.env scripts/test-meta-app.ts')
-  console.log('4. .env: META_OAUTH_SCOPES="public_profile,email,pages_show_list,pages_read_engagement,instagram_basic"')
+  console.log('4. .env: META_OAUTH_SCOPES="public_profile,pages_show_list"  (email yok)')
   console.log('5. npm run dev restart → /admin/social OAuth bağla')
 }
 
