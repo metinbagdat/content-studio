@@ -22,8 +22,20 @@ function resolvePkgBinary(pkg: 'ffmpeg-static' | 'ffprobe-static'): string | nul
       : platform() === 'win32'
         ? 'ffprobe.exe'
         : 'ffprobe'
-  const candidate = path.join(process.cwd(), 'node_modules', pkg, binaryRelPath(exe))
-  return existsSync(candidate) ? candidate : null
+  const root = path.join(process.cwd(), 'node_modules', pkg)
+  const candidates = [
+    path.join(root, exe),
+    path.join(root, binaryRelPath(exe)),
+  ]
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const exported = require(pkg) as { path?: string } | string
+    const fromPkg = typeof exported === 'string' ? exported : exported.path
+    if (fromPkg) candidates.unshift(fromPkg)
+  } catch {
+    /* package missing or no path export */
+  }
+  return candidates.find((p) => existsSync(p)) ?? null
 }
 
 /** Idempotent — resolves binaries from node_modules (Next vendor-chunks break ffprobe paths). */

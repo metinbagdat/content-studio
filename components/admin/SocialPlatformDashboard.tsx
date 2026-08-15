@@ -289,9 +289,9 @@ function RecentPublishedList({ items }: { items: RecentPublished[] }) {
       <strong className="sm-mini-heading">Son yayınlar</strong>
       <ul className="sm-mini-items">
         {items.map((p) => (
-          <li key={p.id} className="sm-mini-item">
+          <li key={p.id} className="sm-mini-item sm-mini-published" tabIndex={0}>
             <span className="sm-mini-preview">{p.preview || '(içerik yok)'}</span>
-            <div className="row muted" style={{ marginTop: '0.25rem', fontSize: '0.76rem' }}>
+            <div className="sm-mini-grow row muted" style={{ fontSize: '0.76rem' }}>
               <time>{formatWhen(p.publishedAt)}</time>
               {p.url ? (
                 <a href={p.url} target="_blank" rel="noopener noreferrer">

@@ -29,21 +29,20 @@ export type PublishedPostRow = {
 function formatWhen(iso?: string | null): string {
   if (!iso) return '—'
   try {
-    return new Date(iso).toLocaleString('tr-TR')
+    return new Date(iso).toLocaleString('tr-TR', {
+      day: '2-digit',
+      month: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
   } catch {
     return iso
   }
 }
 
-function PostImagePreview({ src }: { src: string }) {
-  return (
-    <img
-      src={src}
-      alt=""
-      className="published-post-thumb"
-      loading="lazy"
-    />
-  )
+function snippet(text: string, n = 72): string {
+  const t = text.replace(/\s+/g, ' ').trim()
+  return t.length > n ? `${t.slice(0, n)}…` : t
 }
 
 export function PublishedPostsPanel({
@@ -67,56 +66,56 @@ export function PublishedPostsPanel({
       {posts.map((p) => {
         const publicUrl = socialPostPublicUrl(p.platform, p.platformPostId)
         const accountName = p.account?.accountName
+        const a = p.analytics
         return (
-          <li key={p.id} className="published-post-card">
-            <div className="published-post-head row">
+          <li key={p.id} className="published-post-card" tabIndex={0}>
+            <div className="published-post-row">
               <PlatformIconLink platform={p.platform} username={accountName} />
-              <strong>{accountName || 'Hesap'}</strong>
-              {p.isDryRun || p.isMockPost ? <span className="badge warn">dry-run / mock</span> : null}
-              <time className="muted">{formatWhen(p.publishedAt || p.createdAt)}</time>
-            </div>
-            <p className="published-post-preview">{p.postContent.slice(0, 200).trim()}</p>
-            {p.imagePreviewUrl ? <PostImagePreview src={p.imagePreviewUrl} /> : null}
-            {p.analytics ? (
-              <div className="sm-post-stats row">
-                {p.analytics.impressions != null ? (
-                  <span className="badge">gösterim {p.analytics.impressions.toLocaleString('tr-TR')}</span>
-                ) : null}
-                {p.analytics.engagement != null ? (
-                  <span className="badge ok">etkileşim {p.analytics.engagement.toLocaleString('tr-TR')}</span>
-                ) : null}
-                {p.analytics.likes != null ? (
-                  <span className="badge">beğeni {p.analytics.likes.toLocaleString('tr-TR')}</span>
-                ) : null}
-                {p.analytics.comments != null ? (
-                  <span className="badge">yorum {p.analytics.comments.toLocaleString('tr-TR')}</span>
-                ) : null}
-                {p.analytics.shares != null ? (
-                  <span className="badge">paylaşım {p.analytics.shares.toLocaleString('tr-TR')}</span>
-                ) : null}
-                {p.analytics.clicks != null ? (
-                  <span className="badge">tıklama {p.analytics.clicks.toLocaleString('tr-TR')}</span>
-                ) : null}
-              </div>
-            ) : (
-              <p className="muted" style={{ fontSize: '0.78rem', margin: '0.35rem 0 0' }}>
-                Metrik yok — Sosyal’de «İstatistikleri yenile»
-              </p>
-            )}
-            <div className="published-post-actions row">
-              {publicUrl ? (
-                <a
-                  href={publicUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn ok"
-                  style={{ textDecoration: 'none' }}
-                >
-                  Paylaşımı yeni sekmede aç ↗
-                </a>
-              ) : p.platformPostId ? (
-                <span className="muted">mock: {p.platformPostId}</span>
+              <span className="published-post-line">{snippet(p.postContent)}</span>
+              {a?.engagement != null ? (
+                <span className="published-post-chip">{a.engagement.toLocaleString('tr-TR')}</span>
               ) : null}
+              <time className="muted published-post-when">{formatWhen(p.publishedAt || p.createdAt)}</time>
+            </div>
+            <div className="published-post-grow">
+              <p className="published-post-preview">{p.postContent.trim() || '(içerik yok)'}</p>
+              {p.imagePreviewUrl ? (
+                <img src={p.imagePreviewUrl} alt="" className="published-post-thumb" loading="lazy" />
+              ) : null}
+              {a ? (
+                <div className="sm-post-stats row">
+                  {a.impressions != null ? (
+                    <span className="badge">gösterim {a.impressions.toLocaleString('tr-TR')}</span>
+                  ) : null}
+                  {a.engagement != null ? (
+                    <span className="badge ok">etkileşim {a.engagement.toLocaleString('tr-TR')}</span>
+                  ) : null}
+                  {a.likes != null ? <span className="badge">beğeni {a.likes.toLocaleString('tr-TR')}</span> : null}
+                  {a.comments != null ? (
+                    <span className="badge">yorum {a.comments.toLocaleString('tr-TR')}</span>
+                  ) : null}
+                  {a.shares != null ? (
+                    <span className="badge">paylaşım {a.shares.toLocaleString('tr-TR')}</span>
+                  ) : null}
+                  {a.clicks != null ? (
+                    <span className="badge">tıklama {a.clicks.toLocaleString('tr-TR')}</span>
+                  ) : null}
+                </div>
+              ) : (
+                <p className="muted published-post-nometrics">Metrik yok — «İstatistikleri yenile»</p>
+              )}
+              <div className="published-post-actions row">
+                {publicUrl ? (
+                  <a href={publicUrl} target="_blank" rel="noopener noreferrer">
+                    Paylaşımı aç ↗
+                  </a>
+                ) : p.platformPostId ? (
+                  <span className="muted">mock: {p.platformPostId}</span>
+                ) : (
+                  <span className="muted">{accountName || p.platform}</span>
+                )}
+                {p.isDryRun || p.isMockPost ? <span className="badge warn">dry-run / mock</span> : null}
+              </div>
             </div>
           </li>
         )

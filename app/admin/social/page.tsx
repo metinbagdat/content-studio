@@ -1010,8 +1010,8 @@ export default function SocialPage() {
       <section id="published" className="panel" style={{ marginBottom: '1rem' }}>
         <h2>Yayınlanan postlar</h2>
         <p className="muted" style={{ marginTop: 0, fontSize: '0.88rem' }}>
-          OAuth yayınlarında <strong>Paylaşımı yeni sekmede aç ↗</strong> gerçek postu gösterir. Metrikler için
-          «Metrikleri yenile». Workflow panelinde de «Yayınlanan» listesi var.
+          Satır listesi — üzerine gelince metin, görsel ve metrik büyür. Gerçek post için «Paylaşımı aç».
+          Metrikler: «Metrikleri yenile».
         </p>
         <PublishedPostsPanel posts={publishedPosts} />
       </section>
@@ -1019,7 +1019,7 @@ export default function SocialPage() {
       <section className="panel" style={{ marginBottom: '1rem' }}>
         <h2>En çok etkileşim alanlar</h2>
         <p className="muted" style={{ marginTop: 0, fontSize: '0.88rem' }}>
-          Hangi formatın işe yaradığını görüp sonraki içerikte ona ağırlık verin.
+          Hangi formatın işe yaradığını görüp sonraki içerikte ona ağırlık verin. Satıra gelince detay büyür.
         </p>
         <TopPerformersPanel posts={topPerformers} />
       </section>

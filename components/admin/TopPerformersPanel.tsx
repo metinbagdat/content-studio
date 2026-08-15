@@ -18,10 +18,20 @@ export type TopPerformingPost = {
 
 function formatWhen(iso: string): string {
   try {
-    return new Date(iso).toLocaleDateString('tr-TR')
+    return new Date(iso).toLocaleString('tr-TR', {
+      day: '2-digit',
+      month: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
   } catch {
     return iso
   }
+}
+
+function snippet(text: string, n = 72): string {
+  const t = text.replace(/\s+/g, ' ').trim()
+  return t.length > n ? `${t.slice(0, n)}…` : t
 }
 
 export function TopPerformersPanel({ posts }: { posts: TopPerformingPost[] }) {
@@ -35,33 +45,46 @@ export function TopPerformersPanel({ posts }: { posts: TopPerformingPost[] }) {
   }
 
   return (
-    <ol className="top-performers-list">
-      {posts.map((p, i) => (
-        <li key={p.id} className="top-performer-item">
-          <span className="top-performer-rank">#{i + 1}</span>
-          <div className="top-performer-body">
-            <div className="row" style={{ marginBottom: '0.3rem' }}>
+    <ol className="published-posts-list top-performers-list">
+      {posts.map((p, i) => {
+        const publicUrl = socialPostPublicUrl(p.platform, p.platformPostId)
+        return (
+          <li key={p.id} className="published-post-card" tabIndex={0}>
+            <div className="published-post-row top-performer-row">
+              <span className="top-performer-rank">#{i + 1}</span>
               <PlatformIconLink platform={p.platform} />
-              <time className="muted" style={{ fontSize: '0.78rem' }}>{formatWhen(p.publishedAt)}</time>
+              <span className="published-post-line">{snippet(p.postContent)}</span>
+              <span className="published-post-chip">{p.engagement.toLocaleString('tr-TR')}</span>
+              <time className="muted published-post-when">{formatWhen(p.publishedAt)}</time>
             </div>
-            <p className="top-performer-preview">{p.postContent.slice(0, 140)}</p>
-            <div className="row" style={{ fontSize: '0.78rem' }}>
-              <span className="badge ok">etkileşim {p.engagement.toLocaleString('tr-TR')}</span>
-              {p.impressions != null ? (
-                <span className="badge">gösterim {p.impressions.toLocaleString('tr-TR')}</span>
-              ) : null}
-              {p.likes != null ? <span className="badge">beğeni {p.likes.toLocaleString('tr-TR')}</span> : null}
-              {p.comments != null ? <span className="badge">yorum {p.comments.toLocaleString('tr-TR')}</span> : null}
-              {p.shares != null ? <span className="badge">paylaşım {p.shares.toLocaleString('tr-TR')}</span> : null}
-              {socialPostPublicUrl(p.platform, p.platformPostId) ? (
-                <a href={socialPostPublicUrl(p.platform, p.platformPostId)!} target="_blank" rel="noopener noreferrer">
-                  Aç ↗
-                </a>
-              ) : null}
+            <div className="published-post-grow">
+              <p className="published-post-preview">{p.postContent.trim() || '(içerik yok)'}</p>
+              <div className="sm-post-stats row">
+                <span className="badge ok">etkileşim {p.engagement.toLocaleString('tr-TR')}</span>
+                {p.impressions != null ? (
+                  <span className="badge">gösterim {p.impressions.toLocaleString('tr-TR')}</span>
+                ) : null}
+                {p.likes != null ? <span className="badge">beğeni {p.likes.toLocaleString('tr-TR')}</span> : null}
+                {p.comments != null ? (
+                  <span className="badge">yorum {p.comments.toLocaleString('tr-TR')}</span>
+                ) : null}
+                {p.shares != null ? (
+                  <span className="badge">paylaşım {p.shares.toLocaleString('tr-TR')}</span>
+                ) : null}
+              </div>
+              <div className="published-post-actions row">
+                {publicUrl ? (
+                  <a href={publicUrl} target="_blank" rel="noopener noreferrer">
+                    Paylaşımı aç ↗
+                  </a>
+                ) : (
+                  <span className="muted">{p.platform}</span>
+                )}
+              </div>
             </div>
-          </div>
-        </li>
-      ))}
+          </li>
+        )
+      })}
     </ol>
   )
 }

@@ -25,12 +25,14 @@ Aynı Supabase URL’yi local + prod paylaşmak **Hobby egress kotasını yer** 
 
 ## Yerel kurulum (öncelik)
 
-1. `docker compose up -d postgres`
-2. `.env` + `.env.local`: `DATABASE_URL=postgresql://content:content@localhost:5434/content_studio?schema=public`
-3. `npx prisma db push`
-4. `NEXT_PUBLIC_APP_URL=http://localhost:3100`
-5. Terminal 1: `npm run dev` — worker’ı yalnızca yayın varken aç
-6. `/admin/social` → OAuth env satırları yeşil olmalı
+`DATABASE_URL` `localhost:5434` ise **`npm run dev` / `npm run worker` Docker Postgres’i kendisi açar** (`predev` / `preworker`). Docker Desktop kapalıysa Windows’ta başlatmayı dener (ilk sefer 1–2 dk).
+
+1. `.env` + `.env.local`: `DATABASE_URL=postgresql://content:content@localhost:5434/content_studio?schema=public`
+2. `NEXT_PUBLIC_APP_URL=http://localhost:3100`
+3. Terminal: `npm run dev` — worker’ı yalnızca yayın varken aç
+4. `/admin/social` → OAuth env satırları yeşil olmalı
+
+Elle: `npm run db:up`  ·  atla: `SKIP_LOCAL_DOCKER=true`
 
 ```powershell
 npm run env:parity   # DB fingerprint — isteğe bağlı banner doğrulama
