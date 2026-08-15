@@ -14,6 +14,7 @@ const NAV = [
   { href: '/admin/review', label: 'Onay', step: 'review', highlight: true },
   { href: '/admin/media', label: 'Medya', step: 'media' },
   { href: '/admin/social', label: 'Sosyal', step: 'social' },
+  { href: '/admin/comments', label: 'Yorumlar' },
   { href: '/admin/calendar', label: 'Takvim', step: 'calendar' },
   { href: '/admin/discovery', label: 'Discovery', step: 'discovery' },
   { href: '/admin/analytics', label: 'Performans' },  // step yok — badge/workflow mant\u0131\u011f\u0131na hi\u00e7 girmiyor

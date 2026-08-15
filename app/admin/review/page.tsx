@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { DEFAULT_ADMIN_API_KEY } from '@/lib/adminKey'
 import { PodcastTimeline } from '@/components/admin/PodcastTimeline'
+import { CommentTopicBanner } from '@/components/admin/CommentTopicBanner'
 
 type Item = {
   id: string
@@ -617,6 +618,7 @@ type AiImageState = { msg: string; urls: string[]; mediaIds?: string[] }
         </label>
       </div>
       {msg ? <p className="flash">{msg}</p> : null}
+      {adminKey ? <CommentTopicBanner adminKey={adminKey} /> : null}
       {!showAll && counts.approved + counts.rejected > 0 ? (
         <p className="muted" style={{ marginTop: '-0.5rem' }}>
           {counts.approved} onaylı, {counts.rejected} reddedildi — geçmiş için &quot;Tümünü göster&quot;

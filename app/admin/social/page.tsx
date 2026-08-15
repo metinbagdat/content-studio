@@ -7,8 +7,10 @@ import { SocialPlatformDashboard } from '@/components/admin/SocialPlatformDashbo
 import { PublishedPostsPanel } from '@/components/admin/PublishedPostsPanel'
 import { DraftDiagnosticsPanel, type DraftDiagnostics } from '@/components/admin/DraftDiagnosticsPanel'
 import { TopPerformersPanel, type TopPerformingPost } from '@/components/admin/TopPerformersPanel'
+import { EngagementDigestPanel } from '@/components/admin/EngagementDigestPanel'
 import { PlatformIconLink } from '@/components/admin/PlatformIconLink'
 import { DEFAULT_ADMIN_API_KEY } from '@/lib/adminKey'
+import type { EngagementDigest } from '@/lib/social/engagementDigest'
 
 function oauthErrorHint(reason: string): string {
   if (reason === 'unauthorized_scope_error') {
@@ -166,6 +168,7 @@ export default function SocialPage() {
   const [msgType, setMsgType] = useState<'info' | 'ok' | 'error'>('info')
   const [diagnostics, setDiagnostics] = useState<DraftDiagnostics | null>(null)
   const [topPerformers, setTopPerformers] = useState<TopPerformingPost[]>([])
+  const [engagementDigest, setEngagementDigest] = useState<EngagementDigest | null>(null)
   const [bulkPublishBusy, setBulkPublishBusy] = useState(false)
   const statusRef = useRef<HTMLParagraphElement>(null)
 
@@ -386,6 +389,37 @@ export default function SocialPage() {
     } catch (err) {
       setMsgType('error')
       setMsg(`İstatistik hatası: ${err instanceof Error ? err.message : String(err)}`)
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function refreshEngagementDigest() {
+    setBusyId('engagement-digest')
+    try {
+      const res = await fetch('/api/social', {
+        method: 'POST',
+        headers: headers(adminKey, true),
+        body: JSON.stringify({ action: 'engagement-digest' }),
+      })
+      const data = await parseApiJson(res)
+      if (!res.ok) {
+        setMsgType('error')
+        setMsg(String(data.error || 'Yorum derlemesi başarısız'))
+        return
+      }
+      const digest = data.digest as EngagementDigest
+      setEngagementDigest(digest)
+      setMsgType('ok')
+      setMsg(
+        `Yorum derlemesi: ${digest.posts.length} gönderi · senkron ${digest.synced}` +
+          (digest.syncErrors.length ? ` · ${digest.syncErrors[0]}` : '') +
+          ' (yanıt/DM yok)',
+      )
+      await load()
+    } catch (err) {
+      setMsgType('error')
+      setMsg(`Derleme hatası: ${err instanceof Error ? err.message : String(err)}`)
     } finally {
       setBusyId(null)
     }
@@ -1023,6 +1057,16 @@ export default function SocialPage() {
         </p>
         <TopPerformersPanel posts={topPerformers} />
       </section>
+
+      <EngagementDigestPanel
+        digest={engagementDigest}
+        busy={busyId === 'engagement-digest'}
+        onRefresh={refreshEngagementDigest}
+      />
+      <p className="muted" style={{ fontSize: '0.82rem', marginTop: '-0.5rem', marginBottom: '1rem' }}>
+        Tam konsolide özet konusu için{' '}
+        <Link href="/admin/comments">Yorumlar</Link> (otomatik derleme).
+      </p>
 
       {postView === 'drafts' ? (
       <section className="panel" style={{ marginTop: '1rem' }}>

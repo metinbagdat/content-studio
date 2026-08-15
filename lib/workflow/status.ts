@@ -293,6 +293,10 @@ export async function getWorkflowSnapshot(): Promise<WorkflowSnapshot> {
     nextActions.push(`${failedPosts} başarısız yayın — Sosyal'de yeniden dene veya «Sıradaki adım»`)
   if (socialDrafts > 20)
     nextActions.push(`${socialDrafts} taslak — SM kartında «Toplu yayınla» veya «Sıradaki adım» (10/adım)`)
+  if (publishedPosts > 0)
+    nextActions.push(
+      `${publishedPosts} yayınlandı — Yorumlar’da özet konusunu kontrol et, Onay’da caption’a yansıt`,
+    )
   if (!nextActions.length && publishedPosts > 0)
     nextActions.push(`${publishedPosts} yayınlandı — akış ağacında linkleri izle`)
   if (!nextActions.length) nextActions.push('Akış tamam — yayınlanan postları Takvim’de izle')

@@ -159,6 +159,17 @@ async function handleAction(action: string, body: Record<string, unknown>) {
     return NextResponse.json({ accounts, posts, accountHealth })
   }
 
+  // Read-only: comments + engagement for content changes — never replies/DMs.
+  if (action === 'engagement-digest') {
+    const { buildEngagementDigest } = await import('@/lib/social/engagementDigest')
+    const digest = await buildEngagementDigest({
+      limit: typeof body.limit === 'number' ? body.limit : 20,
+      syncFirst: body.syncFirst !== false,
+      fetchCommentText: body.fetchCommentText !== false,
+    })
+    return NextResponse.json({ digest })
+  }
+
   if (action === 'repair-accounts') {
     const accountHealth = await repairMissingSocialAccounts()
     const sync = await syncSocialDraftsFromApprovedCaptions()

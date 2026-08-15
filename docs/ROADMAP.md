@@ -28,7 +28,7 @@ Status legend: `todo` · `doing` · `done` · `blocked` · `learncon` (tracked i
 | CS-05 | Podcast packaging | doing | CS-04 | Segments + zod + admin timeline + jingle assembly done; multi-episode open |
 | CS-06 | Publishers: IG / TikTok / YT / FB / Pinterest | doing | OAuth apps ready | Dry-run account/draft infra ready for all platforms; real OAuth+publish still open |
 | CS-07 | Distribution calendar apply | done | — | `/admin/calendar` preview + apply; weekday-preferred, weekend-reduced cadence |
-| CS-08 | Performance feedback loop | doing | Metrics API access | X/LinkedIn stats + top-performers leaderboard, worker cron every 3h; posting-time auto-tuning still needs more data |
+| CS-08 | Performance feedback loop | doing | Metrics API access | X/LI stats + top-performers + admin **Yorumlar** (salt okuma derleme + Onay bandı); posting-time auto-tuning still needs more data |
 | CS-09 | FFmpeg short video | todo | Media storage ready | 9:16 export path — scripts exist, no rendered video file yet |
 | CS-10 | Image resize per platform | done | CS-03 | Batch JPEG export from master via sharp; template cards render direct per size |
 | CS-11 | Infographic text format | doing | CS-01 | Bullet/stat copy generated + reviewable; image rendering waits on CS-03/CS-10 |
