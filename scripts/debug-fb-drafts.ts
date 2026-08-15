@@ -1,4 +1,5 @@
 import { prisma } from '../lib/prisma'
+import { Prisma } from '@prisma/client'
 
 async function main() {
   const caps = await prisma.derivedContent.findMany({
@@ -12,7 +13,7 @@ async function main() {
     where: {
       contentType: 'SOCIAL_CAPTION',
       status: { in: ['APPROVED', 'PUBLISHED'] },
-      NOT: { metadata: { equals: null } },
+      NOT: { metadata: { equals: Prisma.JsonNull } },
     },
   })
   console.log('approved captions', withPlatform)
