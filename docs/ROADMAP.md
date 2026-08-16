@@ -26,10 +26,10 @@ Status legend: `todo` · `doing` · `done` · `blocked` · `learncon` (tracked i
 | CS-03 | Image generation (cards / thumbs) | doing | CS-02 | Cards now render at correct per-platform size/aspect ratio; DALL-E art variant still open (paid API) |
 | CS-04 | Audio / music (TTS, march/song) | doing | CS-03 | Podcast jingles + march/song TTS+music bed done; Suno/Udio sung audio open |
 | CS-05 | Podcast packaging | doing | CS-04 | Segments + zod + admin timeline + jingle assembly done; multi-episode open |
-| CS-06 | Publishers: IG / TikTok / YT / FB / Pinterest | doing | OAuth apps ready | Dry-run account/draft infra ready for all platforms; real OAuth+publish still open |
+| CS-06 | Publishers: IG / TikTok / YT / FB / Pinterest | doing | OAuth apps ready | YouTube local publish verified (Shorts + long); X/LI local OK; Meta/TikTok App Review / prod OAuth still open; Pinterest API later |
 | CS-07 | Distribution calendar apply | done | — | `/admin/calendar` preview + apply; weekday-preferred, weekend-reduced cadence |
-| CS-08 | Performance feedback loop | doing | Metrics API access | X/LI stats + top-performers + admin **Yorumlar** (salt okuma derleme + Onay bandı); posting-time auto-tuning still needs more data |
-| CS-09 | FFmpeg short video | todo | Media storage ready | 9:16 export path — scripts exist, no rendered video file yet |
+| CS-08 | Performance feedback loop | doing | Metrics API access | X/LI stats + top-performers + admin **Yorumlar**; adaptive slots coded (`getAdaptiveSlotOrder`, min 5 samples); more published metrics still needed |
+| CS-09 | FFmpeg short video | doing | Media storage ready | 9:16 Shorts + 16:9 path live locally (ffmpeg/ffprobe + YouTube upload); burn-in/subtitle polish still open |
 | CS-10 | Image resize per platform | done | CS-03 | Batch JPEG export from master via sharp; template cards render direct per size |
 | CS-11 | Infographic text format | doing | CS-01 | Bullet/stat copy generated + reviewable; image rendering waits on CS-03/CS-10 |
 

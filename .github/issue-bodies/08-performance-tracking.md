@@ -15,8 +15,9 @@ Fetch engagement metrics per post and feed back into posting time / content opti
       process only — `npm run worker` must be running; the Next.js dev/admin process does not
       run background timers)
 - [x] Dashboard: top performers ranking (`TopPerformersPanel`, sorted by stored engagement)
-- [ ] Adjust `pickPostingSlot()` based on historical data — deferred until enough published
-      posts with metrics accumulate to make a real (non-noisy) time-of-day signal
+- [x] Admin **Yorumlar** read-only digest + Onay bandı (`/admin/comments`, `CommentTopicBanner`)
+- [~] Adjust `pickPostingSlot()` via `getAdaptiveSlotOrder()` — implemented; activates after ≥5
+      published posts with metrics per weekend/weekday split (still accumulating)
 
 ## Note
 X API metrics (followers, tweet impressions) require a paid tier (Basic ~$200/mo) —

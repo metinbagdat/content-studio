@@ -91,7 +91,7 @@ Medya URL'leri (`/api/media/...`) üretildiği ortamın `NEXT_PUBLIC_APP_URL`'in
 
 - [ ] Discovery / Pipeline / Review — DB + LLM key
 - [ ] Podcast TTS — `TTS_PROVIDER=edge` (key gerekmez)
-- [ ] Video / klip — ffmpeg (local'de `ffmpeg-static` paket içi)
+- [x] Video / klip — ffmpeg (local'de `ffmpeg-static` paket içi; Shorts + long YouTube upload doğrulandı)
 - [ ] Sosyal OAuth — tüm platform env + portal callback
 - [ ] Worker — local terminal açık
 - [ ] Prod deploy — `main` merge → GitHub Actions → Vercel
