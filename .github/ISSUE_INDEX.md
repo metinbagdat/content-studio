@@ -22,5 +22,9 @@ Open GitHub issues from bodies below when the Issues API is available. Until the
 | [13-sm-marketing-automation-epic.md](./issue-bodies/13-sm-marketing-automation-epic.md) | CS-SM-EPIC | SM marketing automation → [#31](https://github.com/metinbagdat/content-studio/issues/31) |
 | [14-meta-app-review-sandbox.md](./issue-bodies/14-meta-app-review-sandbox.md) | CS-SM-00 | Meta App Review / sandbox → [#32](https://github.com/metinbagdat/content-studio/issues/32) |
 | [15-audience-segmentation.md](./issue-bodies/15-audience-segmentation.md) | CS-SM-01 | Audience segments → [#33](https://github.com/metinbagdat/content-studio/issues/33) |
+| [16-wordpress-publisher.md](./issue-bodies/16-wordpress-publisher.md) | CS-WP-01 | WP draft publisher → [#34](https://github.com/metinbagdat/content-studio/issues/34) |
+| [17-safe-samurai-gate.md](./issue-bodies/17-safe-samurai-gate.md) | CS-WP-02 | Safe samurAI pre-send gate → [#35](https://github.com/metinbagdat/content-studio/issues/35) |
+| [18-seo-hpv-trigger.md](./issue-bodies/18-seo-hpv-trigger.md) | CS-WP-03 | HPV / SEO topic trigger → [#36](https://github.com/metinbagdat/content-studio/issues/36) |
+| [19-wordpress-publish-webhook.md](./issue-bodies/19-wordpress-publish-webhook.md) | CS-WP-04 | WP publish → SM webhook → [#37](https://github.com/metinbagdat/content-studio/issues/37) |
 
-LearnCon growth (referral, onboarding, SEO site, payments): **not** opened here — see `docs/ROADMAP.md` section B → `metinbagdat/learncon`.
+WordPress SEO hub plugins live in **`metinbagdat/wp-seo-hub`**. LearnCon growth: **not** opened here — see `docs/ROADMAP.md` section B → `metinbagdat/learncon`.
