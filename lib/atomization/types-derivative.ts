@@ -31,6 +31,8 @@ export type AtomMetadata = {
   articleUrl?: string
   autoGenerateImage?: boolean
   imageUrl?: string
+  /** CS-SM-01 audience: tyt | ayt | lgs | veli | egitimci | genel */
+  segment?: string
 }
 
 export type DerivativeDraft = {

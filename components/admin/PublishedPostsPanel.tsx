@@ -15,6 +15,7 @@ export type PublishedPostRow = {
   isMockPost?: boolean
   imagePreviewUrl?: string | null
   account?: { accountName?: string; platform?: string; isActive?: boolean }
+  segment?: string | null
   analytics?: {
     impressions?: number | null
     likes?: number | null
@@ -71,6 +72,7 @@ export function PublishedPostsPanel({
           <li key={p.id} className="published-post-card" tabIndex={0}>
             <div className="published-post-row">
               <PlatformIconLink platform={p.platform} username={accountName} />
+              {p.segment ? <span className="published-post-chip">{p.segment.toUpperCase()}</span> : null}
               <span className="published-post-line">{snippet(p.postContent)}</span>
               {a?.engagement != null ? (
                 <span className="published-post-chip">{a.engagement.toLocaleString('tr-TR')}</span>

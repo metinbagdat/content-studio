@@ -25,8 +25,8 @@ Hedef kitle odaklı sosyal medya dağıtım otomasyonu (lise / üniversite adayl
 
 ## Amaçlar (mühendislik)
 
-- [ ] Segment etiketleri (TYT, AYT, veli, …) içerik + draft üzerinde
-- [ ] Segment → platform / caption / görsel şablonu kuralları
+- [x] Segment etiketleri (TYT, AYT, veli, …) içerik + draft üzerinde
+- [x] Segment → platform / caption / görsel şablonu kuralları
 - [ ] Zamanlama + günlük limitler (mevcut calendar/limits ile)
 - [ ] Meta App Review / Live + TikTok audit tamam
 - [ ] Metrik → sonraki içerik ağırlığı (#5)

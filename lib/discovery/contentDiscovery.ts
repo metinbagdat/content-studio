@@ -5,6 +5,7 @@ import { DEFAULT_PIPELINE_PLATFORMS } from '../platforms/targets'
 import { isDuplicateArticle, isLikelyHubPage } from './duplicateDetection'
 import { fetchBlogSitemap, type SitemapEntry } from './sitemap'
 import { fetchBlogRss, isRssAvailable } from './rss'
+import { detectAudienceSegment, withSegmentTag } from '../audience/segments'
 
 export type DiscoveryResult = {
   scanned: number
@@ -38,7 +39,7 @@ async function ingestBlogSlug(slug: string): Promise<{ sourceId: string; title: 
       title: blog.title,
       content: blog.contentMarkdown,
       category: 'blog',
-      tags: blog.tags,
+      tags: withSegmentTag(blog.tags, detectAudienceSegment(`${blog.title}\n${blog.contentMarkdown}`, blog.tags)),
     },
   })
   return { sourceId: source.id, title: blog.title }
@@ -111,7 +112,7 @@ export async function runContentDiscovery(options: DiscoveryOptions = {}): Promi
           title: blog.title,
           content: blog.contentMarkdown,
           category: 'blog',
-          tags: blog.tags,
+          tags: withSegmentTag(blog.tags, detectAudienceSegment(`${blog.title}\n${blog.contentMarkdown}`, blog.tags)),
         },
       })
       result.newArticles += 1

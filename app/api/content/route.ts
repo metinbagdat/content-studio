@@ -3,6 +3,7 @@ import { ContentType } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/auth'
 import { createDerivedContent, setDerivedStatus } from '@/lib/content-crud'
+import { detectAudienceSegment, isAudienceSegment, parseSegmentFromTags } from '@/lib/audience/segments'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,29 +13,45 @@ export async function GET(req: NextRequest) {
   }
   const status = req.nextUrl.searchParams.get('status')
   const platform = req.nextUrl.searchParams.get('platform')?.toUpperCase() || ''
+  const segmentParam = req.nextUrl.searchParams.get('segment')?.toLowerCase() || ''
   const take = Math.min(500, Math.max(50, Number(req.nextUrl.searchParams.get('take') || 300)))
   const items = await prisma.derivedContent.findMany({
     where: status ? { status: status as 'IN_REVIEW' | 'APPROVED' | 'DRAFT' } : undefined,
     orderBy: { createdAt: 'desc' },
     take,
-    include: { source: { select: { id: true, title: true } } },
+    include: { source: { select: { id: true, title: true, tags: true } } },
   })
-  const filtered = platform
-    ? items.filter((item) => {
-        const meta =
-          item.metadata && typeof item.metadata === 'object'
-            ? (item.metadata as Record<string, unknown>)
-            : {}
-        if (meta.platform === platform) return true
-        if (platform === 'LINKEDIN' && item.contentType === 'LINKEDIN_CAROUSEL') return true
-        if (platform === 'TWITTER' && item.contentType === 'TWITTER_THREAD') return true
-        if (platform === 'YOUTUBE' && (meta.atomKind === 'youtube_short' || meta.atomKind === 'long_form_video')) {
-          return true
-        }
-        return false
-      })
-    : items
-  return NextResponse.json({ items: filtered, totalFetched: items.length, platform: platform || null })
+  const filtered = items.filter((item) => {
+    if (platform) {
+      const meta =
+        item.metadata && typeof item.metadata === 'object'
+          ? (item.metadata as Record<string, unknown>)
+          : {}
+      const matchPlatform =
+        meta.platform === platform ||
+        (platform === 'LINKEDIN' && item.contentType === 'LINKEDIN_CAROUSEL') ||
+        (platform === 'TWITTER' && item.contentType === 'TWITTER_THREAD') ||
+        (platform === 'YOUTUBE' && (meta.atomKind === 'youtube_short' || meta.atomKind === 'long_form_video'))
+      if (!matchPlatform) return false
+    }
+    if (segmentParam && isAudienceSegment(segmentParam)) {
+      const meta =
+        item.metadata && typeof item.metadata === 'object'
+          ? (item.metadata as Record<string, unknown>)
+          : {}
+      const fromMeta = typeof meta.segment === 'string' ? meta.segment : null
+      const fromTags = parseSegmentFromTags(item.source.tags)
+      const seg = fromMeta || fromTags || detectAudienceSegment(`${item.title}\n${item.source.title}`)
+      if (seg !== segmentParam) return false
+    }
+    return true
+  })
+  return NextResponse.json({
+    items: filtered,
+    totalFetched: items.length,
+    platform: platform || null,
+    segment: segmentParam || null,
+  })
 }
 
 export async function POST(req: NextRequest) {

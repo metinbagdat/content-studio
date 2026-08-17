@@ -1,8 +1,9 @@
 ## Meta
 - **ID:** CS-SM-01
-- **Status:** todo
+- **Status:** doing
 - **Parent:** CS-SM-EPIC
 - **Repo:** content-studio
+- **GitHub:** #33
 
 ## Summary
 
@@ -10,19 +11,15 @@ TYT / AYT / LGS / veli / eğitimci segmentleri için içerik etiketleme ve dağ�
 
 ## Scope
 
-- [ ] Segment taxonomy (enum veya tags): `tyt`, `ayt`, `lgs`, `veli`, `genel`
-- [ ] Discovery / atomization çıktısına segment atama (LLM veya kurallar)
-- [ ] Caption / hashtag / CTA varyantları segmente göre
-- [ ] Platform routing: hangi segment → hangi platform öncelikli
-- [ ] Admin UI: segment filtresi (Onay / Sosyal / Takvim)
+- [x] Segment taxonomy: `tyt`, `ayt`, `lgs`, `veli`, `egitimci`, `genel` (`lib/audience/segments.ts`)
+- [x] Discovery / atomization / source create → `seg:{id}` tag + `metadata.segment`
+- [x] Caption hashtag varyantları segmente göre
+- [x] Platform routing: segment → platform öncelik sırası (pipeline default)
+- [x] Admin UI: segment filtresi (Onay + Sosyal yayın listesi)
+- [ ] LLM-based assignment (rules first; LLM later if needed)
 
 ## Done when
 
-- [ ] En az 3 segment etiketli draft üretilebiliyor
-- [ ] Yayın listesinde segmente göre filtre
-- [ ] Bir pipeline koşusunda segment metadata DB’de saklanıyor
-
-## Non-goals
-
-- Meta Ads / Lookalike audiences (sonraki faz)
-- Zapier segment sync
+- [x] En az 3 segment etiketli draft üretilebiliyor
+- [x] Yayın listesinde segmente göre filtre
+- [x] Bir pipeline koşusunda segment metadata DB’de saklanıyor

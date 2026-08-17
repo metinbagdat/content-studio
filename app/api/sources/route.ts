@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/auth'
+import { detectAudienceSegment, withSegmentTag } from '@/lib/audience/segments'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,13 +26,15 @@ export async function POST(req: NextRequest) {
   if (!title || !content) {
     return NextResponse.json({ error: 'title and content required' }, { status: 400 })
   }
+  const incomingTags = Array.isArray(body.tags) ? body.tags.map(String) : []
+  const segment = detectAudienceSegment(`${title}\n${content}`, incomingTags)
   const source = await prisma.contentSource.create({
     data: {
       title,
       content,
       category: String(body.category || 'general'),
-      tags: Array.isArray(body.tags) ? body.tags.map(String) : [],
+      tags: withSegmentTag(incomingTags, segment),
     },
   })
-  return NextResponse.json({ source }, { status: 201 })
+  return NextResponse.json({ source, segment }, { status: 201 })
 }

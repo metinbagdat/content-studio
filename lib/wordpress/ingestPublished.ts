@@ -1,6 +1,7 @@
 import { prisma } from '../prisma'
 import { createPipeline } from '../pipeline'
 import { isDuplicateArticle } from '../discovery/duplicateDetection'
+import { detectAudienceSegment, withSegmentTag } from '../audience/segments'
 
 export type WordpressPublishedPayload = {
   post_id?: number | string
@@ -95,7 +96,10 @@ export async function ingestWordpressPublished(
       title,
       content,
       category: 'wordpress',
-      tags: [tag, 'wp-published', `wp-type:${postType}`, ...(link ? [`wp-link:${link.slice(0, 180)}`] : [])],
+      tags: withSegmentTag(
+        [tag, 'wp-published', `wp-type:${postType}`, ...(link ? [`wp-link:${link.slice(0, 180)}`] : [])],
+        detectAudienceSegment(`${title}\n${content}`),
+      ),
     },
   })
 

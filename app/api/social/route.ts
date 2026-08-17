@@ -69,6 +69,7 @@ async function handleGet() {
         account: {
           select: { accountName: true, platform: true, isActive: true, accountId: true },
         },
+        derivedContent: { select: { metadata: true } },
       },
     }),
     auditSocialAccounts(),
@@ -116,8 +117,22 @@ async function handleGet() {
       const analytics = (m as { analytics?: Record<string, unknown> }).analytics
       const isDryRun = p.account.accountId.startsWith('dryrun_')
       const isMockPost = Boolean(p.platformPostId?.startsWith('mock_'))
+      const derivedMeta =
+        p.derivedContent?.metadata && typeof p.derivedContent.metadata === 'object'
+          ? (p.derivedContent.metadata as Record<string, unknown>)
+          : {}
       return {
-        ...p,
+        id: p.id,
+        platform: p.platform,
+        status: p.status,
+        createdAt: p.createdAt,
+        publishedAt: p.publishedAt,
+        scheduledAt: p.scheduledAt,
+        platformPostId: p.platformPostId,
+        derivedContentId: p.derivedContentId,
+        error: p.error,
+        mediaUrls: p.mediaUrls,
+        metrics: p.metrics,
         postContent: previewById.get(p.id) || '',
         account: {
           accountName: p.account.accountName,
@@ -130,6 +145,7 @@ async function handleGet() {
         imageAttached: m.imageAttached ?? null,
         imageError: m.imageError || (p.status === 'FAILED' ? p.error : null),
         analytics: analytics || null,
+        segment: typeof derivedMeta.segment === 'string' ? derivedMeta.segment : null,
       }
     }),
   })

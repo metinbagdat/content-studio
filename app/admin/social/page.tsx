@@ -11,6 +11,7 @@ import { EngagementDigestPanel } from '@/components/admin/EngagementDigestPanel'
 import { PlatformIconLink } from '@/components/admin/PlatformIconLink'
 import { DEFAULT_ADMIN_API_KEY } from '@/lib/adminKey'
 import type { EngagementDigest } from '@/lib/social/engagementDigest'
+import { AUDIENCE_SEGMENTS, SEGMENT_LABELS, type AudienceSegment } from '@/lib/audience/segments'
 
 function oauthErrorHint(reason: string): string {
   if (reason === 'unauthorized_scope_error') {
@@ -165,6 +166,7 @@ export default function SocialPage() {
   const [imagesSynced, setImagesSynced] = useState(false)
   const [hideDryRun, setHideDryRun] = useState(true)
   const [postView, setPostView] = useState<'published' | 'drafts'>('published')
+  const [segmentFilter, setSegmentFilter] = useState<'ALL' | AudienceSegment>('ALL')
   const [msgType, setMsgType] = useState<'info' | 'ok' | 'error'>('info')
   const [diagnostics, setDiagnostics] = useState<DraftDiagnostics | null>(null)
   const [topPerformers, setTopPerformers] = useState<TopPerformingPost[]>([])
@@ -830,13 +832,17 @@ export default function SocialPage() {
     canMutate(p.status) || Boolean(p.isDryRun || p.isMockPost)
 
   const publishedPosts = useMemo(() => {
-    const list = posts.filter((p) => p.status === 'PUBLISHED')
+    const list = posts.filter((p) => {
+      if (p.status !== 'PUBLISHED') return false
+      if (segmentFilter !== 'ALL' && p.segment !== segmentFilter) return false
+      return true
+    })
     return list.sort((a, b) => {
       const ta = a.publishedAt || a.createdAt
       const tb = b.publishedAt || b.createdAt
       return new Date(tb).getTime() - new Date(ta).getTime()
     })
-  }, [posts])
+  }, [posts, segmentFilter])
 
   const readyDraftsByPlatform = useMemo(() => {
     const map: Record<string, Array<{ id: string; preview: string; accountName: string; isDryRun: boolean }>> = {}
@@ -982,6 +988,19 @@ export default function SocialPage() {
         <button type="button" className="btn secondary" disabled={busyId === 'sync-drafts'} onClick={syncDrafts}>
           Taslakları senkronize et
         </button>
+        <select
+          value={segmentFilter}
+          onChange={(e) => setSegmentFilter(e.target.value as 'ALL' | AudienceSegment)}
+          style={{ marginBottom: 0, minWidth: '8rem' }}
+          aria-label="Segment filtresi"
+        >
+          <option value="ALL">Segment: tümü</option>
+          {AUDIENCE_SEGMENTS.map((s) => (
+            <option key={s} value={s}>
+              {SEGMENT_LABELS[s]}
+            </option>
+          ))}
+        </select>
       </div>
       <div className="keybar">
         <div style={{ flex: 1 }}>

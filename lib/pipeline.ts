@@ -14,6 +14,7 @@ import { ensureGeneratedPostImage, ensureGeneratedPostMedia, publishCaptionWithI
 import { buildYouTubePostContent } from './social/publishVideo'
 import { preparePostForPublish } from './social/preparePublish'
 import { DEFAULT_PIPELINE_PLATFORMS, normalizePlatforms } from './platforms/targets'
+import { detectAudienceSegment, platformsForSegment, withSegmentTag } from './audience/segments'
 
 export type PipelineConfig = {
   platforms: SocialPlatform[]
@@ -36,15 +37,22 @@ const DEFAULT_CONFIG: PipelineConfig = {
 }
 
 export async function createPipeline(sourceId: string, config: Partial<PipelineConfig> = {}) {
+  const source = await prisma.contentSource.findUnique({ where: { id: sourceId } })
+  if (!source) throw new Error('Source not found')
+
+  const segment = detectAudienceSegment(`${source.title}\n${source.content}`, source.tags)
+  const tagged = withSegmentTag(source.tags, segment)
+  if (tagged.join('\0') !== source.tags.join('\0')) {
+    await prisma.contentSource.update({ where: { id: sourceId }, data: { tags: tagged } })
+    source.tags = tagged
+  }
+
   const merged: PipelineConfig = {
     ...DEFAULT_CONFIG,
     ...config,
-    platforms: normalizePlatforms(config.platforms ?? DEFAULT_CONFIG.platforms),
+    platforms: normalizePlatforms(config.platforms ?? platformsForSegment(segment)),
     autoPublish: false, // hard override — brand safety
   }
-
-  const source = await prisma.contentSource.findUnique({ where: { id: sourceId } })
-  if (!source) throw new Error('Source not found')
 
   // Never let two pipelines for the same source be in-flight at once — a double click,
   // an overlapping discovery trigger, or a stuck worker queue would otherwise pile up

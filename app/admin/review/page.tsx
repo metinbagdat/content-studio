@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { DEFAULT_ADMIN_API_KEY } from '@/lib/adminKey'
 import { PodcastTimeline } from '@/components/admin/PodcastTimeline'
 import { CommentTopicBanner } from '@/components/admin/CommentTopicBanner'
+import { AUDIENCE_SEGMENTS, SEGMENT_LABELS, isAudienceSegment, parseSegmentFromTags, type AudienceSegment } from '@/lib/audience/segments'
 
 type Item = {
   id: string
@@ -13,10 +14,11 @@ type Item = {
   status: string
   approvedAt?: string | null
   metadata?: Record<string, unknown> | null
-  source?: { id: string; title: string }
+  source?: { id: string; title: string; tags?: string[] }
 }
 
 type PlatformFilter = 'ALL' | 'LINKEDIN' | 'TWITTER' | 'YOUTUBE' | 'INSTAGRAM' | 'TIKTOK' | 'FACEBOOK'
+type SegmentFilter = 'ALL' | AudienceSegment
 
 const CONTENT_TYPES = [
   'SOCIAL_CAPTION',
@@ -118,6 +120,12 @@ function itemPlatform(item: Item): string | null {
   return null
 }
 
+function itemSegment(item: Item): AudienceSegment | null {
+  const meta = item.metadata && typeof item.metadata === 'object' ? item.metadata : {}
+  if (isAudienceSegment(meta.segment)) return meta.segment
+  return parseSegmentFromTags(item.source?.tags)
+}
+
 function platformLabel(platform: string | null): string {
   switch (platform) {
     case 'TWITTER':
@@ -146,6 +154,7 @@ export default function ReviewPage() {
   const [msg, setMsg] = useState('')
   const [showAll, setShowAll] = useState(false)
   const [platformFilter, setPlatformFilter] = useState<PlatformFilter>('ALL')
+  const [segmentFilter, setSegmentFilter] = useState<SegmentFilter>('ALL')
   const [busyId, setBusyId] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editTitle, setEditTitle] = useState('')
@@ -177,8 +186,11 @@ type AiImageState = { msg: string; urls: string[]; mediaIds?: string[] }
     if (platformFilter !== 'ALL') {
       filtered = filtered.filter((i) => itemPlatform(i) === platformFilter)
     }
+    if (segmentFilter !== 'ALL') {
+      filtered = filtered.filter((i) => itemSegment(i) === segmentFilter)
+    }
     return sortItems(filtered, prioritySourceId, customOrder)
-  }, [items, showAll, platformFilter, prioritySourceId, customOrder])
+  }, [items, showAll, platformFilter, segmentFilter, prioritySourceId, customOrder])
 
   const visiblePendingIds = useMemo(
     () => visibleItems.filter((i) => i.status === 'IN_REVIEW').map((i) => i.id),
@@ -196,6 +208,7 @@ type AiImageState = { msg: string; urls: string[]; mediaIds?: string[] }
     }
     const q = new URLSearchParams({ take: '300' })
     if (platformFilter !== 'ALL') q.set('platform', platformFilter)
+    if (segmentFilter !== 'ALL') q.set('segment', segmentFilter)
     const [cRes, sRes] = await Promise.all([
       fetch(`/api/content?${q}`, { headers: adminHeaders(adminKey), cache: 'no-store' }),
       fetch('/api/sources', { headers: adminHeaders(adminKey), cache: 'no-store' }),
@@ -226,7 +239,7 @@ type AiImageState = { msg: string; urls: string[]; mediaIds?: string[] }
     } else {
       setMsg('Onay bekleyen yok — "Tümünü göster" veya LinkedIn filtresi ile geçmişe bak')
     }
-  }, [adminKey, showAll, platformFilter])
+  }, [adminKey, showAll, platformFilter, segmentFilter])
 
   useEffect(() => {
     const saved = localStorage.getItem('cs_admin_key')
@@ -620,6 +633,21 @@ type AiImageState = { msg: string; urls: string[]; mediaIds?: string[] }
           </select>
         </div>
         <div>
+          <label>Segment</label>
+          <select
+            value={segmentFilter}
+            onChange={(e) => setSegmentFilter(e.target.value as SegmentFilter)}
+            style={{ marginBottom: 0, minWidth: '8rem' }}
+          >
+            <option value="ALL">Tümü</option>
+            {AUDIENCE_SEGMENTS.map((s) => (
+              <option key={s} value={s}>
+                {SEGMENT_LABELS[s]}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
           <label>Öne çıkar</label>
           <select
             value={prioritySourceId}
@@ -797,6 +825,9 @@ type AiImageState = { msg: string; urls: string[]; mediaIds?: string[] }
               <span className={`badge plat-${itemPlatform(item) || 'NONE'}`}>
                 {platformLabel(itemPlatform(item))}
               </span>
+              {itemSegment(item) ? (
+                <span className="badge">{SEGMENT_LABELS[itemSegment(item)!]}</span>
+              ) : null}
               <span className="badge">{item.contentType}</span>
               <span className={statusBadgeClass(item.status)}>{statusLabel(item.status)}</span>
               {prioritySourceId && item.source?.id === prioritySourceId ? (

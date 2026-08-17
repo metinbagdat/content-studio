@@ -13,6 +13,7 @@ import {
 } from './articleChunks'
 import { llmJsonBatch } from './llmBatch'
 import type { AtomKind, DerivativeDraft, GenerateDerivativesInput, GenerateDerivativesResult } from './types-derivative'
+import { appendSegmentHashtags, detectAudienceSegment } from '../audience/segments'
 
 const HASHTAGS = '#egitim #egitimtoday #ogrenme'
 
@@ -326,7 +327,8 @@ export async function generateAllDerivatives(
   plan: AtomizationPlan,
   input: GenerateDerivativesInput,
 ): Promise<GenerateDerivativesResult> {
-  const { sourceId, title, article, articleUrl, platforms } = input
+  const { sourceId, title, article, articleUrl, platforms, tags } = input
+  const segment = detectAudienceSegment(`${title}\n${article}`, tags)
   const want = (p: SocialPlatform) => platformWants(platforms, p)
   const p = plan.contentPieces
   const drafts: DerivativeDraft[] = []
@@ -409,8 +411,11 @@ export async function generateAllDerivatives(
             sourceId,
             contentType: d.contentType,
             title: d.title,
-            content: d.content,
-            metadata: { ...d.metadata, planGeneratedAt: plan.generatedAt } as Prisma.InputJsonValue,
+            content:
+              d.contentType === 'SOCIAL_CAPTION' || d.contentType === 'TWITTER_THREAD'
+                ? appendSegmentHashtags(d.content, segment)
+                : d.content,
+            metadata: { ...d.metadata, segment, planGeneratedAt: plan.generatedAt } as Prisma.InputJsonValue,
             status: 'IN_REVIEW',
           },
         })
