@@ -33,7 +33,10 @@ Status legend: `todo` · `doing` · `done` · `blocked` · `learncon` (tracked i
 | CS-10 | Image resize per platform | done | CS-03 | Batch JPEG export from master via sharp; template cards render direct per size |
 | CS-11 | Infographic text format | doing | CS-01 | Bullet/stat copy generated + reviewable; image rendering waits on CS-03/CS-10 |
 | CS-SM-01 | Audience segments (TYT/AYT/LGS/veli) | doing | CS-SM-EPIC | Tags + caption hashtags + platform order + Onay/Sosyal filter (`lib/audience/segments.ts`) |
-| CS-WP | WordPress SEO hub bridge | doing | wp-seo-hub repo | CS-WP-01..04 code in repo (publisher, Safe samurAI, HPV gate, publish webhook); live WP smoke still blocked on Oracle A1 / host (`docs/WORDPRESS_BRIDGE.md`) |
+| CS-WP | WordPress SEO hub bridge | doing | wp-seo-hub repo | CS-WP-01..04 code in repo; live WP at `blog.egitim.today` (Hostinger) |
+| CS-EM-01 | Hostinger Reach contact API | doing | Reach token | `lib/email/hostingerReach.ts` + `POST /api/email/reach`; live sync needs `HOSTINGER_API_TOKEN` |
+| CS-EM-02 | Admin e-posta sayfası | doing | CS-EM-01 | `/admin/email` kişi ekle / liste |
+| CS-EM-03 | WP yayın → bülten hatırlatması | todo | CS-EM-01 + WP live | Kampanya send API yok; Onay/WP sonrası Reach’te manuel gönder hatırlatması |
 
 Detail files: `01-discovery-cron.md` … `12-infographic-format.md`, plus `M0-monorepo.md`, `M1-apps-layout.md`.
 
@@ -49,7 +52,7 @@ Implement in `metinbagdat/learncon`. Listed here so the growth doc has a single 
 | LC-G1 | Registration conversion page | learncon | 1 | “Neden eğitim.today?” + CTA live |
 | LC-G2 | Onboarding 6-question → AI plan | learncon | 3 | First value in-session |
 | LC-G3 | Dashboard MVP widgets | learncon | 4 | Focus / tasks / streak / upsell |
-| LC-G4 | Email/SMS/WhatsApp automations | learncon | 5 | SendGrid/Twilio flows |
+| LC-G4 | Email/SMS/WhatsApp automations | learncon | 5 | SendGrid/Twilio — **not** Hostinger Reach (blog newsletter is CS-EM) |
 | LC-G5 | Referral program | learncon | 6–7 | Invite link + reward/XP |
 | LC-G6 | SEO topic clusters + OG cards | learncon | 6–7 | Pillar pages + rich previews |
 | LC-G7 | Broadcast panel (admin/teacher) | learncon | 6–7 | Telegram/WA/email blast |

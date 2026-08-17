@@ -18,6 +18,7 @@ const NAV = [
   { href: '/admin/calendar', label: 'Takvim', step: 'calendar' },
   { href: '/admin/discovery', label: 'Discovery', step: 'discovery' },
   { href: '/admin/analytics', label: 'Performans' },  // step yok — badge/workflow mant\u0131\u011f\u0131na hi\u00e7 girmiyor
+  { href: '/admin/email', label: 'E-posta' },
 ]
 
 function adminHeaders(key: string): HeadersInit {

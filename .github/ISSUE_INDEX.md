@@ -26,5 +26,8 @@ Open GitHub issues from bodies below when the Issues API is available. Until the
 | [17-safe-samurai-gate.md](./issue-bodies/17-safe-samurai-gate.md) | CS-WP-02 | Safe samurAI pre-send gate → [#35](https://github.com/metinbagdat/content-studio/issues/35) |
 | [18-seo-hpv-trigger.md](./issue-bodies/18-seo-hpv-trigger.md) | CS-WP-03 | HPV / SEO topic trigger → [#36](https://github.com/metinbagdat/content-studio/issues/36) |
 | [19-wordpress-publish-webhook.md](./issue-bodies/19-wordpress-publish-webhook.md) | CS-WP-04 | WP publish → SM webhook → [#37](https://github.com/metinbagdat/content-studio/issues/37) |
+| [20-hostinger-reach-contacts.md](./issue-bodies/20-hostinger-reach-contacts.md) | CS-EM-01 | Hostinger Reach contact API → [#38](https://github.com/metinbagdat/content-studio/issues/38) |
+| [21-hostinger-reach-admin.md](./issue-bodies/21-hostinger-reach-admin.md) | CS-EM-02 | Admin `/admin/email` → [#39](https://github.com/metinbagdat/content-studio/issues/39) |
+| [22-hostinger-reach-wp-nudge.md](./issue-bodies/22-hostinger-reach-wp-nudge.md) | CS-EM-03 | WP yayın → Reach bülten hatırlatması → [#40](https://github.com/metinbagdat/content-studio/issues/40) |
 
-WordPress SEO hub plugins live in **`metinbagdat/wp-seo-hub`**. LearnCon growth: **not** opened here — see `docs/ROADMAP.md` section B → `metinbagdat/learncon`.
+WordPress SEO hub plugins live in **`metinbagdat/wp-seo-hub`**. LearnCon growth: **not** opened here — see `docs/ROADMAP.md` section B → `metinbagdat/learncon`. Blog newsletter = Hostinger Reach (CS-EM), not LC-G4.
