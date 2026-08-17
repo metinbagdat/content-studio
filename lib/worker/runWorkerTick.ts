@@ -1,5 +1,6 @@
 import { drainDbPipelineJobs, drainDbPublishJobs } from '../queue'
 import { runContentDiscovery, type DiscoveryResult } from '../discovery/contentDiscovery'
+import { runHpvOpportunityScan, type HpvScanResult } from '../seo/hpvCron'
 import { runScheduledAnalyticsSync, type AnalyticsSyncResult } from '../social/analyticsCron'
 import { runSocialAutopilot, type AutopilotResult } from '../social/autopilot'
 import { drainDuePosts } from '../social/publish'
@@ -23,6 +24,7 @@ export type WorkerTickResult = {
   autopilot: AutopilotResult | null
   analytics: AnalyticsSyncResult | null
   discovery: DiscoveryResult | null
+  hpv: HpvScanResult | null
   errors: string[]
   ranAt: string
   durationMs: number
@@ -41,6 +43,7 @@ export async function runWorkerTick(options: WorkerTickOptions = {}): Promise<Wo
   let autopilot: AutopilotResult | null = null
   let analytics: AnalyticsSyncResult | null = null
   let discovery: DiscoveryResult | null = null
+  let hpv: HpvScanResult | null = null
 
   const drainPipeline = profile !== 'quick'
   const runDraftRepair = profile === 'daily' || profile === 'maintain'
@@ -49,6 +52,8 @@ export async function runWorkerTick(options: WorkerTickOptions = {}): Promise<Wo
     (profile === 'daily' || profile === 'full') && process.env.ANALYTICS_SYNC_ENABLED !== 'false'
   const runDiscovery =
     (profile === 'daily' || profile === 'full') && process.env.DISCOVERY_CRON_ENABLED !== 'false'
+  const runHpv =
+    (profile === 'daily' || profile === 'full') && process.env.HPV_CRON_ENABLED !== 'false'
 
   try {
     publishJobs = await drainDbPublishJobs(profile === 'quick' ? 3 : profile === 'full' ? 5 : 3)
@@ -109,6 +114,15 @@ export async function runWorkerTick(options: WorkerTickOptions = {}): Promise<Wo
     }
   }
 
+  if (runHpv) {
+    try {
+      hpv = await runHpvOpportunityScan(Number(process.env.HPV_DAILY_LIMIT || 8))
+      if (hpv.errors.length) errors.push(...hpv.errors.slice(0, 3))
+    } catch (err) {
+      errors.push(`hpv: ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
+
   return {
     profile,
     pipelineJobs,
@@ -118,6 +132,7 @@ export async function runWorkerTick(options: WorkerTickOptions = {}): Promise<Wo
     autopilot,
     analytics,
     discovery,
+    hpv,
     errors,
     ranAt: new Date().toISOString(),
     durationMs: Date.now() - started,
@@ -135,6 +150,9 @@ export function formatWorkerTickSummary(result: WorkerTickResult): string {
   }
   if (result.discovery) {
     parts.push(`discovery: ${result.discovery.newArticles} yeni`)
+  }
+  if (result.hpv) {
+    parts.push(`hpv: wp=${result.hpv.taggedWp} sm=${result.hpv.taggedSm} sent=${result.hpv.sent}`)
   }
   if (result.autopilot) {
     parts.push(`autopilot yayın: ${result.autopilot.published}, retry: ${result.autopilot.retried}`)

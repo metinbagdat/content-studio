@@ -396,6 +396,39 @@ type AiImageState = { msg: string; urls: string[]; mediaIds?: string[] }
     }
   }
 
+  async function sendToWordPress(id: string) {
+    setBusyId(id)
+    setMsg('WordPress draft gönderiliyor…')
+    try {
+      const res = await fetch('/api/wordpress', {
+        method: 'POST',
+        headers: adminHeaders(adminKey, true),
+        body: JSON.stringify({ action: 'send-derived', derivedId: id }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok && !data.skipped) {
+        throw new Error(data.error || data.publish?.errorMessage || 'WP gönderimi başarısız')
+      }
+      if (data.skipped || !data.publish?.success) {
+        setMsg(
+          `WP atlandı: ${data.validation?.reason || data.publish?.errorMessage || 'bilinmeyen'}`,
+        )
+        return
+      }
+      const link = data.publish?.editLink as string | undefined
+      setMsg(
+        link
+          ? `WP draft #${data.publish.wpPostId} — düzenle: ${link}`
+          : `WP draft #${data.publish.wpPostId} kaydedildi`,
+      )
+      await load()
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : 'WP gönderimi başarısız')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
   async function batchResizeImage(masterMediaId: string, derivedId: string) {
     setBusyId(derivedId)
     setMsg('Platform boyutlarına export ediliyor…')
@@ -813,6 +846,20 @@ type AiImageState = { msg: string; urls: string[]; mediaIds?: string[] }
                   {item.status === 'APPROVED' || item.status === 'REJECTED' ? (
                     <button type="button" className="secondary" disabled={busyId === item.id} onClick={() => reopen(item.id)}>
                       Tekrar incelemeye al
+                    </button>
+                  ) : null}
+                  {item.status === 'APPROVED' &&
+                  ['BLOG_POST', 'PODCAST_SCRIPT', 'VIDEO_SCRIPT', 'SHORT_VIDEO_SCRIPT', 'MARCH_LYRICS', 'SONG_LYRICS'].includes(
+                    item.contentType,
+                  ) ? (
+                    <button
+                      type="button"
+                      className="secondary"
+                      disabled={busyId === item.id}
+                      onClick={() => sendToWordPress(item.id)}
+                      title="Safe samurAI + WP draft (blog.egitim.today)"
+                    >
+                      WP draft gönder
                     </button>
                   ) : null}
                   {item.contentType === 'PODCAST_SCRIPT' ? (

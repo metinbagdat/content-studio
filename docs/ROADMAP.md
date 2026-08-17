@@ -32,7 +32,7 @@ Status legend: `todo` · `doing` · `done` · `blocked` · `learncon` (tracked i
 | CS-09 | FFmpeg short video | doing | Media storage ready | 9:16 Shorts + 16:9 path live locally (ffmpeg/ffprobe + YouTube upload); burn-in/subtitle polish still open |
 | CS-10 | Image resize per platform | done | CS-03 | Batch JPEG export from master via sharp; template cards render direct per size |
 | CS-11 | Infographic text format | doing | CS-01 | Bullet/stat copy generated + reviewable; image rendering waits on CS-03/CS-10 |
-| CS-WP | WordPress SEO hub bridge | todo | wp-seo-hub repo | Draft publisher + Safe samurAI + HPV gate + publish webhook → SM (see `docs/WORDPRESS_BRIDGE.md`) |
+| CS-WP | WordPress SEO hub bridge | doing | wp-seo-hub repo | CS-WP-01..04 code in repo (publisher, Safe samurAI, HPV gate, publish webhook); live WP smoke still blocked on Oracle A1 / host (`docs/WORDPRESS_BRIDGE.md`) |
 
 Detail files: `01-discovery-cron.md` … `12-infographic-format.md`, plus `M0-monorepo.md`, `M1-apps-layout.md`.
 
