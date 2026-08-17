@@ -9,7 +9,9 @@ Sayfa: **Egitim.today** (`1153725161168373`)
 | Ekran | Menü | Ne iş |
 |-------|------|--------|
 | **App Review** (şimdi) | Review → **Uygulama İncelemesi** | `pages_manage_posts` Submit |
-| **Data access renewal** | üstteki **Required actions** | 7 Eki 2026 — sonra |
+| **Data access renewal** | üstteki **Required actions** | **7 Eki 2026** — App Review’dan ayrı; kaçırma |
+
+Admin `/admin/social` üstte kalan gün sayısını gösterir. Toplu Facebook varsayılan 8 post/tur (spam 400).
 
 Reviewer instructions sizi **App settings → Temel**’e atarsa: Privacy/ToS hâlâ `facebook.com`. Önce URL’leri düzeltin, sonra checklist’e dönün.
 

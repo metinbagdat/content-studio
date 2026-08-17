@@ -3,8 +3,8 @@ import { prisma } from '../prisma'
 import { generateWithFallback } from '../image/providers'
 import { fetchBackgroundMusic } from './pixabayMusic'
 import { toImagePrompt } from './visualPrompt'
-import { buildSubtitleCues, cuesToSrt } from './subtitles'
-import { renderVideo, dimensionsForAspect, type AspectRatio, type VideoScene } from './renderVideo'
+import { buildSubtitleCues, cuesToSrt, subtitleMaxChars } from './subtitles'
+import { renderVideo, type AspectRatio, type VideoScene } from './renderVideo'
 import { writeVideoFile, publicMediaVideoUrl } from './videoStorage'
 import { writeImageFile, imageDiskPath } from '../media/imageStorage'
 import { generatePodcastAudio } from '../media/generatePodcast'
@@ -62,7 +62,6 @@ export async function generatePodcastVideo(
       text: c.text,
     }))
   })
-  const srtContent = cuesToSrt(cues)
   const musicPath = await fetchBackgroundMusic('calm')
 
   const imagePaths: string[] = []
@@ -109,15 +108,17 @@ export async function generatePodcastVideo(
       data: { derivedContentId, mediaType: 'VIDEO', fileUrl: '', format: 'mp4', processingStatus: 'PROCESSING' },
     })
     try {
+      const srtForAspect = cuesToSrt(cues, subtitleMaxChars(aspect))
       const videoBuffer = await renderVideo({
         scenes,
         voiceoverPath: audioPath,
         musicPath,
-        srtContent,
+        srtContent: srtForAspect,
         aspect,
       })
       const filename = `${media.id}.mp4`
       await writeVideoFile(filename, videoBuffer)
+      await writeVideoFile(`${media.id}.srt`, Buffer.from(srtForAspect, 'utf-8'))
       const publicUrl = publicMediaVideoUrl(media.id)
       await prisma.mediaFile.update({
         where: { id: media.id },

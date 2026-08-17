@@ -131,9 +131,17 @@ async function combineAudioAndSubtitles(options: {
   musicPath?: string | null
   srtPath: string
   outputPath: string
+  aspect: AspectRatio
 }): Promise<void> {
-  const { slideshowPath, voiceoverPath, musicPath, srtPath, outputPath } = options
+  const { slideshowPath, voiceoverPath, musicPath, srtPath, outputPath, aspect } = options
   const escapedSrt = srtPath.replace(/\\/g, '/').replace(/:/g, '\\:')
+  const vertical = aspect === '9:16'
+  const forceStyle = vertical
+    ? 'FontName=Arial,FontSize=28,PrimaryColour=&H00FFFFFF&,OutlineColour=&H80000000&,BackColour=&H80000000&,BorderStyle=3,Outline=2,Shadow=0,Alignment=2,MarginV=220,MarginL=48,MarginR=48'
+    : 'FontName=Arial,FontSize=20,PrimaryColour=&H00FFFFFF&,BackColour=&H80000000&,BorderStyle=3,Outline=1,Shadow=0,Alignment=2,MarginV=52'
+  const brandSize = vertical ? 22 : 26
+  const brandY = vertical ? 'h-th-160' : 'h-60'
+  const siteY = vertical ? 'h-th-200' : 'h-90'
 
   return new Promise((resolve, reject) => {
     const cmd = ffmpeg().input(slideshowPath).input(voiceoverPath)
@@ -153,16 +161,15 @@ async function combineAudioAndSubtitles(options: {
     }
 
     const videoFilter =
-      `[0:v]subtitles='${escapedSrt}':force_style='FontSize=18,PrimaryColour=&HFFFFFF&,` +
-      `BackColour=&H00000000&,BorderStyle=3,Outline=0,Shadow=0,MarginV=40'[subbed];` +
+      `[0:v]subtitles='${escapedSrt}':force_style='${forceStyle}'[subbed];` +
       `[subbed]drawtext=text='LEARNCONNECT.NET':fontsize=16:fontcolor=white@0.75:` +
-      `x=w-tw-30:y=h-90:box=1:boxcolor=black@0.35:boxborderw=6,` +
-      `drawtext=text='egitim.today':fontsize=26:fontcolor=white:x=w-tw-30:y=h-60:` +
+      `x=w-tw-30:y=${siteY}:box=1:boxcolor=black@0.35:boxborderw=6,` +
+      `drawtext=text='egitim.today':fontsize=${brandSize}:fontcolor=white:x=w-tw-30:y=${brandY}:` +
       `box=1:boxcolor=black@0.35:boxborderw=6[outv]`
 
     cmd
       .complexFilter([videoFilter, audioFilter], ['outv', 'outa'])
-      .outputOptions(['-c:v', 'libx264', '-c:a', 'aac'])
+      .outputOptions(['-c:v', 'libx264', '-c:a', 'aac', '-movflags', '+faststart'])
       .output(outputPath)
       .on('end', () => resolve())
       .on('error', reject)
@@ -223,6 +230,7 @@ export async function renderVideo(input: RenderVideoInput | RenderVideoLegacyInp
       musicPath,
       srtPath,
       outputPath: finalPath,
+      aspect,
     })
     return await fsReadFile(finalPath)
   } finally {

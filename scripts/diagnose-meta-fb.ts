@@ -65,6 +65,9 @@ async function main() {
   } else {
     console.log('\n✓ Gerekli sayfa scope\'ları token\'da mevcut')
   }
+  console.log('\n=== Data access renewal ===')
+  console.log('Due 2026-10-07 — Meta Developers → Required actions (separate from App Review submit)')
+  console.log('Docs: docs/META_APP_REVIEW_SUBMISSION.md')
 }
 
 main()

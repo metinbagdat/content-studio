@@ -83,6 +83,7 @@ export async function generatePostClip(derivedContentId: string) {
       outputPath,
       aspect,
       durationSec: 6,
+      caption: String(derived.title || derived.content).replace(/\s+/g, ' ').trim().slice(0, 120),
     })
 
     const buffer = await readFile(outputPath)

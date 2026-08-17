@@ -3,6 +3,7 @@ import { prisma } from '../prisma'
 import { linkedinAuthorUrn } from './config'
 import { getValidAccessToken } from './tokenRefresh'
 import { readPublishMetrics, type PostPublishMetrics } from './publishFingerprint'
+import { metaGraphVersion } from './metaApi'
 
 export type PlatformAccountStats = {
   username: string | null
@@ -614,6 +615,35 @@ async function fetchLinkedInPostAnalytics(
   }
 }
 
+async function fetchFacebookPostAnalytics(
+  platformPostId: string,
+  accessToken: string,
+): Promise<PostAnalytics | null> {
+  if (!platformPostId || platformPostId.startsWith('mock_') || accessToken === 'dry-run') return null
+  const url = new URL(`https://graph.facebook.com/${metaGraphVersion()}/${platformPostId}`)
+  url.searchParams.set('fields', 'shares,reactions.summary(true),comments.summary(true)')
+  url.searchParams.set('access_token', accessToken)
+  const res = await fetch(url.toString())
+  if (!res.ok) return null
+  const body = (await res.json()) as {
+    shares?: { count?: number }
+    reactions?: { summary?: { total_count?: number } }
+    comments?: { summary?: { total_count?: number } }
+  }
+  const likes = body.reactions?.summary?.total_count ?? 0
+  const comments = body.comments?.summary?.total_count ?? 0
+  const shares = body.shares?.count ?? 0
+  return {
+    impressions: null,
+    likes,
+    comments,
+    shares,
+    clicks: null,
+    engagement: likes + comments + shares,
+    fetchedAt: new Date().toISOString(),
+  }
+}
+
 export async function syncPostAnalytics(postId: string): Promise<PostAnalytics | null> {
   const post = await prisma.socialMediaPost.findUnique({
     where: { id: postId },
@@ -628,6 +658,8 @@ export async function syncPostAnalytics(postId: string): Promise<PostAnalytics |
     analytics = await fetchTwitterPostAnalytics(post.platformPostId, token)
   } else if (post.platform === 'LINKEDIN') {
     analytics = await fetchLinkedInPostAnalytics(post.platformPostId, token, post.account)
+  } else if (post.platform === 'FACEBOOK') {
+    analytics = await fetchFacebookPostAnalytics(post.platformPostId, token)
   }
 
   if (!analytics) return null
@@ -646,7 +678,7 @@ export async function syncPostAnalytics(postId: string): Promise<PostAnalytics |
 
 export async function syncAllPublishedPostAnalytics(limit = 30): Promise<{ synced: number; errors: string[] }> {
   const posts = await prisma.socialMediaPost.findMany({
-    where: { status: 'PUBLISHED', platform: { in: ['TWITTER', 'LINKEDIN'] } },
+    where: { status: 'PUBLISHED', platform: { in: ['TWITTER', 'LINKEDIN', 'FACEBOOK'] } },
     orderBy: { publishedAt: 'desc' },
     take: limit,
     select: { id: true, platform: true },

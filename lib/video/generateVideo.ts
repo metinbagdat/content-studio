@@ -4,8 +4,8 @@ import { generateWithFallback } from '../image/providers'
 import { fetchBackgroundMusic } from './pixabayMusic'
 import { toImagePrompt } from './visualPrompt'
 import { translateSegmentsToEnglish } from './translateSegments'
-import { buildSubtitleCues, cuesToSrt, type SubtitleCue } from './subtitles'
-import { renderVideo, dimensionsForAspect, type AspectRatio, type VideoScene } from './renderVideo'
+import { buildSubtitleCues, cuesToSrt, subtitleMaxChars, type SubtitleCue } from './subtitles'
+import { renderVideo, type AspectRatio, type VideoScene } from './renderVideo'
 import { writeVideoFile, publicMediaVideoUrl } from './videoStorage'
 import { writeImageFile, imageDiskPath } from '../media/imageStorage'
 import { assembleSpeechVoiceover } from '../media/ttsSegments'
@@ -78,7 +78,6 @@ export async function generateVideoVariants(
 
   // 3) Subtitles — timed against shorter visual slides
   const cues = buildFullSubtitlesFromSlides(visualSlides)
-  const srtContent = cuesToSrt(cues)
 
   // 4) Background music — local library or generated ambient fallback
   const musicPath = await fetchBackgroundMusic('inspiring corporate')
@@ -142,15 +141,17 @@ export async function generateVideoVariants(
       data: { derivedContentId, mediaType: 'VIDEO', fileUrl: '', format: 'mp4', processingStatus: 'PROCESSING' },
     })
     try {
+      const srtForAspect = cuesToSrt(cues, subtitleMaxChars(aspect))
       const videoBuffer = await renderVideo({
         scenes,
         voiceoverPath,
         musicPath,
-        srtContent,
+        srtContent: srtForAspect,
         aspect,
       })
       const filename = `${media.id}.mp4`
       await writeVideoFile(filename, videoBuffer)
+      await writeVideoFile(`${media.id}.srt`, Buffer.from(srtForAspect, 'utf-8'))
       const publicUrl = publicMediaVideoUrl(media.id)
       await prisma.mediaFile.update({
         where: { id: media.id },

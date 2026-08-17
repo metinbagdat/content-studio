@@ -35,8 +35,9 @@ Meta (FB/IG) developer ortamı, Login Configuration, App Review / Advanced Acces
 ### Test
 - [ ] App roles / Test Users (gerekirse ikinci hesap)
 - [ ] Graph API Explorer: `GET /me/accounts`, `POST /{page-id}/feed` (test)
-- [ ] Content Studio: Facebook toplu yayın (batch ≤50, gap ~2.5s) spam olmadan
-- [ ] `scripts/diagnose-meta-fb.ts` yeşil (scopes)
+- [x] Content Studio: Facebook toplu yayın (batch ≤8, gap ~2.5s) spam early-stop
+- [x] `scripts/diagnose-meta-fb.ts` scope + data-access renewal notu
+- [x] Docs: `docs/META_FACEBOOK_SETUP.md` + `/admin/social` renewal banner
 
 ### TikTok / LinkedIn (kısa)
 - [ ] TikTok Desktop + Sandbox OAuth (local)

@@ -4,15 +4,22 @@ import { OPTIMAL_POSTING_IST, OPTIMAL_POSTING_WEEKEND_IST, istDayOfWeek } from '
 
 const MIN_SAMPLES_TO_ADAPT = 5 // below this, trust the static defaults instead
 
-/** Sum all numeric leaves in a metrics JSON blob as a rough engagement score —
- * schema-agnostic since exact field names (likes/comments/impressions/etc.) vary by platform. */
+/** Prefer stored analytics.engagement; fall back to likes+comments+shares (ignore raw impression dumps). */
 function engagementScore(metrics: unknown): number {
   if (!metrics || typeof metrics !== 'object') return 0
-  let total = 0
-  for (const value of Object.values(metrics as Record<string, unknown>)) {
-    if (typeof value === 'number' && Number.isFinite(value)) total += value
-  }
-  return total
+  const root = metrics as Record<string, unknown>
+  const analytics =
+    root.analytics && typeof root.analytics === 'object'
+      ? (root.analytics as Record<string, unknown>)
+      : root
+  const engagement = Number(analytics.engagement)
+  if (Number.isFinite(engagement) && engagement > 0) return engagement
+  const likes = Number(analytics.likes) || 0
+  const comments = Number(analytics.comments) || 0
+  const shares = Number(analytics.shares) || 0
+  const clicks = Number(analytics.clicks) || 0
+  const sum = likes + comments + shares + clicks
+  return sum > 0 ? sum : 0
 }
 
 /** Which static slot (HH:MM) a published post's actual publish time falls closest to. */
@@ -70,4 +77,43 @@ export async function getAdaptiveSlotOrder(
     const avgB = slotTotals[b].count ? slotTotals[b].sum / slotTotals[b].count : -1
     return avgB - avgA // highest average engagement first
   })
+}
+
+export type AdaptiveSlotRow = {
+  platform: SocialPlatform
+  weekend: boolean
+  samples: number
+  minSamples: number
+  adaptive: boolean
+  slots: string[]
+}
+
+/** Admin/calendar: how close each platform is to using learned posting times. */
+export async function getAdaptiveSlotReport(): Promise<AdaptiveSlotRow[]> {
+  const platforms: SocialPlatform[] = ['TWITTER', 'LINKEDIN', 'YOUTUBE', 'FACEBOOK', 'INSTAGRAM', 'TIKTOK']
+  const rows: AdaptiveSlotRow[] = []
+  for (const platform of platforms) {
+    for (const weekend of [false, true]) {
+      const slots = await getAdaptiveSlotOrder(platform, weekend)
+      const posts = await prisma.socialMediaPost.findMany({
+        where: { platform, status: 'PUBLISHED', publishedAt: { not: null }, metrics: { not: Prisma.DbNull } },
+        select: { publishedAt: true },
+        take: 200,
+        orderBy: { publishedAt: 'desc' },
+      })
+      const samples = posts.filter((p) => {
+        const isWeekendPost = istDayOfWeek(0, p.publishedAt!) === 0 || istDayOfWeek(0, p.publishedAt!) === 6
+        return isWeekendPost === weekend
+      }).length
+      rows.push({
+        platform,
+        weekend,
+        samples,
+        minSamples: MIN_SAMPLES_TO_ADAPT,
+        adaptive: samples >= MIN_SAMPLES_TO_ADAPT,
+        slots,
+      })
+    }
+  }
+  return rows
 }

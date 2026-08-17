@@ -5,6 +5,7 @@ import {
   applyDistributionSchedule,
   previewDistributionSchedule,
 } from '@/lib/scheduling/applyDistributionCalendar'
+import { getAdaptiveSlotReport } from '@/lib/scheduling/postingPerformance'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,7 +26,8 @@ export async function GET(req: NextRequest) {
       const cfg = p.config && typeof p.config === 'object' ? (p.config as Record<string, unknown>) : {}
       return Boolean(cfg.distributionCalendar)
     })
-    return NextResponse.json({ pipelines: withCalendar })
+    const adaptiveSlots = await getAdaptiveSlotReport()
+    return NextResponse.json({ pipelines: withCalendar, adaptiveSlots })
   }
 
   const approvedOnly = req.nextUrl.searchParams.get('approvedOnly') === 'true'

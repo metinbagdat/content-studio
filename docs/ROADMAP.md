@@ -28,8 +28,8 @@ Status legend: `todo` · `doing` · `done` · `blocked` · `learncon` (tracked i
 | CS-05 | Podcast packaging | doing | CS-04 | Segments + zod + admin timeline + jingle assembly done; multi-episode open |
 | CS-06 | Publishers: IG / TikTok / YT / FB / Pinterest | doing | OAuth apps ready | YouTube local publish verified (Shorts + long); X/LI local OK; Meta/TikTok App Review / prod OAuth still open; Pinterest API later |
 | CS-07 | Distribution calendar apply | done | — | `/admin/calendar` preview + apply; weekday-preferred, weekend-reduced cadence |
-| CS-08 | Performance feedback loop | doing | Metrics API access | X/LI stats + top-performers + admin **Yorumlar**; adaptive slots coded (`getAdaptiveSlotOrder`, min 5 samples); more published metrics still needed |
-| CS-09 | FFmpeg short video | doing | Media storage ready | 9:16 Shorts + 16:9 path live locally (ffmpeg/ffprobe + YouTube upload); burn-in/subtitle polish still open |
+| CS-08 | Performance feedback loop | doing | Metrics API access | X/LI/FB post analytics + Takvim adaptive slot raporu; ≥5 örnekte saat kayar |
+| CS-09 | FFmpeg short video | doing | Media storage ready | 9:16 burn-in + SRT wrap/sidecar; TikTok/Reels OAuth hâlâ açık |
 | CS-10 | Image resize per platform | done | CS-03 | Batch JPEG export from master via sharp; template cards render direct per size |
 | CS-11 | Infographic text format | doing | CS-01 | Bullet/stat copy generated + reviewable; image rendering waits on CS-03/CS-10 |
 | CS-SM-01 | Audience segments (TYT/AYT/LGS/veli) | doing | CS-SM-EPIC | Tags + caption hashtags + platform order + Onay/Sosyal filter (`lib/audience/segments.ts`) |

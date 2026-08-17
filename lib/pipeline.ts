@@ -15,6 +15,7 @@ import { buildYouTubePostContent } from './social/publishVideo'
 import { preparePostForPublish } from './social/preparePublish'
 import { DEFAULT_PIPELINE_PLATFORMS, normalizePlatforms } from './platforms/targets'
 import { detectAudienceSegment, platformsForSegment, withSegmentTag } from './audience/segments'
+import { metaBulkPublishGapMs } from './social/metaReview'
 
 export type PipelineConfig = {
   platforms: SocialPlatform[]
@@ -543,7 +544,7 @@ export async function bulkPublishDraftPosts(
   const { publishPost } = await import('./social/publish')
   const maxAttempts = options.limit && options.limit > 0 ? options.limit : undefined
   // Meta spam/rate limits: pause between Facebook/IG publishes
-  const metaGapMs = Number(process.env.META_BULK_PUBLISH_GAP_MS?.trim() || '2500')
+  const metaGapMs = metaBulkPublishGapMs()
 
   for (const post of posts) {
     if (maxAttempts != null && result.attempted >= maxAttempts) break

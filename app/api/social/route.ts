@@ -12,6 +12,7 @@ import { readPublishMetrics } from '@/lib/social/publishFingerprint'
 import { auditSocialAccounts, repairMissingSocialAccounts } from '@/lib/social/accountAudit'
 import { getAuthUrl, upsertDryRunAccount, deactivateAccount } from '@/lib/social/oauth'
 import { oauthEnvCheck, oauthPlatformStatus } from '@/lib/social/config'
+import { metaReviewStatus, metaBulkPublishLimit } from '@/lib/social/metaReview'
 import {
   getTopPerformingPosts,
   pickPreferredAccount,
@@ -88,6 +89,7 @@ async function handleGet() {
   return NextResponse.json({
     oauth: oauthPlatformStatus(),
     envCheck: oauthEnvCheck(),
+    metaReview: metaReviewStatus(),
     accountHealth,
     diagnostics,
     topPerformers,
@@ -344,7 +346,16 @@ async function handleAction(action: string, body: Record<string, unknown>) {
     const includeDryRun = Boolean(body.includeDryRun)
     const platformRaw = body.platform ? String(body.platform).toUpperCase() : undefined
     const platform = platformRaw as SocialPlatform | undefined
-    const limit = body.limit != null ? Number(body.limit) : undefined
+    const requested = body.limit != null ? Number(body.limit) : undefined
+    const isMeta = platform === 'FACEBOOK' || platform === 'INSTAGRAM'
+    const limit = isMeta
+      ? Math.min(
+          metaBulkPublishLimit(),
+          requested && Number.isFinite(requested) && requested > 0 ? requested : metaBulkPublishLimit(),
+        )
+      : requested && Number.isFinite(requested)
+        ? requested
+        : undefined
     const result = await bulkPublishDraftPosts({
       includeDryRun,
       platform,

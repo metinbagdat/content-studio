@@ -167,6 +167,10 @@ NEXT_PUBLIC_APP_URL="http://localhost:3100"
 
 ## 5. İzinler (scopes)
 
+**Durum (2026-08-17):** Token’da `pages_manage_posts` var (local diagnose). App hâlâ Unpublished / Advanced Access açık. **Data access renewal: 7 Eki 2026** — App Review submit’ten ayrı ekran. Toplu FB varsayılan **8/tur**, ~2.5s aralık (`META_BULK_PUBLISH_LIMIT`).
+
+Talimat + reviewer metni: [META_APP_REVIEW_SUBMISSION.md](./META_APP_REVIEW_SUBMISSION.md)
+
 **Bağlantı (varsayılan):** `public_profile`, `pages_show_list` — `email` yok.
 
 **Yayın (App Review sonrası):** + `pages_manage_posts`, `instagram_content_publish` → `META_OAUTH_PUBLISH=true`

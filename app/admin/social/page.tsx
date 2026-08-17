@@ -67,6 +67,16 @@ type EnvCheck = {
   ready: boolean
 }
 
+type MetaReviewStatus = {
+  appId: string
+  pageId: string
+  dataAccessRenewal: string
+  daysLeft: number
+  publishOauth: boolean
+  bulkLimit: number
+  bulkGapMs: number
+}
+
 type AccountStats = {
   username?: string | null
   displayName?: string | null
@@ -154,6 +164,7 @@ export default function SocialPage() {
   const [adminKey, setAdminKey] = useState('')
   const [oauth, setOauth] = useState<OAuthStatus | null>(null)
   const [envCheck, setEnvCheck] = useState<EnvCheck | null>(null)
+  const [metaReview, setMetaReview] = useState<MetaReviewStatus | null>(null)
   const [accountHealth, setAccountHealth] = useState<AccountHealth | null>(null)
   const [accounts, setAccounts] = useState<Account[]>([])
   const [posts, setPosts] = useState<any[]>([])
@@ -200,6 +211,7 @@ export default function SocialPage() {
     const data = await res.json()
     setOauth(data.oauth || null)
     setEnvCheck(data.envCheck || null)
+    setMetaReview((data.metaReview as MetaReviewStatus) || null)
     setAccountHealth(data.accountHealth || null)
     setDiagnostics(data.diagnostics || null)
     setTopPerformers(data.topPerformers || [])
@@ -208,7 +220,7 @@ export default function SocialPage() {
   }, [adminKey])
 
   async function bulkPublish(includeDryRun: boolean) {
-    const batchLimit = 50
+    const batchLimit = metaReview?.bulkLimit || 8
     setBulkPublishBusy(true)
     setMsgType('info')
     setMsg(`Toplu yayınlama çalışıyor (max ${batchLimit}/tur)…`)
@@ -263,10 +275,13 @@ export default function SocialPage() {
       setMsg('Yayınlanacak taslak yok')
       return
     }
-    const batchLimit = 50
+    const batchLimit = metaReview?.bulkLimit || 8
     if (
       !confirm(
         `${platform}: ${count} taslak${includeDryRun ? ' (dry-run dahil)' : ''} yayınlanacak. Devam?` +
+          (platform === 'FACEBOOK' || platform === 'INSTAGRAM'
+            ? ` Meta spam koruması: max ${batchLimit}/tur, ~${Math.round((metaReview?.bulkGapMs || 2500) / 1000)}s aralık.`
+            : '') +
           (count > batchLimit ? ` (max ${batchLimit}/durak — kalan için tekrar tıklayın)` : ''),
       )
     ) {
@@ -961,6 +976,17 @@ export default function SocialPage() {
         Önce <Link href="/admin/review">Onay</Link>, sonra yayınla. Rehber:{' '}
         <Link href="/docs/social-setup">SM kurulum</Link>
       </p>
+      {metaReview ? (
+        <p className={metaReview.daysLeft <= 45 || !metaReview.publishOauth ? 'flash' : 'muted'}>
+          Meta App Review (#32): data access renewal <strong>{metaReview.dataAccessRenewal}</strong>
+          {metaReview.daysLeft >= 0 ? ` (${metaReview.daysLeft} gün)` : ' — süresi geçti'}.
+          {metaReview.publishOauth ? ' Publish OAuth açık.' : ' META_OAUTH_PUBLISH henüz true değil.'} Toplu FB
+          max {metaReview.bulkLimit}/tur. Talimat:{' '}
+          <a href="https://github.com/metinbagdat/content-studio/blob/main/docs/META_APP_REVIEW_SUBMISSION.md">
+            META_APP_REVIEW_SUBMISSION
+          </a>
+        </p>
+      ) : null}
       <div className="row btn-group-tabs sm-view-tabs" style={{ marginBottom: '1rem' }}>
         <button
           type="button"

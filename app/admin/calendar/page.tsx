@@ -34,6 +34,15 @@ type Preview = {
   slots: PreviewSlot[]
 }
 
+type AdaptiveRow = {
+  platform: string
+  weekend: boolean
+  samples: number
+  minSamples: number
+  adaptive: boolean
+  slots: string[]
+}
+
 function headers(key: string, json = false): HeadersInit {
   const h: Record<string, string> = { 'x-admin-key': key }
   if (json) h['Content-Type'] = 'application/json'
@@ -44,6 +53,7 @@ export default function CalendarPage() {
   const [adminKey, setAdminKey] = useState('')
   const [posts, setPosts] = useState<any[]>([])
   const [pipelines, setPipelines] = useState<PipelineRow[]>([])
+  const [adaptiveSlots, setAdaptiveSlots] = useState<AdaptiveRow[]>([])
   const [pipelineId, setPipelineId] = useState('')
   const [preview, setPreview] = useState<Preview | null>(null)
   const [approvedOnly, setApprovedOnly] = useState(true)
@@ -72,6 +82,7 @@ export default function CalendarPage() {
     }
     const data = await res.json()
     setPipelines(data.pipelines || [])
+    setAdaptiveSlots(data.adaptiveSlots || [])
   }, [adminKey])
 
   const load = useCallback(async () => {
@@ -155,7 +166,7 @@ export default function CalendarPage() {
   return (
     <div>
       <h1>Takvim</h1>
-      <p className="lead">14 günlük dağıtım önizlemesi + onaylı içerikleri zamanla; planlanan/yayınlanan postlar.</p>
+      <p className="lead">14 günlük dağıtım önizlemesi + onaylı içerikleri zamanla; planlanan/yayınlanan postlar. Saatler ≥5 metrikli yayından sonra etkileşime göre kayar.</p>
 
       <div className="keybar">
         <div style={{ flex: 1 }}>
@@ -172,6 +183,25 @@ export default function CalendarPage() {
         </button>
       </div>
       {msg ? <p className="muted">{msg}</p> : null}
+
+      {adaptiveSlots.length ? (
+        <section className="panel" style={{ marginBottom: '1.25rem' }}>
+          <h2>Öğrenilen saatler (CS-08)</h2>
+          <p className="muted" style={{ marginTop: 0 }}>
+            Hafta içi / sonu ayrı. Adaptive = o dilimde en az 5 yayın + metrik.
+          </p>
+          <ul className="muted" style={{ margin: 0, paddingLeft: '1.1rem' }}>
+            {adaptiveSlots
+              .filter((r) => !r.weekend)
+              .map((r) => (
+                <li key={`${r.platform}-wd`}>
+                  {r.platform}: {r.adaptive ? 'adaptive' : `statik (${r.samples}/${r.minSamples})`} ·{' '}
+                  {r.slots.join(', ')}
+                </li>
+              ))}
+          </ul>
+        </section>
+      ) : null}
 
       <section className="panel" style={{ marginBottom: '1.25rem' }}>
         <h2>Dağıtım takvimi uygula</h2>
