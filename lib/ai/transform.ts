@@ -96,24 +96,63 @@ function mockTransform(kind: TransformKind, title: string, content: string) {
   }
 }
 
+export type TransformOptions = {
+  episodeIndex?: number
+  episodeTotal?: number
+  episodeFocus?: string
+}
+
 export async function generateTransform(
   kind: TransformKind,
   title: string,
   article: string,
+  options: TransformOptions = {},
 ): Promise<{ title: string; content: string; metadata: Record<string, unknown> }> {
   const { client: llm, provider, model } = resolveLlm()
-  if (!llm) return mockTransform(kind, title, article)
-  const prompts: Record<TransformKind, string> = {
-    SOCIAL_CAPTION: `Write a Turkish social caption for X and LinkedIn promoting egitim.today. Include CTA. Article title: ${title}\n\n${article.slice(0, 3000)}`,
-    VIDEO_SCRIPT: `Create a 60s educational short-form video script (JSON: hook, scenes[], durationSec) in Turkish for egitim.today. Title: ${title}\n\n${article.slice(0, 3000)}`,
-    PODCAST_SCRIPT: `Create a ~10 min Turkish podcast script for egitim.today as JSON ONLY (no prose):
+  const epTotal = options.episodeTotal && options.episodeTotal > 1 ? options.episodeTotal : 1
+  const epIndex = options.episodeIndex || 1
+
+  if (!llm) {
+    const mock = mockTransform(kind, title, article)
+    if (kind === 'PODCAST_SCRIPT' && epTotal > 1) {
+      return {
+        ...mock,
+        title: `Podcast ${epIndex}/${epTotal}: ${title}`,
+        metadata: {
+          ...mock.metadata,
+          episodeIndex: epIndex,
+          episodeTotal: epTotal,
+          episodeFocus: options.episodeFocus || '',
+        },
+      }
+    }
+    return mock
+  }
+
+  const podcastPrompt =
+    epTotal > 1
+      ? `Create a ~8-10 min Turkish podcast EPISODE script for egitim.today as JSON ONLY (no prose):
+{"introMusicCue":"[5 sn jingle]","welcome":"...","segments":[{"title":"...","script":"..."}],"keyTakeaways":["...","..."],"cta":"...","outroMusicCue":"[3 sn outro jingle]","durationMin":8}
+This is episode ${epIndex} of ${epTotal} in a series about: ${title}
+Episode focus: ${options.episodeFocus || `part ${epIndex}`}
+- welcome: greet listeners; if episode>1 mention this is a continuation
+- cover ONLY the excerpt below (do not recap the whole series)
+- cta: if not last episode, tease the next part; last episode: egitim.today
+- music cues are editing notes, NOT spoken text
+Excerpt:\n${article.slice(0, 3500)}`
+      : `Create a ~10 min Turkish podcast script for egitim.today as JSON ONLY (no prose):
 {"introMusicCue":"[5 sn jingle]","welcome":"...","segments":[{"title":"...","script":"..."}],"keyTakeaways":["...","..."],"cta":"...","outroMusicCue":"[3 sn outro jingle]","durationMin":10}
 - welcome: short spoken greeting introducing the topic
 - segments: 3-5 spoken sections covering the article in depth
 - keyTakeaways: 2-4 short spoken wrap-up points
 - cta: spoken call-to-action mentioning egitim.today
 - music cues are editing notes, NOT spoken text
-Title: ${title}\n\n${article.slice(0, 3000)}`,
+Title: ${title}\n\n${article.slice(0, 3000)}`
+
+  const prompts: Record<TransformKind, string> = {
+    SOCIAL_CAPTION: `Write a Turkish social caption for X and LinkedIn promoting egitim.today. Include CTA. Article title: ${title}\n\n${article.slice(0, 3000)}`,
+    VIDEO_SCRIPT: `Create a 60s educational short-form video script (JSON: hook, scenes[], durationSec) in Turkish for egitim.today. Title: ${title}\n\n${article.slice(0, 3000)}`,
+    PODCAST_SCRIPT: podcastPrompt,
     BLOG_POST: `Write a short Turkish blog post (markdown) plus SEO meta JSON fields metaTitle, metaDescription, slug. Title: ${title}\n\n${article.slice(0, 3000)}`,
     MARCH_LYRICS: `Write short motivational march lyrics JSON (verse1, chorus) in Turkish inspired by: ${title}`,
     SONG_LYRICS: `Write short song lyrics JSON (verse1, chorus) in Turkish inspired by: ${title}`,
@@ -137,7 +176,7 @@ Title: ${title}\n\n${article.slice(0, 3000)}`,
   if (kind === 'PODCAST_SCRIPT') {
     const script = parsePodcastScript(text, title, article.slice(0, 600))
     return {
-      title: `Podcast: ${title}`,
+      title: epTotal > 1 ? `Podcast ${epIndex}/${epTotal}: ${title}` : `Podcast: ${title}`,
       content: JSON.stringify(script, null, 2),
       metadata: {
         model,
@@ -145,6 +184,10 @@ Title: ${title}\n\n${article.slice(0, 3000)}`,
         mock: false,
         durationMin: script.durationMin,
         segmentCount: script.segments.length,
+        episodeIndex: epIndex,
+        episodeTotal: epTotal,
+        episodeFocus: options.episodeFocus || '',
+        seriesTitle: title,
       },
     }
   }

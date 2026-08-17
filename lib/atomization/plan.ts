@@ -5,15 +5,18 @@ import {
   type ContentPieceCounts,
   totalPlannedPieces,
 } from './types'
+import { suggestedPodcastEpisodeCount } from '../media/podcastEpisodes'
 
-function mockPlan(title: string, excerpt: string): AtomizationPlan {
+function mockPlan(title: string, excerpt: string, article = excerpt): AtomizationPlan {
+  const pieces = { ...DEFAULT_PIECE_COUNTS }
+  pieces.podcastEpisodes = suggestedPodcastEpisodeCount(article, pieces.podcastEpisodes)
   return {
     keyConcepts: ['planlama', 'zaman yönetimi', 'hedef'],
     mainArguments: [excerpt.slice(0, 120) || title],
     quotes: [],
     targetAudience: 'öğrenciler ve kendini geliştirenler',
     emotionalTone: 'motivasyonel',
-    contentPieces: { ...DEFAULT_PIECE_COUNTS },
+    contentPieces: pieces,
     distributionDays: 14,
     platformPriority: ['twitter', 'linkedin', 'instagram', 'tiktok', 'youtube', 'facebook', 'pinterest'],
     generatedAt: new Date().toISOString(),
@@ -53,7 +56,7 @@ export async function generateAtomizationPlan(
 ): Promise<AtomizationPlan> {
   const excerpt = articleText.slice(0, 3000)
   const { client, model } = resolveLlm()
-  if (!client) return mockPlan(title, excerpt)
+  if (!client) return mockPlan(title, excerpt, articleText)
 
   const prompt = `Analyze this Turkish article and output ONLY valid JSON for a content atomization plan.
 Maximize social output from one article (target ~50 pieces total).
@@ -101,9 +104,14 @@ JSON schema:
     })
     const content = res.choices[0]?.message?.content
     if (!content) return mockPlan(title, excerpt)
-    return parsePlanJson(content, title)
+    const plan = parsePlanJson(content, title)
+    plan.contentPieces.podcastEpisodes = suggestedPodcastEpisodeCount(
+      articleText,
+      plan.contentPieces.podcastEpisodes,
+    )
+    return plan
   } catch {
-    return mockPlan(title, excerpt)
+    return mockPlan(title, excerpt, articleText)
   }
 }
 

@@ -838,7 +838,11 @@ type AiImageState = { msg: string; urls: string[]; mediaIds?: string[] }
             {editingId === item.id ? (
               <textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} style={{ marginTop: '0.5rem' }} />
             ) : item.contentType === 'PODCAST_SCRIPT' ? (
-              <PodcastTimeline content={item.content} />
+              <PodcastTimeline
+                content={item.content}
+                episodeIndex={typeof item.metadata?.episodeIndex === 'number' ? item.metadata.episodeIndex : undefined}
+                episodeTotal={typeof item.metadata?.episodeTotal === 'number' ? item.metadata.episodeTotal : undefined}
+              />
             ) : (
               <div className="pre">{item.content}</div>
             )}

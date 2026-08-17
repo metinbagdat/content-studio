@@ -16,6 +16,7 @@ import { preparePostForPublish } from './social/preparePublish'
 import { DEFAULT_PIPELINE_PLATFORMS, normalizePlatforms } from './platforms/targets'
 import { detectAudienceSegment, platformsForSegment, withSegmentTag } from './audience/segments'
 import { metaBulkPublishGapMs } from './social/metaReview'
+import { splitArticleForEpisodes, suggestedPodcastEpisodeCount } from './media/podcastEpisodes'
 
 export type PipelineConfig = {
   platforms: SocialPlatform[]
@@ -149,6 +150,40 @@ export async function processPipeline(pipelineId: string) {
         where: { id: pipelineId },
         data: { currentStep: step },
       })
+
+      if (kind === 'PODCAST_SCRIPT') {
+        const episodeCount = suggestedPodcastEpisodeCount(
+          pipeline.source.content,
+          atomizationPlan.contentPieces.podcastEpisodes,
+        )
+        const chunks = splitArticleForEpisodes(pipeline.source.content, episodeCount)
+        const seriesId = crypto.randomUUID()
+        for (const chunk of chunks) {
+          const ep = await generateTransform('PODCAST_SCRIPT', pipeline.source.title, chunk.body, {
+            episodeIndex: chunk.index,
+            episodeTotal: chunk.total,
+            episodeFocus: chunk.heading,
+          })
+          const epMeta: Record<string, unknown> = {
+            ...(ep.metadata && typeof ep.metadata === 'object' ? ep.metadata : {}),
+            seriesId,
+            episodeIndex: chunk.index,
+            episodeTotal: chunk.total,
+            episodeFocus: chunk.heading,
+          }
+          await prisma.derivedContent.create({
+            data: {
+              sourceId: pipeline.sourceId,
+              contentType: toContentType(kind),
+              title: ep.title,
+              content: ep.content,
+              metadata: epMeta as Prisma.InputJsonValue,
+              status: 'IN_REVIEW',
+            },
+          })
+        }
+        continue
+      }
 
       const out = await generateTransform(kind, pipeline.source.title, pipeline.source.content)
       const meta: Record<string, unknown> = {

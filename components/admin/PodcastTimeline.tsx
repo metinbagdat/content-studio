@@ -21,12 +21,25 @@ function tryParse(content: string): ParsedPodcast | null {
 }
 
 /** Structured timeline view for PODCAST_SCRIPT — falls back to raw JSON if it doesn't parse. */
-export function PodcastTimeline({ content }: { content: string }) {
+export function PodcastTimeline({
+  content,
+  episodeIndex,
+  episodeTotal,
+}: {
+  content: string
+  episodeIndex?: number
+  episodeTotal?: number
+}) {
   const script = tryParse(content)
   if (!script) return <div className="pre">{content}</div>
 
   return (
     <div className="podcast-timeline">
+      {episodeTotal && episodeTotal > 1 ? (
+        <p className="muted" style={{ margin: '0 0 0.5rem' }}>
+          Seri bölüm {episodeIndex}/{episodeTotal}
+        </p>
+      ) : null}
       {script.introMusicCue ? <div className="podcast-cue">🎵 {script.introMusicCue}</div> : null}
       {script.welcome ? (
         <div className="podcast-segment">

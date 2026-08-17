@@ -25,7 +25,7 @@ Status legend: `todo` · `doing` · `done` · `blocked` · `learncon` (tracked i
 | CS-02 | Platform captions (X, LI, IG, TT, YT, FB, Pin) | done | — | Formatters + limits per platform, reviewable with platform badge |
 | CS-03 | Image generation (cards / thumbs) | doing | CS-02 | Cards now render at correct per-platform size/aspect ratio; DALL-E art variant still open (paid API) |
 | CS-04 | Audio / music (TTS, march/song) | doing | CS-03 | Podcast jingles + march/song TTS+music bed done; Suno/Udio sung audio open |
-| CS-05 | Podcast packaging | doing | CS-04 | Segments + zod + admin timeline + jingle assembly done; multi-episode open |
+| CS-05 | Podcast packaging | doing | CS-04 | Segments + timeline + jingles; long articles → 2–3 bölüm (`lib/media/podcastEpisodes.ts`) |
 | CS-06 | Publishers: IG / TikTok / YT / FB / Pinterest | doing | OAuth apps ready | YouTube local publish verified (Shorts + long); X/LI local OK; Meta/TikTok App Review / prod OAuth still open; Pinterest API later |
 | CS-07 | Distribution calendar apply | done | — | `/admin/calendar` preview + apply; weekday-preferred, weekend-reduced cadence |
 | CS-08 | Performance feedback loop | doing | Metrics API access | X/LI/FB post analytics + Takvim adaptive slot raporu; ≥5 örnekte saat kayar |
