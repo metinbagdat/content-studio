@@ -3,7 +3,8 @@ import OpenAI from 'openai'
 export type LlmProvider = 'groq' | 'openai' | 'none'
 
 const GROQ_BASE = 'https://api.groq.com/openai/v1'
-const GROQ_DEFAULT_MODEL = 'llama-3.3-70b-versatile'
+/** llama-3.3-70b-versatile retired on Groq 2026-08-16; replacement: gpt-oss-120b */
+const GROQ_DEFAULT_MODEL = 'openai/gpt-oss-120b'
 const OPENAI_DEFAULT_MODEL = 'gpt-4o-mini'
 
 /** Groq öncelikli; yoksa OPENAI_*; ikisi de yoksa null (mock). */

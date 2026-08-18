@@ -6,9 +6,16 @@ import { runWorkerTick } from '../../../lib/worker/runWorkerTick'
 
 async function main() {
   console.log('[content-studio worker] starting…')
-  if (isSupabaseDatabaseUrl()) {
+  if (isSupabaseDatabaseUrl() && !process.env.VERCEL) {
+    const allow = process.env.CS_ALLOW_SUPABASE_WORKER === '1'
+    if (!allow) {
+      console.error(
+        '[egress] Worker refused: DATABASE_URL is Supabase (Hobby egress). Use localhost:5434, or set CS_ALLOW_SUPABASE_WORKER=1 for a one-shot prod drain.',
+      )
+      process.exit(1)
+    }
     console.warn(
-      '[egress] Worker → Supabase. 15s loop is quick-only (due posts). Analytics/discovery use their own crons. For zero Hobby egress use local Docker Postgres (localhost:5434).',
+      '[egress] CS_ALLOW_SUPABASE_WORKER=1 — Worker → Supabase. 15s ticks count toward Hobby 5GB. Prefer localhost:5434.',
     )
   }
   try {
