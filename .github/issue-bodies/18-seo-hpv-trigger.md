@@ -12,5 +12,7 @@ HPV / search-volume ile konu önceliklendirme (GSC + optional DataForSEO). **Not
 - [x] Filtre: HPV≥75 ve volume≥500 → WP adayı; düşük → yalnız SM
 - [x] Günlük cron (local worker `daily`/`full`; `HPV_CRON_ENABLED`)
 - [x] Fallback keyword listesi API yoksa
-- [ ] Live keyword API = DataForSEO (or GSC export), **not** Soro — after first real posts + Rank Math wizard
+- [x] `lib/seo/dataForSeo.ts` — Google Ads search volume (TR) via `DATAFORSEO_LOGIN` / `DATAFORSEO_PASSWORD`
+- [x] Optional GSC overlay (`GSC_SITE_URL` + `GSC_ACCESS_TOKEN`)
+- [ ] Put live DataForSEO credentials in Vercel + local `.env` (no Soro)
 - [ ] Live WP: HPV-picked topic → draft on `blog.egitim.today`

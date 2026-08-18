@@ -85,7 +85,7 @@ Do **not** put LearnCon product code in this repo. LC-G6 still lands in `metinba
 | 2 | Technical SEO | Rank Math **plugin active**; **you:** Rank Math setup wizard + GSC property. Sitemap until wizard: `https://blog.egitim.today/wp-sitemap.xml` |
 | 3 | First real articles | Draft ready: WP post **#15** (Samurai approve → publish). Need 3–5 total |
 | 4 | Every post CTA → `egitim.today` | Homepage CTA live; keep on every article |
-| 5 | Topic engine (HPV) | Fallback keywords in repo; live API = DataForSEO/GSC **not Soro** |
+| 5 | Topic engine (HPV) | **code:** DataForSEO + optional GSC; live when credentials are set. Fallback list remains. |
 | 6 | Product-site clusters + OG | LearnCon **LC-G6** (pulled forward) |
 | 7 | Publish webhook → SM | Code ready; live smoke after first human publish |
 | 8 | Reach newsletter | After posts exist |

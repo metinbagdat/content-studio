@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
 import { runHpvOpportunityScan } from '@/lib/seo/hpvCron'
 import { HPV_MIN, VOLUME_MIN, scoreTopicOpportunity } from '@/lib/seo/keywordOpportunity'
+import { dataForSeoConfigured } from '@/lib/seo/dataForSeo'
+import { gscConfigured } from '@/lib/seo/gscQueries'
 import { wordpressConfigured } from '@/lib/wordpress/publisher'
 import { sendDerivedToWordPressDraft } from '@/lib/wordpress/sendDraft'
 import { validateWithSafeSamurai } from '@/lib/wordpress/safeSamurai'
@@ -22,6 +24,8 @@ export async function GET(req: NextRequest) {
     hpvGate: process.env.HPV_GATE_ENABLED !== 'false',
     hpvMin: HPV_MIN,
     volumeMin: VOLUME_MIN,
+    dataForSeo: dataForSeoConfigured(),
+    gsc: gscConfigured(),
   })
 }
 

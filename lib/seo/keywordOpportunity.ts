@@ -1,3 +1,11 @@
+import {
+  bestVolumeRow,
+  dataForSeoConfigured,
+  fetchDataForSeoSearchVolume,
+  hpvFromSearchVolume,
+} from './dataForSeo'
+import { fetchGscQueries, gscBoostForTitle, gscConfigured } from './gscQueries'
+
 export const HPV_MIN = 75
 export const VOLUME_MIN = 500
 
@@ -51,6 +59,20 @@ function fold(s: string): string {
     .trim()
 }
 
+export function keywordCandidatesFromTitle(title: string): string[] {
+  const hay = ` ${fold(title)} `
+  const hits = FALLBACK_KEYWORDS.map((row) => row.keyword)
+    .filter((kw) => {
+      const needle = fold(kw)
+      return needle && (hay.includes(` ${needle} `) || hay.includes(needle))
+    })
+    .sort((a, b) => b.length - a.length)
+  const phrase = fold(title).slice(0, 80)
+  const out = [...hits]
+  if (phrase && !out.includes(phrase)) out.push(phrase)
+  return out.slice(0, 8)
+}
+
 function matchFallback(text: string): KeywordMetrics | null {
   const hay = ` ${fold(text)} `
   let best: KeywordMetrics | null = null
@@ -66,10 +88,10 @@ function matchFallback(text: string): KeywordMetrics | null {
   return best
 }
 
-async function fetchFromSeoApi(text: string): Promise<KeywordMetrics | null> {
+async function fetchFromGenericSeoApi(text: string): Promise<KeywordMetrics | null> {
   const base = (process.env.SEO_API_BASE_URL || '').replace(/\/$/, '')
   const key = process.env.SEO_API_KEY?.trim() || ''
-  if (!base || !key) return null
+  if (!base || !key || dataForSeoConfigured()) return null
 
   try {
     const q = encodeURIComponent(text.slice(0, 180))
@@ -99,6 +121,33 @@ async function fetchFromSeoApi(text: string): Promise<KeywordMetrics | null> {
   }
 }
 
+async function fetchFromDataForSeo(title: string): Promise<KeywordMetrics | null> {
+  if (!dataForSeoConfigured()) return null
+  const rows = await fetchDataForSeoSearchVolume(keywordCandidatesFromTitle(title))
+  const best = bestVolumeRow(rows)
+  if (!best) return null
+  return {
+    keyword: best.keyword,
+    volume: best.volume,
+    hpv: hpvFromSearchVolume(best.volume, best.competitionIndex),
+    source: 'api',
+  }
+}
+
+async function applyGscBoost(title: string, metrics: KeywordMetrics): Promise<KeywordMetrics> {
+  if (!gscConfigured()) return metrics
+  const rows = await fetchGscQueries(80)
+  const hit = gscBoostForTitle(title, rows)
+  if (!hit || hit.impressions < 10) return metrics
+  return {
+    ...metrics,
+    source: 'api',
+    hpv: Math.min(100, Math.max(metrics.hpv, 78)),
+    volume: Math.max(metrics.volume, hit.impressions),
+    keyword: metrics.keyword || hit.query,
+  }
+}
+
 export function isWpCandidate(hpv: number, volume: number): boolean {
   return hpv >= HPV_MIN && volume >= VOLUME_MIN
 }
@@ -106,8 +155,9 @@ export function isWpCandidate(hpv: number, volume: number): boolean {
 /** Score a title/topic for WP vs SM-only routing (CS-WP-03). */
 export async function scoreTopicOpportunity(title: string): Promise<TopicOpportunity> {
   const text = title.trim()
-  const fromApi = await fetchFromSeoApi(text)
-  const metrics =
+  const fromApi =
+    (await fetchFromDataForSeo(text)) || (await fetchFromGenericSeoApi(text))
+  let metrics =
     fromApi ||
     matchFallback(text) || {
       keyword: text.slice(0, 80) || '(bos)',
@@ -115,6 +165,10 @@ export async function scoreTopicOpportunity(title: string): Promise<TopicOpportu
       volume: 0,
       source: 'none' as const,
     }
+
+  if (metrics.source !== 'none') {
+    metrics = await applyGscBoost(text, metrics)
+  }
 
   const wpCandidate = isWpCandidate(metrics.hpv, metrics.volume)
   const reason = wpCandidate
