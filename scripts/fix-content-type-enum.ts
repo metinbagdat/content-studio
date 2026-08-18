@@ -1,5 +1,5 @@
 /**
- * Adds any ContentType enum values that exist in prisma/schema.prisma but are
+ * Adds any ContentType enum values that exist in packages/db/prisma/schema.prisma but are
  * missing from the live Postgres database, then prints the full enum list to
  * confirm. Self-contained on purpose — avoids all the PowerShell quoting/paste
  * issues around hand-typed ALTER TYPE statements.

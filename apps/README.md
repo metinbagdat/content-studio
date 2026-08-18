@@ -1,10 +1,10 @@
 # apps/
 
-Workspace applications (CS-M1).
+Workspace applications.
 
 | App | Role | Status |
 |-----|------|--------|
-| `web/` | Next.js admin + API | Pending move from repo root |
-| `worker/` | Discovery cron + job drain | Pending move from `workers/` |
+| `web/` | Next.js admin + API | Active (`npm run dev`) |
+| `worker/` | Discovery cron + job drain | Active (`npm run worker`) |
 
-Until CS-M1, run from repo root: `npm run dev`, `npm run worker`.
+Run from repo root: `npm run dev`, `npm run worker`. Env files stay at the repo root.

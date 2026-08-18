@@ -5,8 +5,8 @@ Open GitHub issues from bodies below when the Issues API is available. Until the
 | File | ID | Topic |
 |------|-----|-------|
 | [M0-monorepo.md](./issue-bodies/M0-monorepo.md) | CS-M0 | Workspaces + legacy quarantine |
-| [M1-apps-layout.md](./issue-bodies/M1-apps-layout.md) | CS-M1 | Move to apps/web + apps/worker |
-| [M2-shared-packages.md](./issue-bodies/M2-shared-packages.md) | CS-M2 | packages/db + packages/core |
+| [M1-apps-layout.md](./issue-bodies/M1-apps-layout.md) | CS-M1 | Move to apps/web + apps/worker + packages/db |
+| [M2-shared-packages.md](./issue-bodies/M2-shared-packages.md) | CS-M2 | packages/core from root lib/ |
 | [01-discovery-cron.md](./issue-bodies/01-discovery-cron.md) | CS-00 | Discovery |
 | [02-atomization-engine.md](./issue-bodies/02-atomization-engine.md) | CS-01 | Atomization ~50 |
 | [03-dalle-images.md](./issue-bodies/03-dalle-images.md) | CS-03 | Images |

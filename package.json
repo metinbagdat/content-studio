@@ -8,26 +8,29 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "next dev --port 3100",
+    "dev": "npm run dev -w @content-studio/web",
     "predev": "tsx scripts/ensure-local-docker.ts",
-    "dev:clean": "powershell -ExecutionPolicy Bypass -File scripts/kill-port.ps1 && tsx scripts/ensure-local-docker.ts && next dev --port 3100",
+    "dev:clean": "powershell -ExecutionPolicy Bypass -File scripts/kill-port.ps1 && tsx scripts/ensure-local-docker.ts && npm run dev -w @content-studio/web",
     "kill-port": "powershell -ExecutionPolicy Bypass -File scripts/kill-port.ps1",
-    "build": "prisma generate && next build",
-    "start": "next start --port 3100",
-    "lint": "next lint",
-    "typecheck": "tsc --noEmit",
+    "build": "prisma generate && npm run build -w @content-studio/web",
+    "start": "npm run start -w @content-studio/web",
+    "lint": "npm run lint -w @content-studio/web",
+    "typecheck": "npm run typecheck -w @content-studio/web && npm run typecheck -w @content-studio/worker",
     "db:up": "tsx scripts/ensure-local-docker.ts",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
     "db:exec": "powershell -ExecutionPolicy Bypass -File scripts/db-execute.ps1",
     "db:studio": "prisma studio",
-    "worker": "tsx --env-file=.env workers/index.ts",
+    "worker": "npm run start -w @content-studio/worker",
     "preworker": "tsx scripts/ensure-local-docker.ts",
     "discovery:scan": "tsx --env-file=.env scripts/run-content-discovery.ts",
     "pipeline:zaman": "tsx --env-file=.env scripts/run-zaman-pipeline.ts",
     "env:parity": "tsx --env-file=.env scripts/print-db-fingerprint.ts",
     "postinstall": "prisma generate"
+  },
+  "prisma": {
+    "schema": "packages/db/prisma/schema.prisma"
   },
   "dependencies": {
     "@prisma/client": "^6.9.0",

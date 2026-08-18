@@ -18,8 +18,8 @@ Status legend: `todo` · `doing` · `done` · `blocked` · `learncon` (tracked i
 | ID | Title | Status | Start when | Done when |
 |----|-------|--------|------------|-----------|
 | CS-M0 | Monorepo foundation (workspaces + legacy quarantine) | doing | Roadmap approved | Root workspaces; legacy under `legacy/`; `npm run dev` still works |
-| CS-M1 | Move Next app → `apps/web`, worker → `apps/worker` | todo | CS-M0 merged | Single workspace install; README paths updated; local smoke OK |
-| CS-M2 | Shared packages (`packages/db`, `packages/core`) | todo | CS-M1 done | Prisma + shared lib imported via workspace packages |
+| CS-M1 | Move Next app → `apps/web`, worker → `apps/worker` (+ Prisma merge) | doing | CS-M0 merged | Single workspace install; Prisma `packages/db` wiring done in same pass; local smoke OK |
+| CS-M2 | Shared packages (`packages/core`) | todo | CS-M1 merged | Post-Prisma shared-core extraction only (`packages/core`) |
 | CS-00 | Discovery cron + admin UI | done | — | `/admin/discovery` + worker 06:00 IST |
 | CS-01 | Atomization → ~50 derivatives | done | — | Counts match plan; THREAD/CAROUSEL/SHORT_VIDEO/INFOGRAPHIC stored |
 | CS-02 | Platform captions (X, LI, IG, TT, YT, FB, Pin) | done | — | Formatters + limits per platform, reviewable with platform badge |
@@ -75,6 +75,20 @@ Implement in `metinbagdat/learncon`. Listed here so the growth doc has a single 
 
 1. Merge **CS-M0** (this change set).
 2. Local: `git pull`, `npm install`, smoke `/admin`.
-3. **CS-M1** PR: `apps/web` + `apps/worker` move.
+3. **CS-M1(+Prisma)** PR: `apps/web` + `apps/worker` + `packages/db` tek sefer.
 4. Parallel product work: **CS-01** atomization depth + **CS-06** extra publishers when OAuth ready.
 5. LearnCon growth: open LC-* issues inside learncon from section B.
+
+### CS-M1(+Prisma) script + kontrol listesi
+
+```bash
+git checkout -b feat/cs-m1-apps-and-prisma
+npm install
+npm run typecheck
+```
+
+- [ ] Next app `apps/web` altında çalışıyor; `npm run dev` /admin açılıyor
+- [x] Worker `apps/worker` altında çalışıyor; scheduler tick smoke OK
+- [x] Prisma client + schema `packages/db` üzerinden import ediliyor
+- [x] Root scripts (`worker`, `typecheck`, `build`) yeni path’lerle yeşil
+- [x] README + `docs/MONOREPO.md` yeni layout ile güncel

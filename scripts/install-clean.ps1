@@ -16,7 +16,7 @@ Write-Host "npm install (wait for completion)..."
 npm install
 
 Write-Host "Prisma generate..."
-npx prisma generate
+npx prisma generate --schema packages/db/prisma/schema.prisma
 
 Write-Host "npm audit (info only - never run: npm audit fix --force)"
 npm audit

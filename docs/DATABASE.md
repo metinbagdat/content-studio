@@ -13,7 +13,7 @@ Until you do that, every command below needs the one-off override shown.
 
 ## Never run a blind `prisma db push` on this project
 
-`prisma db push` diffs the **entire** live schema against `prisma/schema.prisma` and offers
+`prisma db push` diffs the **entire** live schema against `packages/db/prisma/schema.prisma` and offers
 to **drop any table it doesn't recognize** — including a leftover `users` table from the
 quarantined legacy app (`legacy/emergent/`), which still has at least one row. If that
 prompt appears, answer **no** and do not re-run with `--accept-data-loss`.
