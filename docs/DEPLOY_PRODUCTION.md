@@ -40,6 +40,7 @@ META_APP_SECRET=...
 META_LOGIN_CONFIG_ID=1680236466390744
 
 GROQ_API_KEY=...
+GROQ_MODEL=openai/gpt-oss-20b
 ```
 
 `vercel.json` `crons: []` — günlük Vercel Cron kapalı (Supabase egress + Hobby cron kotası). Yeniden açmak için schedule ekle ve bayrakları bilinçli aç.

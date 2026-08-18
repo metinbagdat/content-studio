@@ -3,7 +3,12 @@ import OpenAI from 'openai'
 export type LlmProvider = 'groq' | 'openai' | 'none'
 
 const GROQ_BASE = 'https://api.groq.com/openai/v1'
-const GROQ_DEFAULT_MODEL = 'llama-3.3-70b-versatile'
+/**
+ * Groq no longer hosts Llama chat on free/developer (llama-3.1-8b-instant and
+ * llama-3.3-70b-versatile retired 2026-08-16). Official replacement for the
+ * free Llama 8B Instant tier: openai/gpt-oss-20b.
+ */
+const GROQ_DEFAULT_MODEL = 'openai/gpt-oss-20b'
 const OPENAI_DEFAULT_MODEL = 'gpt-4o-mini'
 
 /** Groq öncelikli; yoksa OPENAI_*; ikisi de yoksa null (mock). */
