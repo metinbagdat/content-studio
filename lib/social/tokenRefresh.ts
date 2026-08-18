@@ -10,6 +10,9 @@ export class TokenExpiredError extends Error {
 }
 
 export async function getValidAccessToken(account: SocialMediaAccount): Promise<string> {
+  if (!account.isActive) {
+    throw new TokenExpiredError(account.platform)
+  }
   const access = decryptSecret(account.accessToken)
   if (access === 'dry-run') return access
 
@@ -168,7 +171,6 @@ async function persistTokens(
       accessToken: encryptSecret(accessToken),
       refreshToken: refreshToken ? encryptSecret(refreshToken) : undefined,
       tokenExpiry: expiresIn ? new Date(Date.now() + expiresIn * 1000) : undefined,
-      isActive: true,
     },
   })
 }

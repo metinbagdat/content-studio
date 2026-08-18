@@ -442,6 +442,7 @@ export async function fetchAccountStats(account: SocialMediaAccount): Promise<Pl
 export async function syncAccountStats(accountId: string): Promise<PlatformAccountStats> {
   const account = await prisma.socialMediaAccount.findUnique({ where: { id: accountId } })
   if (!account) throw new Error('Account not found')
+  if (!account.isActive) throw new Error('Account inactive')
   const stats = await fetchAccountStats(account)
   const cfg = cfgOf(account.config)
   await prisma.socialMediaAccount.update({
