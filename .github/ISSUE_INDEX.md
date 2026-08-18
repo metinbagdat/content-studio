@@ -29,5 +29,6 @@ Open GitHub issues from bodies below when the Issues API is available. Until the
 | [20-hostinger-reach-contacts.md](./issue-bodies/20-hostinger-reach-contacts.md) | CS-EM-01 | Hostinger Reach contact API → [#38](https://github.com/metinbagdat/content-studio/issues/38) |
 | [21-hostinger-reach-admin.md](./issue-bodies/21-hostinger-reach-admin.md) | CS-EM-02 | Admin `/admin/email` → [#39](https://github.com/metinbagdat/content-studio/issues/39) |
 | [22-hostinger-reach-wp-nudge.md](./issue-bodies/22-hostinger-reach-wp-nudge.md) | CS-EM-03 | WP yayın → Reach bülten hatırlatması → [#40](https://github.com/metinbagdat/content-studio/issues/40) |
+| [23-social-disconnect-reactivate.md](./issue-bodies/23-social-disconnect-reactivate.md) | CS-SM | Disconnect revived by token refresh / dry-run → [#41](https://github.com/metinbagdat/content-studio/issues/41) |
 
 WordPress SEO hub plugins live in **`metinbagdat/wp-seo-hub`**. LearnCon growth: **not** opened here — see `docs/ROADMAP.md` section B → `metinbagdat/learncon`. Blog newsletter = Hostinger Reach (CS-EM), not LC-G4.

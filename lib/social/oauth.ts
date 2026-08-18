@@ -139,8 +139,21 @@ export async function upsertOAuthAccount(opts: {
 }
 
 export async function deactivateAccount(accountId: string) {
-  return prisma.socialMediaAccount.update({
+  const current = await prisma.socialMediaAccount.findUnique({ where: { id: accountId } })
+  if (!current) {
+    throw new Error('Account not found')
+  }
+  await prisma.socialMediaAccount.update({
     where: { id: accountId },
     data: { isActive: false },
   })
+  await prisma.socialMediaAccount.updateMany({
+    where: {
+      platform: current.platform,
+      isActive: true,
+      accountId: { startsWith: 'dryrun_' },
+    },
+    data: { isActive: false },
+  })
+  return prisma.socialMediaAccount.findUnique({ where: { id: accountId } })
 }
