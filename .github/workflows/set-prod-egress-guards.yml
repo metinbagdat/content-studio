@@ -47,8 +47,8 @@ jobs:
               "ANALYTICS_SYNC_ENABLED": "false",
               "SOCIAL_AUTOPILOT": "false",
               "SOCIAL_AUTO_PUBLISH": "false",
-              # Groq llama-3.3-70b-versatile retired 2026-08-16
-              "GROQ_MODEL": "openai/gpt-oss-120b",
+              # Llama chat retired 2026-08-16; free-tier replacement for 8B Instant
+              "GROQ_MODEL": "openai/gpt-oss-20b",
           }
 
           with open("/tmp/envs.json", encoding="utf-8") as f:
