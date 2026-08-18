@@ -17,7 +17,7 @@
 #   .\scripts\db-execute.ps1 -Sql 'ALTER TYPE "ContentType" ADD VALUE IF NOT EXISTS ''NEW_VALUE'';'
 #
 # Why this exists (2026-08): `prisma db push` compares the ENTIRE live schema against
-# prisma/schema.prisma and will offer to DROP any table it doesn't recognize (e.g. an
+# packages/db/prisma/schema.prisma and will offer to DROP any table it doesn't recognize (e.g. an
 # old `users` table from the quarantined legacy app). Never accept that prompt blindly.
 # Small additive changes (new enum value, new column with default, new index) should go
 # through this script instead - one targeted statement, no destructive diff.
@@ -56,7 +56,7 @@ try {
 
   $maskedUrl = $env:DATABASE_URL -replace '://[^@]+@', '://***@'
   Write-Host "==> Executing against: $maskedUrl" -ForegroundColor Cyan
-  npx prisma db execute --file $targetFile --schema .\prisma\schema.prisma
+  npx prisma db execute --file $targetFile --schema .\packages\db\prisma\schema.prisma
   Write-Host "==> Done." -ForegroundColor Green
 } finally {
   if ($tempFile -and (Test-Path $tempFile)) { Remove-Item $tempFile }

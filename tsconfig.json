@@ -1,8 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["dom", "dom.iterable", "esnext"],
-    "allowJs": false,
+    "lib": ["ES2022", "DOM"],
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
@@ -11,11 +10,11 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "preserve",
-    "incremental": true,
-    "plugins": [{ "name": "next" }],
-    "paths": { "@/*": ["./*"] }
+    "paths": {
+      "@/*": ["./*"],
+      "@content-studio/db": ["./packages/db/src/index.ts"]
+    }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "include": ["lib/**/*.ts", "scripts/**/*.ts", "apps/worker/**/*.ts", "packages/db/src/**/*.ts"],
+  "exclude": ["node_modules", "legacy", "apps/web"]
 }

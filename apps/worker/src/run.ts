@@ -1,8 +1,8 @@
-import { startWorkers } from '../lib/queue'
-import { startDiscoveryCron } from '../lib/discovery/discoveryCron'
-import { startAnalyticsSyncCron } from '../lib/social/analyticsCron'
-import { isSupabaseDatabaseUrl } from '../lib/prisma'
-import { runWorkerTick } from '../lib/worker/runWorkerTick'
+import { startWorkers } from '../../../lib/queue'
+import { startDiscoveryCron } from '../../../lib/discovery/discoveryCron'
+import { startAnalyticsSyncCron } from '../../../lib/social/analyticsCron'
+import { isSupabaseDatabaseUrl } from '../../../lib/prisma'
+import { runWorkerTick } from '../../../lib/worker/runWorkerTick'
 
 async function main() {
   console.log('[content-studio worker] starting…')

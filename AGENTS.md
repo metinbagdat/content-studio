@@ -7,26 +7,32 @@
 - **Content Studio** monorepo root: Next.js 15 (App Router) admin UI + REST API on port **3100**, Prisma + PostgreSQL, optional worker.
 - **Not LearnCon.** Growth/referral/onboarding/payments live in `metinbagdat/learncon`. See `docs/ROADMAP.md`.
 - **Legacy Emergent** stack is under `legacy/emergent/{frontend,backend}` (CRA + FastAPI + Mongo). Do **not** run it unless a task explicitly says so.
-- Future layout: `apps/web`, `apps/worker`, `packages/*` — plan in `docs/MONOREPO.md` (CS-M0/M1/M2).
+- Layout: `apps/web` (Next), `apps/worker`, `packages/db` (Prisma). Shared app code still lives in root `lib/` until CS-M2 (`packages/core`). Plan: `docs/MONOREPO.md`.
 
 ### Services (dev)
 
 - **PostgreSQL** (required): start before DB work (`sudo pg_ctlcluster 16 main start` on Cloud VM). Local Docker/Supabase: see `docs/SUPABASE_SETUP.md`.
-- **Next.js**: `npm run dev` → http://localhost:3100/admin
-- **Worker** (optional): `npm run worker` — discovery cron + scheduled publish drain. Empty `REDIS_URL` → DB poll fallback.
+- **Next.js**: `npm run dev` from repo root → http://localhost:3100/admin (`apps/web`)
+- **Worker** (optional): `npm run worker` — discovery cron + scheduled publish drain. Empty `REDIS_URL` → DB poll fallback. CWD is repo root so `storage/` stays at root.
 
 ### Environment files
 
-- `.env` / `.env.local` git-ignored. Copy from `.env.example`. Next reads `.env.local`; Prisma/worker read `.env`.
+- `.env` / `.env.local` at **repo root** (git-ignored). Copy from `.env.example`. Next loads them via `apps/web/next.config.js`; Prisma/worker read `.env`.
 - Admin gate: `ADMIN_API_KEY` (default `admin123`) via `x-admin-key` / localStorage `cs_admin_key`.
 
 ### Database schema — drift caveat
 
-- Migration `prisma/migrations/20260720190000_init` may miss newer `ContentType` enum values. After migrate, use `npx prisma db push` if pipeline errors on enum values.
+- Schema: `packages/db/prisma/schema.prisma`. Root `package.json` `"prisma.schema"` points here so `npx prisma …` from root works.
+- Migration `packages/db/prisma/migrations/20260720190000_init` may miss newer `ContentType` enum values. After migrate, use `npx prisma db push` if pipeline errors on enum values.
 
 ### Lint / static checks
 
-- `npm run lint` may prompt interactive ESLint setup — avoid non-interactively. Prefer `npm run typecheck` (`tsc --noEmit`) or `next build`.
+- `npm run lint` may prompt interactive ESLint setup — avoid non-interactively. Prefer `npm run typecheck` or `next build`.
+- Web typecheck: `apps/web/tsconfig.json`. Worker/scripts/lib: root `tsconfig.json` (excludes `apps/web`).
+
+### Deploy
+
+- `vercel.json` stays at repo root. Do **not** set Vercel Root Directory to `apps/web` unless install/env are also pointed at the monorepo root. Next `distDir` is repo-root `.next` so GHA `vercel build` still traces `lib/` + `packages/db`.
 
 ### Tracking
 

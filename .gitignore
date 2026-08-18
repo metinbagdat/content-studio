@@ -27,6 +27,8 @@ credentials.json
 *.key
 .credentials
 *.pem
+*.key.pub
+ssh-key-*.pub
 
 # Logs
 *.log

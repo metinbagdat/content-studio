@@ -18,9 +18,9 @@ Monorepo foundation: root workspaces orchestration, quarantine legacy Emergent s
 - [x] `docs/ROADMAP.md` + `docs/MONOREPO.md` + issue index
 
 ## Done when
-- [ ] `npm run dev` serves `/admin` without path changes for operators
-- [ ] README/AGENTS document legacy vs active paths
-- [ ] No requirement to `cd frontend` for daily work
+- [x] `npm run dev` serves `/admin` without path changes for operators
+- [x] README/AGENTS document legacy vs active paths
+- [x] No requirement to `cd frontend` for daily work
 
 ## Out of scope
 - Moving Next into `apps/web` (CS-M1)

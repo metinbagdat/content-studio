@@ -10,8 +10,10 @@ Tracking: [docs/ROADMAP.md](docs/ROADMAP.md) · Monorepo plan: [docs/MONOREPO.md
 
 | Path | Role |
 |------|------|
-| `app/`, `lib/`, `prisma/`, `workers/` | Active Next.js + worker (moves to `apps/*` in CS-M1) |
-| `apps/`, `packages/` | Workspace placeholders |
+| `apps/web/` | Next.js admin + API (`:3100`) |
+| `apps/worker/` | Discovery cron + scheduled publish drain |
+| `packages/db/` | Prisma schema, migrations, client export |
+| `lib/` | Shared TS (stays at root until CS-M2 `packages/core`) |
 | `legacy/emergent/` | Deprecated CRA + FastAPI (do not run daily) |
 
 Root `package.json` is the single install/script entrypoint (`npm workspaces`).

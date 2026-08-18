@@ -126,7 +126,7 @@ async function main() {
     }
   }
 
-  const push = run('npx', ['prisma', 'db', 'push', '--skip-generate'])
+  const push = run('npx', ['prisma', 'db', 'push', '--skip-generate', '--schema', 'packages/db/prisma/schema.prisma'])
   if (push.status !== 0) process.exit(push.status ?? 1)
   console.log('[db:up] local Postgres ready (localhost:5434)')
 }
