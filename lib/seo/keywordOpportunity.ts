@@ -13,7 +13,7 @@ export type TopicOpportunity = KeywordMetrics & {
   reason: string
 }
 
-/** Education-topic fallback when Soro / DataForSEO is not configured. */
+/** Education-topic fallback when DataForSEO / GSC API is not configured. Not Soro. */
 export const FALLBACK_KEYWORDS: Array<{ keyword: string; hpv: number; volume: number }> = [
   { keyword: 'tyt', hpv: 88, volume: 12000 },
   { keyword: 'ayt', hpv: 86, volume: 9000 },

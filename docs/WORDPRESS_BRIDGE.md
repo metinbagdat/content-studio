@@ -62,9 +62,19 @@ X-API-Key: $CONNECT_STUDIO_API_KEY
 
 Idempotent on `post_id` (`wp-post:{id}` tag). Creates a `ContentSource` and queues the existing SM pipeline.
 
-## Order of work
+## Decision: no Soro autopilot
 
-1. wp-seo-hub hosting + plugins (Sprint 1) — Oracle A1 / Hostinger
-2. ~~CS-WP-01 publisher + CS-WP-02 Safe samurAI~~
-3. ~~CS-WP-03 HPV trigger~~ (code; live SEO API optional)
-4. ~~CS-WP-04 publish webhook → SM~~ (code; live WP smoke after host)
+[Soro](https://trysoro.com) writes **and publishes** daily to WordPress. That bypasses Safe samurAI, fights Content Studio for the same URLs, and is not a HPV/volume API (`SEO_API_KEY` expects `/keywords?q=`).
+
+Use: Rank Math + GSC now; DataForSEO later if we need keyword metrics. Soro only if ever as **Draft** in its dashboard — never auto-publish.
+
+## Order of work (marketing)
+
+1. ~~Hosting + plugins + DNS `blog.egitim.today`~~
+2. ~~Real homepage (TT4, not Études/Hostinger AI demo); CTA → `egitim.today`~~
+3. **Now — Rank Math wizard + Google Search Console** (`blog.egitim.today`). Core sitemap: `/wp-sitemap.xml` until Rank Math finishes setup.
+4. **Now — Samurai-publish** first drafts (WP `#15` + 2–4 more via `/admin/review`).
+5. **Then — HPV live API** = DataForSEO (or GSC), not Soro.
+6. **Then — LearnCon LC-G6** pillar pages (not this repo).
+7. **Then — CS-WP-04** webhook live smoke.
+8. **Later — Hostinger Reach** after there are posts to mail.
