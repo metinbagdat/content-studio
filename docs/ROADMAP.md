@@ -18,7 +18,7 @@ Status legend: `todo` · `doing` · `done` · `blocked` · `learncon` (tracked i
 | ID | Title | Status | Start when | Done when |
 |----|-------|--------|------------|-----------|
 | CS-M0 | Monorepo foundation (workspaces + legacy quarantine) | doing | Roadmap approved | Root workspaces; legacy under `legacy/`; `npm run dev` still works |
-| CS-M1 | Move Next app → `apps/web`, worker → `apps/worker` (+ Prisma merge) | doing | CS-M0 merged | Single workspace install; Prisma `packages/db` wiring done in same pass; local smoke OK |
+| CS-M1 | Move Next app → `apps/web`, worker → `apps/worker` (+ Prisma merge) | done | CS-M0 merged | #43 merged; `apps/web` + `apps/worker` + `packages/db` |
 | CS-M2 | Shared packages (`packages/core`) | todo | CS-M1 merged | Post-Prisma shared-core extraction only (`packages/core`) |
 | CS-00 | Discovery cron + admin UI | done | — | `/admin/discovery` + worker 06:00 IST |
 | CS-01 | Atomization → ~50 derivatives | done | — | Counts match plan; THREAD/CAROUSEL/SHORT_VIDEO/INFOGRAPHIC stored |
@@ -33,10 +33,10 @@ Status legend: `todo` · `doing` · `done` · `blocked` · `learncon` (tracked i
 | CS-10 | Image resize per platform | done | CS-03 | Batch JPEG export from master via sharp; template cards render direct per size |
 | CS-11 | Infographic text format | doing | CS-01 | Bullet/stat copy generated + reviewable; image rendering waits on CS-03/CS-10 |
 | CS-SM-01 | Audience segments (TYT/AYT/LGS/veli) | doing | CS-SM-EPIC | Tags + caption hashtags + platform order + Onay/Sosyal filter (`lib/audience/segments.ts`) |
-| CS-WP | WordPress SEO hub bridge | doing | wp-seo-hub repo | CS-WP-01..04 code in repo; live WP at `blog.egitim.today` (Hostinger) |
-| CS-EM-01 | Hostinger Reach contact API | doing | Reach token | `lib/email/hostingerReach.ts` + `POST /api/email/reach`; live sync needs `HOSTINGER_API_TOKEN` |
+| CS-WP | WordPress SEO hub bridge | doing | wp-seo-hub repo | TT4 homepage + Rank Math installed; **next:** Rank Math wizard + GSC + Samurai-publish first drafts (no Soro autopilot) |
+| CS-EM-01 | Hostinger Reach contact API | doing | Reach token **after** first real posts | `lib/email/hostingerReach.ts` + `POST /api/email/reach`; live sync needs `HOSTINGER_API_TOKEN` |
 | CS-EM-02 | Admin e-posta sayfası | doing | CS-EM-01 | `/admin/email` kişi ekle / liste |
-| CS-EM-03 | WP yayın → bülten hatırlatması | todo | CS-EM-01 + WP live | Kampanya send API yok; Onay/WP sonrası Reach’te manuel gönder hatırlatması |
+| CS-EM-03 | WP yayın → bülten hatırlatması | todo | First posts live + CS-EM-01 | Kampanya send API yok; Onay/WP sonrası Reach’te manuel gönder hatırlatması |
 
 Detail files: `01-discovery-cron.md` … `12-infographic-format.md`, plus `M0-monorepo.md`, `M1-apps-layout.md`.
 
@@ -54,7 +54,7 @@ Implement in `metinbagdat/learncon`. Listed here so the growth doc has a single 
 | LC-G3 | Dashboard MVP widgets | learncon | 4 | Focus / tasks / streak / upsell |
 | LC-G4 | Email/SMS/WhatsApp automations | learncon | 5 | SendGrid/Twilio — **not** Hostinger Reach (blog newsletter is CS-EM) |
 | LC-G5 | Referral program | learncon | 6–7 | Invite link + reward/XP |
-| LC-G6 | SEO topic clusters + OG cards | learncon | 6–7 | Pillar pages + rich previews |
+| LC-G6 | SEO topic clusters + OG cards | learncon | **now (with blog)** | Pillar pages on `egitim.today` that match `blog.egitim.today` clusters + OG |
 | LC-G7 | Broadcast panel (admin/teacher) | learncon | 6–7 | Telegram/WA/email blast |
 | LC-G8 | Motivation / school score engine | learncon | 8 | Target progress widgets |
 | LC-G9 | Admin payment ops panel | learncon | 9–10 | Orders ops + taxonomy |
@@ -71,15 +71,28 @@ Implement in `metinbagdat/learncon`. Listed here so the growth doc has a single 
 
 ---
 
-## D. Near-term sequence (Content Studio)
+## D. Near-term sequence (marketing first)
 
-1. Merge **CS-M0** (this change set).
-2. Local: `git pull`, `npm install`, smoke `/admin`.
-3. **CS-M1(+Prisma)** PR: `apps/web` + `apps/worker` + `packages/db` tek sefer.
-4. Parallel product work: **CS-01** atomization depth + **CS-06** extra publishers when OAuth ready.
-5. LearnCon growth: open LC-* issues inside learncon from section B.
+Blog + SEO is demand generation for `egitim.today`. Ahead of CS-M2, DALL-E, Meta App Review, sung audio, Pinterest.
 
-### CS-M1(+Prisma) script + kontrol listesi
+**Do not use Soro (trysoro.com) as the blog engine.** It auto-publishes and has no keyword metrics API. CS-WP-03 is GSC + optional DataForSEO later. If Soro is ever tried: dashboard **Draft only**, never auto-publish, and never a second writer next to Content Studio.
+
+Do **not** put LearnCon product code in this repo. LC-G6 still lands in `metinbagdat/learncon`.
+
+| # | Work | Status |
+|---|------|--------|
+| 1 | Real blog, not Hostinger AI / TT4 Études demo | **done** 2026-08-18: Twenty Twenty-Four, static home + CTA → `egitim.today` |
+| 2 | Technical SEO | Rank Math **plugin active**; **you:** Rank Math setup wizard + GSC property. Sitemap until wizard: `https://blog.egitim.today/wp-sitemap.xml` |
+| 3 | First real articles | Draft ready: WP post **#15** (Samurai approve → publish). Need 3–5 total |
+| 4 | Every post CTA → `egitim.today` | Homepage CTA live; keep on every article |
+| 5 | Topic engine (HPV) | Fallback keywords in repo; live API = DataForSEO/GSC **not Soro** |
+| 6 | Product-site clusters + OG | LearnCon **LC-G6** (pulled forward) |
+| 7 | Publish webhook → SM | Code ready; live smoke after first human publish |
+| 8 | Reach newsletter | After posts exist |
+
+**Defer:** CS-M2, CS-03 DALL-E art, CS-04 Suno, CS-06 Meta/TikTok App Review, Pinterest.
+
+### CS-M1(+Prisma) (merged #43)
 
 ```bash
 git checkout -b feat/cs-m1-apps-and-prisma

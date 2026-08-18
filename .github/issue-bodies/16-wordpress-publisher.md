@@ -13,7 +13,7 @@ WordPress (`wp-seo-hub`) REST’e **yalnızca draft** gönderen publisher servis
 - [x] Payload: title, content, excerpt, post_type, meta, acf/HKMT
 - [x] Admin: manuel “WP draft gönder” (`/admin/review` + `POST /api/wordpress`)
 - [x] Asla `status: publish` gönderme
-- [ ] Live smoke: WP host + plugin + DNS hazır olduktan sonra
+- [ ] Live: Samurai-publish first drafts on `blog.egitim.today` (host+plugin+DNS up; draft WP `#15` waiting)
 
 ## Depends
 - wp-seo-hub Sprint 1 hosting + API key
