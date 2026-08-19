@@ -12,8 +12,8 @@
 ### Services (dev)
 
 - **PostgreSQL** (required): start before DB work (`sudo pg_ctlcluster 16 main start` on Cloud VM). Local Docker/Supabase: see `docs/SUPABASE_SETUP.md`.
-- **Next.js**: `npm run dev` from repo root → http://localhost:3100/admin (`apps/web`)
-- **Worker** (optional): `npm run worker` — discovery cron + scheduled publish drain. Empty `REDIS_URL` → DB poll fallback. CWD is repo root so `storage/` stays at root.
+- **Next.js**: `npm run dev` from repo root → Docker Postgres (if local URL) + drain worker (exits when queues idle) + http://localhost:3100/admin (`apps/web`)
+- **Worker 24/7 loop** (optional): `npm run worker:loop` — do not point this at Supabase.
 
 ### Environment files
 
