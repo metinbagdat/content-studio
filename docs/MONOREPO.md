@@ -14,8 +14,8 @@ content-studio/
     worker/                 # BullMQ / cron entry (chdir repo root)
   packages/
     db/                     # Prisma schema + client (M1)
-    core/                   # shared lib extract (M2)
-  lib/                      # shared TS until CS-M2
+    core/                   # planned only (M2) — directory does not exist yet
+  lib/                      # shared TS until CS-M2 (intentional; not leftover)
   legacy/
     emergent/
       frontend/             # CRA — deprecated (M0)

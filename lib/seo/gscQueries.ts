@@ -1,6 +1,7 @@
 /**
  * Optional Search Console overlay. Needs a short-lived OAuth access token
- * (GSC_ACCESS_TOKEN) — not the Rank Math wizard. Skip silently if unset.
+ * (`GSC_ACCESS_TOKEN`) — not the Rank Math wizard. Skip silently if unset.
+ * Durable refresh-token flow is CS-WP-03b (after posts are indexed).
  */
 export type GscQueryRow = {
   query: string

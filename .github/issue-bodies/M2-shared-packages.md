@@ -8,7 +8,7 @@
 Extract stable shared modules from root `lib/` into `packages/core`. Prisma already lives in `packages/db` (CS-M1).
 
 ## Start when
-- CS-M1 merged; import graph stable for 1+ week of local use
+- **Deferred.** CS-M1 already merged (`apps/web`, `apps/worker`, `packages/db`). Root `lib/` is **intentional** until this issue: web maps `@/lib/*` → `../../lib/*`. `packages/core` is planned only (`packages/README.md`) — it is **not** a half-finished migration. Do **not** extract early.
 
 ## Scope
 - [ ] `packages/core` — auth helper, platforms limits/formats (as needed)
