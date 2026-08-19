@@ -1,6 +1,7 @@
 import type { ContentType } from '@prisma/client'
 import { prisma } from '../prisma'
 import { formatForPlatform } from '../platforms/formats'
+import { youtubeDescriptionFooter } from '../content/canonicalUrl'
 import { generateVideoVariants, generateTikTokVideo } from '../video/generateVideo'
 import { generatePodcastVideo } from '../video/generatePodcastVideo'
 import type { AspectRatio } from '../video/renderVideo'
@@ -50,8 +51,14 @@ export function buildYouTubeMetadata(input: {
   contentType: ContentType
   metadata?: unknown
   sourceTitle?: string
+  articleUrl?: string
 }): YouTubeMetadata {
   const isShort = isShortFormVideo(input.contentType, input.metadata)
+  const meta = readMeta(input.metadata)
+  const articleUrl =
+    input.articleUrl ||
+    (typeof meta.articleUrl === 'string' ? meta.articleUrl : undefined)
+  const footer = youtubeDescriptionFooter(articleUrl)
   const baseTitle = input.title || input.sourceTitle || 'egitim.today'
   const tags = ['egitim', 'education', 'learnconnect', 'egitimtoday']
   if (isShort) tags.push('Shorts')
@@ -80,7 +87,7 @@ export function buildYouTubeMetadata(input: {
     if (data.callToAction?.trim()) parts.push(data.callToAction.trim())
     if (data.cta?.trim()) parts.push(data.cta.trim())
     if (data.caption?.trim()) parts.push(data.caption.trim())
-    parts.push('\n\n🔗 egitim.today | LEARNCONNECT.NET')
+    parts.push(footer)
     if (isShort) parts.push('\n#Shorts')
     if (input.contentType === 'PODCAST_SCRIPT') parts.push('\n#Podcast')
 
@@ -93,7 +100,7 @@ export function buildYouTubeMetadata(input: {
   } catch {
     return {
       title: baseTitle.replace(/^Podcast:\s*/i, '').slice(0, 100),
-      description: formatForPlatform(`${raw}\n\n🔗 egitim.today | LEARNCONNECT.NET`, 'YOUTUBE'),
+      description: formatForPlatform(`${raw}${footer}`, 'YOUTUBE'),
       tags,
       isShort,
     }
@@ -107,6 +114,7 @@ export function buildYouTubePostContent(input: {
   contentType: ContentType
   metadata?: unknown
   sourceTitle?: string
+  articleUrl?: string
 }): string {
   const meta = buildYouTubeMetadata(input)
   return meta.description

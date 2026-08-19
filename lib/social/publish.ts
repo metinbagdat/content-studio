@@ -10,6 +10,7 @@ import {
   type PostPublishMetrics,
 } from './publishFingerprint'
 import { ensureGeneratedVideo, buildYouTubeMetadata } from './publishVideo'
+import { canonicalArticleUrl } from '../content/canonicalUrl'
 import { uploadYouTubeVideo, setYouTubeThumbnail } from './youtubeApi'
 import { publishFacebookPost, publishInstagramPost, publishInstagramReel, publishFacebookVideoPost } from './publishMeta'
 import { uploadTikTokVideo } from './tiktokApi'
@@ -387,6 +388,7 @@ async function publishYouTube(
       contentType: derived.contentType,
       metadata: derived.metadata,
       sourceTitle: derived.source.title,
+      articleUrl: canonicalArticleUrl(derived.source.tags),
     })
 
     const privacy =
