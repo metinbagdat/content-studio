@@ -1,0 +1,12 @@
+---
+description: Local Docker only; do not run worker/dev against Supabase
+alwaysApply: true
+---
+
+# No local Supabase worker (Hobby egress)
+
+Daily `npm run dev` / `npm run worker` must use Docker Postgres (`localhost:5434`).
+
+Do **not** set `CS_ALLOW_SUPABASE_WORKER=1` for routine work. That flag is a **one-shot** override to touch prod Supabase (migrate, re-atomize). Unset it when the command finishes.
+
+Worker code already refuses Supabase unless the flag is set. Do not weaken that guard.

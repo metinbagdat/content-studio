@@ -117,6 +117,8 @@ OAuth token / taslakları bir kez kopyalamak istersen (tek seferlik egress):
 # pg_dump + psql — şifre .env’deki Supabase URL’den
 ```
 
+**`CS_ALLOW_SUPABASE_WORKER=1` günlük Docker işinde yok.** Yalnızca kısa prod-DB komutu (migrate / re-atomize); bitince kaldır.
+
 Medya dosyaları **Supabase Storage'a gitmez** — `storage/images`, `storage/videos`, `storage/audio` yerel diskte kalır.
 
 Kota uyarısı org düzeyinde (disk, egress, bağlantı). Prod'da ağır işleri kapatın, üretim + yayını local Docker’dan yapın:
