@@ -25,10 +25,14 @@ Open GitHub issues from bodies below when the Issues API is available. Until the
 | [16-wordpress-publisher.md](./issue-bodies/16-wordpress-publisher.md) | CS-WP-01 | WP draft publisher → [#34](https://github.com/metinbagdat/content-studio/issues/34) |
 | [17-safe-samurai-gate.md](./issue-bodies/17-safe-samurai-gate.md) | CS-WP-02 | Safe samurAI pre-send gate → [#35](https://github.com/metinbagdat/content-studio/issues/35) |
 | [18-seo-hpv-trigger.md](./issue-bodies/18-seo-hpv-trigger.md) | CS-WP-03 | HPV / SEO topic trigger → [#36](https://github.com/metinbagdat/content-studio/issues/36) |
+| [27-gsc-oauth-refresh.md](./issue-bodies/27-gsc-oauth-refresh.md) | CS-WP-03b | GSC OAuth refresh (after indexed posts) → [#51](https://github.com/metinbagdat/content-studio/issues/51) |
 | [19-wordpress-publish-webhook.md](./issue-bodies/19-wordpress-publish-webhook.md) | CS-WP-04 | WP publish → SM webhook → [#37](https://github.com/metinbagdat/content-studio/issues/37) |
 | [20-hostinger-reach-contacts.md](./issue-bodies/20-hostinger-reach-contacts.md) | CS-EM-01 | Hostinger Reach contact API → [#38](https://github.com/metinbagdat/content-studio/issues/38) |
 | [21-hostinger-reach-admin.md](./issue-bodies/21-hostinger-reach-admin.md) | CS-EM-02 | Admin `/admin/email` → [#39](https://github.com/metinbagdat/content-studio/issues/39) |
 | [22-hostinger-reach-wp-nudge.md](./issue-bodies/22-hostinger-reach-wp-nudge.md) | CS-EM-03 | WP yayın → Reach bülten hatırlatması → [#40](https://github.com/metinbagdat/content-studio/issues/40) |
 | [23-social-disconnect-reactivate.md](./issue-bodies/23-social-disconnect-reactivate.md) | CS-SM | Disconnect revived by token refresh / dry-run → [#41](https://github.com/metinbagdat/content-studio/issues/41) |
+| [24-sm-seo-from-social.md](./issue-bodies/24-sm-seo-from-social.md) | CS-SM-SEO | SM vs blog SEO tracker → [#47](https://github.com/metinbagdat/content-studio/issues/47) |
+| [25-sm-seo-canonical-urls.md](./issue-bodies/25-sm-seo-canonical-urls.md) | CS-SM-SEO-01 | WP URL on captions/YT descriptions → [#48](https://github.com/metinbagdat/content-studio/issues/48) |
+| [26-sm-durable-video-and-youtube-seo.md](./issue-bodies/26-sm-durable-video-and-youtube-seo.md) | CS-SM-SEO-02/03 | Durable MP4 + YouTube SEO upload → [#49](https://github.com/metinbagdat/content-studio/issues/49) |
 
-WordPress SEO hub plugins live in **`metinbagdat/wp-seo-hub`**. **Near-term:** Rank Math wizard + GSC + first Samurai publishes. **Do not** connect Soro autopilot. LearnCon **LC-G6** is pulled forward but stays in `metinbagdat/learncon`. Blog newsletter = Hostinger Reach (CS-EM) **after** posts exist, not LC-G4.
+WordPress SEO hub plugins live in **`metinbagdat/wp-seo-hub`**. First WP posts **#15/#20** are live. **Near-term:** Rank Math wizard + GSC *property*. Durable GSC OAuth (CS-WP-03b) and Reach newsletter wait until a few posts are **indexed**. **Do not** connect Soro autopilot. Root `lib/` stays until **CS-M2** (do not extract `packages/core` early). LearnCon **LC-G6** stays in `metinbagdat/learncon`.

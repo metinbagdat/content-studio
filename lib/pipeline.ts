@@ -17,6 +17,7 @@ import { DEFAULT_PIPELINE_PLATFORMS, normalizePlatforms } from './platforms/targ
 import { detectAudienceSegment, platformsForSegment, withSegmentTag } from './audience/segments'
 import { metaBulkPublishGapMs } from './social/metaReview'
 import { splitArticleForEpisodes, suggestedPodcastEpisodeCount } from './media/podcastEpisodes'
+import { canonicalArticleUrl } from './content/canonicalUrl'
 
 export type PipelineConfig = {
   platforms: SocialPlatform[]
@@ -134,9 +135,7 @@ export async function processPipeline(pipelineId: string) {
       },
     })
 
-    const articleUrl = pipeline.source.tags.find((t) => t.startsWith('blog:'))
-      ? `https://www.egitim.today/blog/${pipeline.source.tags.find((t) => t.startsWith('blog:'))!.replace('blog:', '')}`
-      : undefined
+    const articleUrl = canonicalArticleUrl(pipeline.source.tags)
 
     const kinds = [...FAZ1_KINDS].filter((k) => k !== 'SOCIAL_CAPTION')
     if (config.includeMarchSong) {
@@ -170,6 +169,7 @@ export async function processPipeline(pipelineId: string) {
             episodeIndex: chunk.index,
             episodeTotal: chunk.total,
             episodeFocus: chunk.heading,
+            ...(articleUrl ? { articleUrl } : {}),
           }
           await prisma.derivedContent.create({
             data: {
@@ -188,6 +188,7 @@ export async function processPipeline(pipelineId: string) {
       const out = await generateTransform(kind, pipeline.source.title, pipeline.source.content)
       const meta: Record<string, unknown> = {
         ...(out.metadata && typeof out.metadata === 'object' ? out.metadata : {}),
+        ...(articleUrl ? { articleUrl } : {}),
       }
       if (kind === 'VIDEO_SCRIPT' && config.platforms.includes('YOUTUBE')) {
         meta.platform = 'YOUTUBE'
@@ -286,7 +287,10 @@ export async function createSocialDraftsForDerived(
   postContent: string,
   opts: { skipImages?: boolean } = {},
 ) {
-  const derived = await prisma.derivedContent.findUnique({ where: { id: derivedId } })
+  const derived = await prisma.derivedContent.findUnique({
+    where: { id: derivedId },
+    include: { source: { select: { tags: true } } },
+  })
   if (!derived) return []
 
   const meta =
@@ -334,6 +338,9 @@ export async function createSocialDraftsForDerived(
           content: derived.content,
           contentType: derived.contentType,
           metadata: derived.metadata,
+          articleUrl:
+            (typeof meta.articleUrl === 'string' && meta.articleUrl) ||
+            canonicalArticleUrl(derived.source.tags),
         })
       : postContent
   const created = []

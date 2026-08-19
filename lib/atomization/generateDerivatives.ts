@@ -7,13 +7,13 @@ import type { AtomizationPlan } from './types'
 import {
   articleExcerpt,
   baseMetadata,
-  brandCta,
   pickConcepts,
   splitArticleSections,
 } from './articleChunks'
 import { llmJsonBatch } from './llmBatch'
 import type { AtomKind, DerivativeDraft, GenerateDerivativesInput, GenerateDerivativesResult } from './types-derivative'
 import { appendSegmentHashtags, detectAudienceSegment } from '../audience/segments'
+import { withShareCta, shareCtaBlock } from '../content/canonicalUrl'
 
 const HASHTAGS = '#egitim #egitimtoday #ogrenme'
 
@@ -30,6 +30,7 @@ async function generateSocialPostsBatch(
   article: string,
   plan: AtomizationPlan,
   atomKind: AtomKind,
+  articleUrl?: string,
 ): Promise<DerivativeDraft[]> {
   if (count <= 0) return []
   const maxChars = PLATFORM_FORMATS[platform].maxChars
@@ -37,13 +38,13 @@ async function generateSocialPostsBatch(
   const concepts = pickConcepts(plan.keyConcepts, splitArticleSections(article), count)
 
   const fallback = {
-    posts: concepts.map((c, i) => ({
-      text: formatForPlatform(`${c} — ${title.slice(0, 80)}${i === count - 1 ? brandCta() : ''}`, platform),
+    posts: concepts.map((c) => ({
+      text: withShareCta(`${c} — ${title.slice(0, 80)}`, articleUrl, platform),
     })),
   }
 
   const batch = await llmJsonBatch<{ posts: Array<{ text: string }> }>(
-    `You write Turkish ${platform} posts for egitim.today. Max ${maxChars} chars each. Tone: ${tone}.`,
+    `You write Turkish ${platform} posts for egitim.today. Max ${maxChars} chars each. Tone: ${tone}. End with product CTA to https://egitim.today.${articleUrl ? ` Also mention the article URL: ${articleUrl}` : ''}`,
     `Article: ${title}\nConcepts: ${concepts.join(', ')}\nExcerpt:\n${articleExcerpt(article, 2000)}\n\nOutput JSON: {"posts":[{"text":"..."}]} with exactly ${count} posts.`,
     fallback,
   )
@@ -51,8 +52,8 @@ async function generateSocialPostsBatch(
   return (batch.posts || fallback.posts).slice(0, count).map((p, i) => ({
     contentType: 'SOCIAL_CAPTION' as const,
     title: `${platform} ${i + 1}/${count}: ${title.slice(0, 60)}`,
-    content: formatForPlatform(p.text, platform),
-    metadata: baseMetadata(atomKind, title, undefined, {
+    content: withShareCta(p.text, articleUrl, platform),
+    metadata: baseMetadata(atomKind, title, articleUrl, {
       platform,
       partIndex: i + 1,
       partTotal: count,
@@ -113,7 +114,7 @@ async function generateTwitterThreads(
           i === 0
             ? `${title} 🧵`
             : i === tweetCount - 1
-              ? `${brandCta()} ${HASHTAGS}`
+              ? withShareCta('', articleUrl, 'TWITTER')
               : `${sections[i % sections.length]?.heading || plan.keyConcepts[i % plan.keyConcepts.length] || title}`,
           'TWITTER',
         ),
@@ -169,7 +170,7 @@ async function generateLinkedInCarousels(
         { title: title, body: 'egitim.today' },
         ...points.map((p) => ({ title: p, body: sections.find((s) => s.heading === p)?.body.slice(0, 200) || p })),
         { title: 'Özet', body: plan.mainArguments[0] || title },
-        { title: 'CTA', body: brandCta() },
+        { title: 'CTA', body: shareCtaBlock(articleUrl) },
       ].slice(0, slideCount),
     }
 
@@ -208,6 +209,7 @@ async function generateShortVideos(
   platform: 'TIKTOK' | 'INSTAGRAM' | 'YOUTUBE',
   atomKind: AtomKind,
   label: string,
+  articleUrl?: string,
 ): Promise<DerivativeDraft[]> {
   if (count <= 0) return []
   const sections = splitArticleSections(article)
@@ -221,10 +223,10 @@ async function generateShortVideos(
       scenes: [
         { t: '0-3s', visual: 'Hook text on screen', voice: concept },
         { t: '3-45s', visual: 'B-roll + captions', voice: sections[i % sections.length]?.body.slice(0, 120) || concept },
-        { t: '45-55s', visual: 'CTA egitim.today', voice: 'Detay için egitim.today' },
+        { t: '45-55s', visual: 'CTA egitim.today', voice: articleUrl ? `Detay: ${articleUrl}` : 'Detay için egitim.today' },
       ],
       durationSec: 55,
-      caption: formatForPlatform(`${concept} ${HASHTAGS}`, platform === 'YOUTUBE' ? 'YOUTUBE' : 'TIKTOK'),
+      caption: withShareCta(`${concept} ${HASHTAGS}`, articleUrl, platform === 'YOUTUBE' ? 'YOUTUBE' : 'TIKTOK'),
     }
 
     const batch = await llmJsonBatch<typeof fallback>(
@@ -237,7 +239,7 @@ async function generateShortVideos(
       contentType: 'SHORT_VIDEO_SCRIPT',
       title: `${label} ${i + 1}/${count}: ${concept.slice(0, 40)}`,
       content: JSON.stringify(batch, null, 2),
-      metadata: baseMetadata(atomKind, title, undefined, {
+      metadata: baseMetadata(atomKind, title, articleUrl, {
         platform,
         partIndex: i + 1,
         partTotal: count,
@@ -308,7 +310,7 @@ function linkedinCaptionSeries(
   linkedinPostCount: number,
 ): DerivativeDraft[] {
   const seriesParts = Math.min(4, Math.max(1, linkedinPostCount))
-  const parts = buildCaptionSeries(title, article, seriesParts)
+  const parts = buildCaptionSeries(title, article, seriesParts, articleUrl)
   const seriesId = crypto.randomUUID()
   return parts.map((part) => ({
     contentType: 'SOCIAL_CAPTION' as const,
@@ -335,14 +337,14 @@ export async function generateAllDerivatives(
 
   // X (Twitter) first — primary SM surface for egitim.today
   if (want('TWITTER')) {
-    drafts.push(...(await generateSocialPostsBatch('TWITTER', p.twitterPosts, title, article, plan, 'twitter_post')))
+    drafts.push(...(await generateSocialPostsBatch('TWITTER', p.twitterPosts, title, article, plan, 'twitter_post', articleUrl)))
     drafts.push(...(await generateTwitterThreads(p.twitterThreads, title, article, plan, articleUrl)))
   }
 
   // YouTube Shorts (+ long-form handled separately as VIDEO_SCRIPT in pipeline)
   if (want('YOUTUBE')) {
     drafts.push(
-      ...(await generateShortVideos(p.youtubeShorts, title, article, plan, 'YOUTUBE', 'youtube_short', 'YouTube Short')),
+      ...(await generateShortVideos(p.youtubeShorts, title, article, plan, 'YOUTUBE', 'youtube_short', 'YouTube Short', articleUrl)),
     )
   }
 
@@ -352,7 +354,7 @@ export async function generateAllDerivatives(
     const extraLinkedin = Math.max(0, p.linkedinPosts - seriesCount)
     if (extraLinkedin) {
       drafts.push(
-        ...(await generateSocialPostsBatch('LINKEDIN', extraLinkedin, title, article, plan, 'linkedin_post')),
+        ...(await generateSocialPostsBatch('LINKEDIN', extraLinkedin, title, article, plan, 'linkedin_post', articleUrl)),
       )
     }
     drafts.push(...(await generateLinkedInCarousels(p.linkedinCarousels, title, article, plan, articleUrl)))
@@ -360,22 +362,22 @@ export async function generateAllDerivatives(
 
   if (want('INSTAGRAM')) {
     drafts.push(
-      ...(await generateSocialPostsBatch('INSTAGRAM', p.instagramPosts, title, article, plan, 'instagram_post')),
+      ...(await generateSocialPostsBatch('INSTAGRAM', p.instagramPosts, title, article, plan, 'instagram_post', articleUrl)),
     )
     drafts.push(
-      ...(await generateShortVideos(p.instagramReels, title, article, plan, 'INSTAGRAM', 'instagram_reel', 'Reels')),
+      ...(await generateShortVideos(p.instagramReels, title, article, plan, 'INSTAGRAM', 'instagram_reel', 'Reels', articleUrl)),
     )
   }
 
   if (want('TIKTOK')) {
-    drafts.push(...(await generateShortVideos(p.tiktokVideos, title, article, plan, 'TIKTOK', 'tiktok_video', 'TikTok')))
+    drafts.push(...(await generateShortVideos(p.tiktokVideos, title, article, plan, 'TIKTOK', 'tiktok_video', 'TikTok', articleUrl)))
     drafts.push(
-      ...(await generateShortVideos(p.shortVideos, title, article, plan, 'TIKTOK', 'short_video', 'Short video')),
+      ...(await generateShortVideos(p.shortVideos, title, article, plan, 'TIKTOK', 'short_video', 'Short video', articleUrl)),
     )
   }
 
   if (want('FACEBOOK')) {
-    drafts.push(...(await generateSocialPostsBatch('FACEBOOK', p.facebookPosts, title, article, plan, 'facebook_post')))
+    drafts.push(...(await generateSocialPostsBatch('FACEBOOK', p.facebookPosts, title, article, plan, 'facebook_post', articleUrl)))
   }
 
   // Pinterest when any social surface is selected (no enum on SocialPlatform)

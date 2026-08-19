@@ -1,4 +1,4 @@
-import { brandCta } from '../auth'
+import { shareCtaBlock } from './canonicalUrl'
 import { captionMetadataWithImage } from '../social/brandImage'
 
 export type CaptionPart = {
@@ -23,9 +23,14 @@ function splitSections(markdown: string): Array<{ heading: string; body: string 
 }
 
 /** Build 4-part social caption series from article (title always on part 1). */
-export function buildCaptionSeries(articleTitle: string, articleMarkdown: string, maxParts = 4): CaptionPart[] {
+export function buildCaptionSeries(
+  articleTitle: string,
+  articleMarkdown: string,
+  maxParts = 4,
+  articleUrl?: string,
+): CaptionPart[] {
   const sections = splitSections(articleMarkdown.replace(/^#\s+[^\n]+\n?/, ''))
-  const cta = brandCta()
+  const cta = shareCtaBlock(articleUrl)
 
   const perPart = Math.max(1, Math.ceil(sections.length / maxParts))
   const buckets: Array<{ heading: string; bodies: string[] }> = []
