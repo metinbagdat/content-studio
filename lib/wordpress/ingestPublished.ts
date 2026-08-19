@@ -1,6 +1,6 @@
 import { prisma } from '../prisma'
 import { createPipeline } from '../pipeline'
-import { isDuplicateArticle } from '../discovery/duplicateDetection'
+import { isDuplicateArticle, normalizeTitle } from '../discovery/duplicateDetection'
 import { detectAudienceSegment, withSegmentTag } from '../audience/segments'
 
 export type WordpressPublishedPayload = {
@@ -47,6 +47,46 @@ function wpPostTag(postId: number): string {
   return `wp-post:${postId}`
 }
 
+function wpLinkTag(link: string): string {
+  return `wp-link:${link.slice(0, 180)}`
+}
+
+async function findExistingSourceForWp(opts: {
+  postId: number
+  title: string
+  link: string
+}): Promise<{ id: string; tags: string[] } | null> {
+  const byWp = await prisma.contentSource.findFirst({
+    where: { tags: { has: wpPostTag(opts.postId) } },
+    select: { id: true, tags: true },
+  })
+  if (byWp) return byWp
+
+  const slug = opts.link.replace(/\/$/, '').split('/').pop() || ''
+  if (slug) {
+    const byBlog = await prisma.contentSource.findFirst({
+      where: { tags: { has: `blog:${slug}` } },
+      select: { id: true, tags: true },
+    })
+    if (byBlog) return byBlog
+  }
+
+  const norm = normalizeTitle(opts.title)
+  if (!norm) return null
+  const recent = await prisma.contentSource.findMany({
+    select: { id: true, title: true, tags: true },
+    take: 200,
+    orderBy: { createdAt: 'desc' },
+  })
+  const hit = recent.find((s) => normalizeTitle(s.title) === norm)
+  return hit ? { id: hit.id, tags: hit.tags } : null
+}
+
+function mergeWpTags(existing: string[], postId: number, link: string, postType: string): string[] {
+  const extra = [wpPostTag(postId), 'wp-published', `wp-type:${postType}`, ...(link ? [wpLinkTag(link)] : [])]
+  return [...new Set([...existing, ...extra])]
+}
+
 /** WP publish → SM atomization. Idempotent on post_id (CS-WP-04). */
 export async function ingestWordpressPublished(
   body: WordpressPublishedPayload,
@@ -67,18 +107,25 @@ export async function ingestWordpressPublished(
   const tag = wpPostTag(postId)
   const triggerPipeline = options.triggerPipeline !== false
 
-  const existing = await prisma.contentSource.findFirst({
-    where: { tags: { has: tag } },
-    select: { id: true },
-  })
+  const existing = await findExistingSourceForWp({ postId, title, link })
   if (existing) {
+    const alreadyWp = existing.tags.includes(tag)
+    const tags = mergeWpTags(existing.tags, postId, link, postType)
+    if (tags.join('\0') !== existing.tags.join('\0')) {
+      await prisma.contentSource.update({ where: { id: existing.id }, data: { tags } })
+    }
+    let pipelineId: string | null = null
+    if (!alreadyWp && triggerPipeline) {
+      const pipeline = await createPipeline(existing.id, { includeMarchSong: true })
+      pipelineId = pipeline.id
+    }
     return {
       ok: true,
-      duplicate: true,
+      duplicate: alreadyWp,
       sourceId: existing.id,
-      pipelineId: null,
+      pipelineId,
       postId,
-      message: 'Already ingested',
+      message: alreadyWp ? 'Already ingested' : 'Attached WP canonical URL to existing source',
     }
   }
 
@@ -97,7 +144,7 @@ export async function ingestWordpressPublished(
       content,
       category: 'wordpress',
       tags: withSegmentTag(
-        [tag, 'wp-published', `wp-type:${postType}`, ...(link ? [`wp-link:${link.slice(0, 180)}`] : [])],
+        [tag, 'wp-published', `wp-type:${postType}`, ...(link ? [wpLinkTag(link)] : [])],
         detectAudienceSegment(`${title}\n${content}`),
       ),
     },

@@ -79,6 +79,7 @@ Use: Rank Math + GSC now; DataForSEO later if we need keyword metrics. Soro only
 3. **Now — Rank Math wizard + Google Search Console** (`blog.egitim.today`). Core sitemap: `/wp-sitemap.xml` until Rank Math finishes setup.
 4. **Now — Samurai-publish** first drafts (WP `#15` + 2–4 more via `/admin/review`).
 5. **Then — HPV live API** = DataForSEO (`DATAFORSEO_LOGIN` + `DATAFORSEO_PASSWORD`); GSC overlay optional. Not Soro.
-6. **Then — LearnCon LC-G6** pillar pages (not this repo).
-7. **Then — CS-WP-04** webhook live smoke.
-8. **Later — Hostinger Reach** after there are posts to mail.
+6. **LearnCon `/blog`:** long-form **migrates to WP**; leftover `/blog` is product news. 301s live in `metinbagdat/learncon` (CS-WP-05). Do not keep duplicate articles on both hosts.
+7. **Then — LearnCon LC-G6** pillar pages (not this repo).
+8. **Then — CS-WP-04** webhook live smoke.
+9. **Later — Hostinger Reach** after there are posts to mail.

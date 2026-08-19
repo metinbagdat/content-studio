@@ -35,6 +35,8 @@ Status legend: `todo` · `doing` · `done` · `blocked` · `learncon` (tracked i
 | CS-SM-01 | Audience segments (TYT/AYT/LGS/veli) | doing | CS-SM-EPIC | Tags + caption hashtags + platform order + Onay/Sosyal filter (`lib/audience/segments.ts`) |
 | CS-WP | WordPress SEO hub bridge | doing | wp-seo-hub repo | TT4 + Rank Math plugin; **#15/#20 live**. Next: Rank Math wizard + GSC *property*. OAuth refresh = CS-WP-03b (after index) |
 | CS-WP-03b | GSC OAuth refresh (durable token) | todo | 3–5 indexed posts / GSC impressions | Store refresh token like X/LI; stop pasting `GSC_ACCESS_TOKEN`. Empty queries until then are expected |
+| CS-WP-04 | WP publish → SM webhook | doing | CS-WP | `POST /api/webhooks/wordpress-published` live |
+| CS-WP-05 | Canonical blog is WordPress | doing | WP #15/#20 live | Discovery = WP sitemap; migrate LearnCon posts; LC 301s in learncon |
 | CS-EM-01 | Hostinger Reach contact API | doing | Reach token **after more posts** (2 live, want 3–5) | `lib/email/hostingerReach.ts` + `POST /api/email/reach`; live sync needs `HOSTINGER_API_TOKEN` |
 | CS-EM-02 | Admin e-posta sayfası | doing | CS-EM-01 | `/admin/email` kişi ekle / liste |
 | CS-EM-03 | WP yayın → bülten hatırlatması | todo | 3–5 posts + CS-EM-01 | Kampanya send API yok; Onay/WP sonrası Reach’te manuel gönder hatırlatması |
@@ -84,13 +86,16 @@ Do **not** put LearnCon product code in this repo. LC-G6 still lands in `metinba
 |---|------|--------|
 | 1 | Real blog, not Hostinger AI / TT4 Études demo | **done** 2026-08-18: Twenty Twenty-Four, static home + CTA → `egitim.today` |
 | 2 | Technical SEO | Rank Math **plugin active**; **you:** Rank Math setup wizard + GSC property. Sitemap until wizard: `https://blog.egitim.today/wp-sitemap.xml` |
-| 3 | First real articles | **done (first wave):** WP **#15** + **#20** live 2026-08. Still want 3–5 total before newsletter/GSC OAuth |
+| 3 | First real articles | **done (first wave):** WP **#15** + **#20**. Canonical hub = `blog.egitim.today`. LearnCon `/blog` = product news + 301 after migrate (CS-WP-05) |
 | 4 | Every post CTA → `egitim.today` | Homepage CTA live; keep on every article |
 | 5 | Topic engine (HPV) | **code done:** DataForSEO + optional GSC overlay (`GSC_ACCESS_TOKEN`). Queries stay empty until posts are indexed. **Durable GSC OAuth = later** (CS-WP-03b), same cadence as Reach — not now |
 | 6 | Product-site clusters + OG | LearnCon **LC-G6** (pulled forward) |
 | 7 | Publish webhook → SM | Live: WP #20 ingested; LI 3 published; YT/TT not uploaded — [#47](https://github.com/metinbagdat/content-studio/issues/47) |
-| 8 | SM → SEO wiring | Canonical URL on captions [#48](https://github.com/metinbagdat/content-studio/issues/48) (PR); YouTube durable MP4 [#49](https://github.com/metinbagdat/content-studio/issues/49) |
+| 8 | SM → SEO wiring | Canonical URL on captions [#48](https://github.com/metinbagdat/content-studio/issues/48); YouTube durable MP4 [#49](https://github.com/metinbagdat/content-studio/issues/49) |
 | 9 | Reach newsletter | After **more** posts exist (2 live is not enough corpus) |
+| 10 | LearnCon `/blog` → WP | **decision:** long-form on WP only. Migrate `zamani-zafere-donusturmek` first; then 301s in learncon |
+
+**Defer:** CS-M2, CS-03 DALL-E art, CS-04 Suno, CS-06 Meta/TikTok App Review, Pinterest.
 
 **Defer:** CS-M2, CS-03 DALL-E art, CS-04 Suno, CS-06 Meta/TikTok App Review, Pinterest.
 

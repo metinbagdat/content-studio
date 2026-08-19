@@ -83,8 +83,10 @@ export async function sendDraftToWordPress(payload: WpContentPayload): Promise<W
   }
 }
 
-/** Optional Basic Auth path to core REST (fallback if custom route down). Draft only. */
-export async function sendDraftViaCoreRest(payload: WpContentPayload): Promise<WpPublishResult> {
+export async function sendViaCoreRest(
+  payload: WpContentPayload,
+  options: { status?: 'draft' | 'publish'; slug?: string } = {},
+): Promise<WpPublishResult> {
   const { baseUrl, username, appPassword } = wpConfig()
   if (!baseUrl || !username || !appPassword) {
     return { success: false, errorMessage: 'WP_USERNAME / WP_APP_PASSWORD eksik (core REST)' }
@@ -110,10 +112,11 @@ export async function sendDraftViaCoreRest(payload: WpContentPayload): Promise<W
         title: payload.title,
         content: payload.content,
         excerpt: payload.excerpt || excerptFromHtml(payload.content),
-        status: 'draft',
+        status: options.status || 'draft',
+        ...(options.slug ? { slug: options.slug } : {}),
         meta: {
-          _is_ai_generated: 'yes',
-          _safe_samurai_approved: 'no',
+          _is_ai_generated: options.status === 'publish' ? 'no' : 'yes',
+          _safe_samurai_approved: options.status === 'publish' ? 'yes' : 'no',
         },
       }),
       signal: AbortSignal.timeout(30_000),
@@ -126,7 +129,7 @@ export async function sendDraftViaCoreRest(payload: WpContentPayload): Promise<W
       success: true,
       wpPostId: data.id,
       editLink: data.id ? `${baseUrl}/wp-admin/post.php?post=${data.id}&action=edit` : undefined,
-      message: 'Draft (core REST)',
+      message: `${options.status || 'draft'} (core REST)`,
     }
   } catch (err) {
     return {
@@ -134,4 +137,9 @@ export async function sendDraftViaCoreRest(payload: WpContentPayload): Promise<W
       errorMessage: err instanceof Error ? err.message : String(err),
     }
   }
+}
+
+/** Fallback if custom ingest route is down. Always draft. */
+export async function sendDraftViaCoreRest(payload: WpContentPayload): Promise<WpPublishResult> {
+  return sendViaCoreRest(payload, { status: 'draft' })
 }
