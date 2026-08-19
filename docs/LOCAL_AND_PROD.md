@@ -25,7 +25,7 @@ Aynı Supabase URL’yi local + prod paylaşmak **Hobby egress kotasını yer** 
 
 ## Yerel kurulum (öncelik)
 
-`DATABASE_URL` `localhost:5434` ise **`npm run dev` / `npm run worker` Docker Postgres’i kendisi açar** (`predev` / `preworker`). Docker Desktop kapalıysa Windows’ta başlatmayı dener (ilk sefer 1–2 dk).
+`DATABASE_URL` `localhost:5434` ise **`npm run dev` Docker Postgres’i açar** (`predev`), drain worker’ı bir kez çalıştırır (kuyruk bitince **çıkar**), Next `:3100` açık kalır. 15 saniyelik sonsuz worker için `npm run worker:loop` — günlük işte kullanma.
 
 1. `.env` + `.env.local`: `DATABASE_URL=postgresql://content:content@localhost:5434/content_studio?schema=public`
 2. `NEXT_PUBLIC_APP_URL=http://localhost:3100`
@@ -125,8 +125,8 @@ Kota uyarısı org düzeyinde (disk, egress, bağlantı). Prod'da ağır işleri
 
 | Ortam | Rol |
 |-------|-----|
-| **Local** (`npm run dev` + `npm run worker`) | Video/klip/podcast üretimi, toplu yayın, Facebook/LinkedIn/YouTube |
-| **Prod** (`studio.egitim.today`) | OAuth callback, Instagram (localhost URL erişemez), isteğe bağlı okuma |
+| **Local** (`npm run dev`) | Docker + Next + drain worker (iş bitince kapanır). Video/yayın kuyruğu. |
+| **Prod** (`studio.egitim.today`) | Supabase + Vercel. Autopilot / discovery / cron **kapalı**. 15s worker yok. |
 
 **Vercel Production env (kota için zorunlu):**
 

@@ -8,7 +8,7 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "npm run dev -w @content-studio/web",
+    "dev": "tsx scripts/dev-local.ts",
     "predev": "tsx scripts/ensure-local-docker.ts",
     "dev:clean": "powershell -ExecutionPolicy Bypass -File scripts/kill-port.ps1 && tsx scripts/ensure-local-docker.ts && npm run dev -w @content-studio/web",
     "kill-port": "powershell -ExecutionPolicy Bypass -File scripts/kill-port.ps1",
@@ -22,8 +22,9 @@
     "db:push": "prisma db push",
     "db:exec": "powershell -ExecutionPolicy Bypass -File scripts/db-execute.ps1",
     "db:studio": "prisma studio",
-    "worker": "npm run start -w @content-studio/worker",
+    "worker": "npm run drain -w @content-studio/worker",
     "preworker": "tsx scripts/ensure-local-docker.ts",
+    "worker:loop": "npm run loop -w @content-studio/worker",
     "discovery:scan": "tsx --env-file=.env scripts/run-content-discovery.ts",
     "pipeline:zaman": "tsx --env-file=.env scripts/run-zaman-pipeline.ts",
     "env:parity": "tsx --env-file=.env scripts/print-db-fingerprint.ts",

@@ -5,7 +5,11 @@ alwaysApply: true
 
 # No local Supabase worker (Hobby egress)
 
-Daily `npm run dev` / `npm run worker` must use Docker Postgres (`localhost:5434`).
+Daily `npm run dev` starts Docker Postgres (`localhost:5434`) and a **drain** worker that exits when queues are idle. Next stays up.
+
+Do **not** set `CS_ALLOW_SUPABASE_WORKER=1` for that. Prod Vercel already uses Supabase (the hosted app); local worker must not.
+
+`npm run worker:loop` is the old 15s forever process — not daily default.
 
 Do **not** set `CS_ALLOW_SUPABASE_WORKER=1` for routine work. That flag is a **one-shot** override to touch prod Supabase (migrate, re-atomize). Unset it when the command finishes.
 
