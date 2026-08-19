@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 /** Vercel Hobby: daily tick should finish under ~60s; full profile may need local worker. */
 export const maxDuration = 60
 
-const PROFILES: WorkerTickProfile[] = ['quick', 'maintain', 'daily', 'full']
+const PROFILES: WorkerTickProfile[] = ['quick', 'drain', 'maintain', 'daily', 'full']
 
 export async function POST(req: NextRequest) {
   if (!requireAdmin(req)) {

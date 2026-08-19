@@ -34,8 +34,8 @@ Copy-Item .env.example .env.local -ErrorAction SilentlyContinue
 
 npm install
 .\scripts\setup-db.ps1    # or Supabase — docs/SUPABASE_SETUP.md
-npm run dev               # http://localhost:3100/admin
-npm run worker            # optional: discovery cron + scheduled posts
+npm run dev               # Docker + drain worker (exits when idle) + http://localhost:3100/admin
+npm run worker:loop       # optional: 15s forever worker — local Docker only
 ```
 
 ### Admin

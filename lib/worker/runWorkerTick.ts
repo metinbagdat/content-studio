@@ -7,7 +7,7 @@ import { drainDuePosts } from '../social/publish'
 import { syncSocialDraftsFromApprovedCaptions } from '../pipeline'
 import { repairMissingSocialAccounts } from '../social/accountAudit'
 
-export type WorkerTickProfile = 'quick' | 'maintain' | 'daily' | 'full'
+export type WorkerTickProfile = 'quick' | 'drain' | 'maintain' | 'daily' | 'full'
 
 export type WorkerTickOptions = {
   profile?: WorkerTickProfile

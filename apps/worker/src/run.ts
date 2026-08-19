@@ -4,30 +4,56 @@ import { startAnalyticsSyncCron } from '../../../lib/social/analyticsCron'
 import { isSupabaseDatabaseUrl } from '../../../lib/prisma'
 import { runWorkerTick } from '../../../lib/worker/runWorkerTick'
 
+function wantsDrain(): boolean {
+  return process.argv.includes('--drain') || process.env.WORKER_MODE === 'drain'
+}
+
+async function refuseSupabaseIfNeeded(): Promise<void> {
+  if (!isSupabaseDatabaseUrl() || process.env.VERCEL) return
+  const allow = process.env.CS_ALLOW_SUPABASE_WORKER === '1'
+  if (!allow) {
+    console.error(
+      '[egress] Worker refused: DATABASE_URL is Supabase (Hobby egress). Use localhost:5434, or set CS_ALLOW_SUPABASE_WORKER=1 for a one-shot prod drain.',
+    )
+    process.exit(1)
+  }
+  console.warn(
+    '[egress] CS_ALLOW_SUPABASE_WORKER=1 — Worker → Supabase. Prefer localhost:5434 for daily work.',
+  )
+}
+
+async function drainUntilIdle(): Promise<void> {
+  console.log('[worker] drain mode — process queued jobs, then exit')
+  const maxTicks = Math.max(1, Number(process.env.WORKER_DRAIN_MAX_TICKS || 20))
+  for (let i = 0; i < maxTicks; i++) {
+    const r = await runWorkerTick({ profile: 'drain' })
+    const busy = r.pipelineJobs + r.publishJobs + r.duePostsPublished
+    console.log('[worker drain]', `${i + 1}/${maxTicks}`, formatShort(r), `busy=${busy}`)
+    if (r.errors.length) console.warn('[worker drain] errors', r.errors.slice(0, 5))
+    if (busy === 0) {
+      console.log('[worker] idle — exiting')
+      return
+    }
+  }
+  console.log('[worker] max ticks reached — exiting (jobs may remain)')
+}
+
 async function main() {
   console.log('[content-studio worker] starting…')
-  if (isSupabaseDatabaseUrl() && !process.env.VERCEL) {
-    const allow = process.env.CS_ALLOW_SUPABASE_WORKER === '1'
-    if (!allow) {
-      console.error(
-        '[egress] Worker refused: DATABASE_URL is Supabase (Hobby egress). Use localhost:5434, or set CS_ALLOW_SUPABASE_WORKER=1 for a one-shot prod drain.',
-      )
-      process.exit(1)
-    }
-    console.warn(
-      '[egress] CS_ALLOW_SUPABASE_WORKER=1 — Worker → Supabase. 15s ticks count toward Hobby 5GB. Prefer localhost:5434.',
-    )
+  await refuseSupabaseIfNeeded()
+
+  if (wantsDrain()) {
+    await drainUntilIdle()
+    return
   }
+
   try {
     startWorkers()
   } catch (err) {
     console.warn('[worker] BullMQ start failed; using DB poll only', err)
   }
 
-  // Phase 0: daily sitemap discovery at 06:00 Europe/Istanbul
   startDiscoveryCron()
-
-  // CS-08: periodic stats refresh (default every 3h) — not every 15s
   startAnalyticsSyncCron()
 
   setInterval(() => {
@@ -48,7 +74,7 @@ async function main() {
 }
 
 function formatShort(r: Awaited<ReturnType<typeof runWorkerTick>>): string {
-  return `due=${r.duePostsPublished} drafts=+${r.draftsSynced} err=${r.errors.length}`
+  return `due=${r.duePostsPublished} pipe=${r.pipelineJobs} pubq=${r.publishJobs} drafts=+${r.draftsSynced} err=${r.errors.length}`
 }
 
 main().catch((err) => {
