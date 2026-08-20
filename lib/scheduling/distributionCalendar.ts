@@ -53,16 +53,39 @@ export async function buildDistributionCalendar(input: BuildCalendarInput): Prom
     for (let i = 0; i < count; i++) queue.push({ platform, kind })
   }
 
-  push('TWITTER', 'twitter_post', pieces.twitterPosts)
-  push('TWITTER', 'twitter_thread', pieces.twitterThreads)
-  push('YOUTUBE', 'youtube_short', pieces.youtubeShorts)
-  push('YOUTUBE', 'long_form_video', pieces.longFormVideo)
-  push('LINKEDIN', 'linkedin_post', pieces.linkedinPosts)
-  push('LINKEDIN', 'linkedin_carousel', pieces.linkedinCarousels)
-  push('INSTAGRAM', 'instagram_post', pieces.instagramPosts)
-  push('INSTAGRAM', 'instagram_reel', pieces.instagramReels)
-  push('TIKTOK', 'tiktok_video', pieces.tiktokVideos)
-  push('FACEBOOK', 'facebook_post', pieces.facebookPosts)
+  const pushPlatformPieces = (platform: SocialPlatform) => {
+    switch (platform) {
+      case 'TWITTER':
+        push('TWITTER', 'twitter_post', pieces.twitterPosts)
+        push('TWITTER', 'twitter_thread', pieces.twitterThreads)
+        break
+      case 'YOUTUBE':
+        push('YOUTUBE', 'youtube_short', pieces.youtubeShorts)
+        push('YOUTUBE', 'long_form_video', pieces.longFormVideo)
+        break
+      case 'LINKEDIN':
+        push('LINKEDIN', 'linkedin_post', pieces.linkedinPosts)
+        push('LINKEDIN', 'linkedin_carousel', pieces.linkedinCarousels)
+        break
+      case 'INSTAGRAM':
+        push('INSTAGRAM', 'instagram_post', pieces.instagramPosts)
+        push('INSTAGRAM', 'instagram_reel', pieces.instagramReels)
+        break
+      case 'TIKTOK':
+        push('TIKTOK', 'tiktok_video', pieces.tiktokVideos)
+        break
+      case 'FACEBOOK':
+        push('FACEBOOK', 'facebook_post', pieces.facebookPosts)
+        break
+      default:
+        break
+    }
+  }
+
+  // Follow segment / pipeline platform order (not a fixed TWITTER→… list)
+  for (const platform of platforms) {
+    pushPlatformPieces(platform)
+  }
 
   const days = plan.distributionDays
   const slots: CalendarSlot[] = []

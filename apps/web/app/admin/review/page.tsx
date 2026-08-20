@@ -230,14 +230,19 @@ type AiImageState = { msg: string; urls: string[]; mediaIds?: string[] }
     const approved = all.filter((i) => i.status === 'APPROVED' || i.status === 'PUBLISHED').length
     const rejected = all.filter((i) => i.status === 'REJECTED').length
     const linkedin = all.filter((i) => itemPlatform(i) === 'LINKEDIN').length
+    const segNote = segmentFilter !== 'ALL' ? ` · segment ${SEGMENT_LABELS[segmentFilter]}` : ''
     if (!all.length) {
-      setMsg('Kayıt yok — Pipeline’da LinkedIn seçili çalıştır veya Discovery ile kaynak ekle')
+      setMsg(
+        segmentFilter !== 'ALL'
+          ? `Bu segmentte kayıt yok (${SEGMENT_LABELS[segmentFilter]}) — filtreyi Tümü yap veya Pipeline çalıştır`
+          : 'Kayıt yok — Pipeline’da LinkedIn seçili çalıştır veya Discovery ile kaynak ekle',
+      )
     } else if (showAll) {
-      setMsg(`${pending} onay bekliyor · ${approved} onaylı · ${rejected} reddedildi · ${linkedin} LinkedIn`)
+      setMsg(`${pending} onay bekliyor · ${approved} onaylı · ${rejected} reddedildi · ${linkedin} LinkedIn${segNote}`)
     } else if (pending) {
-      setMsg(`${pending} onay bekliyor · ${linkedin} LinkedIn türev (filtre: ${platformFilter})`)
+      setMsg(`${pending} onay bekliyor · ${linkedin} LinkedIn türev (platform: ${platformFilter}${segNote})`)
     } else {
-      setMsg('Onay bekleyen yok — "Tümünü göster" veya LinkedIn filtresi ile geçmişe bak')
+      setMsg(`Onay bekleyen yok${segNote} — "Tümünü göster" veya filtreyi gevşet`)
     }
   }, [adminKey, showAll, platformFilter, segmentFilter])
 
@@ -638,6 +643,7 @@ type AiImageState = { msg: string; urls: string[]; mediaIds?: string[] }
             value={segmentFilter}
             onChange={(e) => setSegmentFilter(e.target.value as SegmentFilter)}
             style={{ marginBottom: 0, minWidth: '8rem' }}
+            title="TYT / AYT / LGS / veli — metadata.segment veya kaynak seg: tag"
           >
             <option value="ALL">Tümü</option>
             {AUDIENCE_SEGMENTS.map((s) => (

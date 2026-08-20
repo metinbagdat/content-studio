@@ -29,13 +29,14 @@ export async function ensureGeneratedPostMedia(derivedContentId: string): Promis
   return imageUrls
 }
 
-/** Auto-generate branded PNG for caption if no custom image set. */
+/** Auto-generate branded PNG for caption or infographic if no custom image set. */
 export async function ensureGeneratedPostImage(derivedContentId: string): Promise<string[]> {
   const derived = await prisma.derivedContent.findUnique({
     where: { id: derivedContentId },
     include: { source: true },
   })
-  if (!derived || derived.contentType !== 'SOCIAL_CAPTION') {
+  if (!derived) return []
+  if (derived.contentType !== 'SOCIAL_CAPTION' && derived.contentType !== 'INFOGRAPHIC_TEXT') {
     return []
   }
 
@@ -54,10 +55,19 @@ export async function ensureGeneratedPostImage(derivedContentId: string): Promis
 
   // Branded card renders per-platform — skip blog og-image probe (often 404, noisy logs)
   try {
-    const result = await generatePostImage(derivedContentId)
-    const url = result?.publicUrl
-    if (typeof url === 'string' && url.startsWith('http')) {
-      return [url]
+    if (derived.contentType === 'INFOGRAPHIC_TEXT') {
+      const { generateInfographicImage } = await import('../media/generateInfographicImage')
+      const result = await generateInfographicImage(derivedContentId)
+      const url = result?.publicUrl
+      if (typeof url === 'string' && url.startsWith('http')) {
+        return [url]
+      }
+    } else {
+      const result = await generatePostImage(derivedContentId)
+      const url = result?.publicUrl
+      if (typeof url === 'string' && url.startsWith('http')) {
+        return [url]
+      }
     }
   } catch (err) {
     console.warn('[ensureGeneratedPostImage]', derivedContentId, err)

@@ -76,10 +76,9 @@ Use: Rank Math + GSC now; DataForSEO later if we need keyword metrics. Soro only
 
 1. ~~Hosting + plugins + DNS `blog.egitim.today`~~
 2. ~~Real homepage (TT4, not Études/Hostinger AI demo); CTA → `egitim.today`~~
-3. **Now — Rank Math wizard + Google Search Console** (`blog.egitim.today`). Core sitemap: `/wp-sitemap.xml` until Rank Math finishes setup.
-4. **Now — Samurai-publish** first drafts (WP `#15` + 2–4 more via `/admin/review`).
-5. **Then — HPV live API** = DataForSEO (`DATAFORSEO_LOGIN` + `DATAFORSEO_PASSWORD`); GSC overlay optional. Not Soro.
-6. **LearnCon `/blog`:** long-form **migrates to WP**; leftover `/blog` is product news. 301s live in `metinbagdat/learncon` (CS-WP-05). Do not keep duplicate articles on both hosts.
+3. **Now — Rank Math wizard + Google Search Console** (`blog.egitim.today`). Submit `https://blog.egitim.today/sitemap_index.xml` (or Rank Math’s index). Check Performance → Queries before any Studio GSC OAuth work.
+4. **Corpus — done:** WP `#15`, `#20`, `#23`–`#27` live; LearnCon long-form 301s merged.
+5. **Then — HPV live API** = DataForSEO when creds exist; GSC overlay only after impressions. Durable OAuth = CS-WP-03b (not Rank Math wizard).
+6. **LearnCon `/blog`:** long-form on WP only; Haberler stays on LearnCon (CS-WP-05 / learncon#1328).
 7. **Then — LearnCon LC-G6** pillar pages (not this repo).
-8. **Then — CS-WP-04** webhook live smoke.
-9. **Later — Hostinger Reach** after there are posts to mail.
+8. **Webhook / SM SEO** — keep shipping; Reach after search signal, same gate as GSC OAuth.

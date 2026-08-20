@@ -18,9 +18,19 @@ export async function POST(req: NextRequest) {
     const derivedContentId = String(body.derivedContentId || '')
     const kind = String(body.kind || 'podcast').toLowerCase()
 
-    if (kind === 'image' || kind === 'post-image') {
+    if (kind === 'image' || kind === 'post-image' || kind === 'infographic') {
       if (!derivedContentId) {
         return NextResponse.json({ error: 'derivedContentId required' }, { status: 400 })
+      }
+      const { prisma } = await import('@/lib/prisma')
+      const derived = await prisma.derivedContent.findUnique({
+        where: { id: derivedContentId },
+        select: { contentType: true },
+      })
+      if (derived?.contentType === 'INFOGRAPHIC_TEXT' || kind === 'infographic') {
+        const { generateInfographicImage } = await import('@/lib/media/generateInfographicImage')
+        const result = await generateInfographicImage(derivedContentId)
+        return NextResponse.json(result, { status: result.reused ? 200 : 201 })
       }
       const { generatePostImage } = await import('@/lib/media/generatePostImage')
       const result = await generatePostImage(derivedContentId)

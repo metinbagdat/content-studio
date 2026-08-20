@@ -1307,6 +1307,14 @@ button:disabled {
   white-space: nowrap;
 }
 
+/* Missing segment — keep chip size; don't inherit global .muted font-size */
+.published-post-chip.muted {
+  font-size: 0.72rem;
+  line-height: 1.2;
+  opacity: 0.72;
+  font-style: italic;
+}
+
 .published-post-when {
   font-size: 0.72rem;
   white-space: nowrap;

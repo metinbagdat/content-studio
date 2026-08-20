@@ -1,6 +1,6 @@
 ## Meta
 - **ID:** CS-11
-- **Status:** doing
+- **Status:** done
 - **Repo:** content-studio
 
 ## Summary
@@ -16,8 +16,9 @@ AI image tool to turn into a visual infographic.
       (design input, not tied to one channel)
 - [x] `plan.contentPieces.infographicSlides` (default 2) in atomization plan
 - [x] Reviewable in `/admin/review` (added to `CONTENT_TYPES` filter)
-- [ ] Actual infographic **image** rendering (Canva/DALL-E template) — tracked in **CS-03**
-- [ ] Per-platform image sizing (1080×1080 IG, etc.) — tracked in **CS-10**
+- [x] Infographic **image** rendering via `next/og` 5-point template (`lib/media/generateInfographicImage.ts`) — no DALL-E
+- [x] Structured `metadata.points` + `autoGenerateImage` on INFOGRAPHIC_TEXT
+- [ ] Optional: per-platform export of infographic PNG via CS-10 resize batch
 
 ## Done when
 - One source article yields `infographicSlides` reviewable `INFOGRAPHIC_TEXT` rows with

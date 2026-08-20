@@ -35,14 +35,18 @@ export const DEFAULT_PIPELINE_PLATFORMS: PlatformId[] = [
   'TIKTOK',
 ]
 
+/**
+ * Dedupe + validate platforms. **Preserves caller order** so segment routing
+ * (`platformsForSegment`) and admin checkboxes keep their preferred sequence.
+ * Empty / invalid input → DEFAULT_PIPELINE_PLATFORMS.
+ */
 export function normalizePlatforms(input: unknown): PlatformId[] {
   const allowed = new Set(PLATFORM_TARGETS.map((p) => p.id))
   const list = (Array.isArray(input) ? input : DEFAULT_PIPELINE_PLATFORMS)
     .map((p) => String(p) as PlatformId)
     .filter((p) => allowed.has(p))
-  const order = new Map(PLATFORM_TARGETS.map((p) => [p.id, p.priority]))
-  const unique = [...new Set(list.length ? list : DEFAULT_PIPELINE_PLATFORMS)]
-  return unique.sort((a, b) => (order.get(a) ?? 99) - (order.get(b) ?? 99))
+  const unique = [...new Set(list)]
+  return unique.length ? unique : [...DEFAULT_PIPELINE_PLATFORMS]
 }
 
 export function platformWants(selected: PlatformId[] | undefined, platform: PlatformId): boolean {

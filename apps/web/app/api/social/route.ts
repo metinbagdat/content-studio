@@ -25,12 +25,7 @@ import { getValidAccessToken } from '@/lib/social/tokenRefresh'
 import { testYouTubeConnection } from '@/lib/social/youtubeApi'
 import { syncYouTubeFromApprovedVideos } from '@/lib/social/youtubeBackfill'
 import { generatePkce, generateTikTokPkce, pkceCookieName } from '@/lib/social/pkce'
-import {
-  tiktokConfigured,
-  validateTikTokOAuthRedirect,
-  tiktokCallbackUrl,
-  tiktokLocalhostSetupHint,
-} from '@/lib/social/tiktokApi'
+import { isAudienceSegment, parseSegmentFromTags, type AudienceSegment } from '@/lib/audience/segments'
 
 export const dynamic = 'force-dynamic'
 /** Bulk publish can take minutes (Meta gap + uploads). Local/dev: long; Vercel Hobby still caps ~60s. */
@@ -70,7 +65,12 @@ async function handleGet() {
         account: {
           select: { accountName: true, platform: true, isActive: true, accountId: true },
         },
-        derivedContent: { select: { metadata: true } },
+        derivedContent: {
+          select: {
+            metadata: true,
+            source: { select: { tags: true } },
+          },
+        },
       },
     }),
     auditSocialAccounts(),
@@ -123,6 +123,12 @@ async function handleGet() {
         p.derivedContent?.metadata && typeof p.derivedContent.metadata === 'object'
           ? (p.derivedContent.metadata as Record<string, unknown>)
           : {}
+      const fromMeta =
+        typeof derivedMeta.segment === 'string' && isAudienceSegment(derivedMeta.segment)
+          ? (derivedMeta.segment as AudienceSegment)
+          : null
+      const fromTags = parseSegmentFromTags(p.derivedContent?.source?.tags)
+      const segment = fromMeta || fromTags
       return {
         id: p.id,
         platform: p.platform,
@@ -147,7 +153,7 @@ async function handleGet() {
         imageAttached: m.imageAttached ?? null,
         imageError: m.imageError || (p.status === 'FAILED' ? p.error : null),
         analytics: analytics || null,
-        segment: typeof derivedMeta.segment === 'string' ? derivedMeta.segment : null,
+        segment,
       }
     }),
   })

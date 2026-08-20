@@ -2,7 +2,7 @@ import type { Prisma, SocialPlatform } from '@prisma/client'
 import { prisma } from '../prisma'
 import { buildCaptionSeries, captionPartMetadata } from '../content/captionSeries'
 import { formatForPlatform, PINTEREST_FORMAT, PLATFORM_FORMATS } from '../platforms/formats'
-import { platformWants } from '../platforms/targets'
+import { platformWants, DEFAULT_PIPELINE_PLATFORMS, type PlatformId } from '../platforms/targets'
 import type { AtomizationPlan } from './types'
 import {
   articleExcerpt,
@@ -12,7 +12,8 @@ import {
 } from './articleChunks'
 import { llmJsonBatch } from './llmBatch'
 import type { AtomKind, DerivativeDraft, GenerateDerivativesInput, GenerateDerivativesResult } from './types-derivative'
-import { appendSegmentHashtags, detectAudienceSegment } from '../audience/segments'
+import { appendSegmentHashtags } from '../audience/segments'
+import { resolveAudienceSegment } from '../audience/resolveAudienceSegment'
 import { withShareCta, shareCtaBlock } from '../content/canonicalUrl'
 
 const HASHTAGS = '#egitim #egitimtoday #ogrenme'
@@ -297,6 +298,11 @@ async function generateInfographicText(
         partIndex: i + 1,
         partTotal: count,
         pointCount: points.length,
+        headline: batch.headline || fallback.headline,
+        subhead: batch.subhead || fallback.subhead,
+        points,
+        source: batch.source || 'egitim.today',
+        autoGenerateImage: true,
       }),
     })
   }
@@ -330,62 +336,143 @@ export async function generateAllDerivatives(
   input: GenerateDerivativesInput,
 ): Promise<GenerateDerivativesResult> {
   const { sourceId, title, article, articleUrl, platforms, tags } = input
-  const segment = detectAudienceSegment(`${title}\n${article}`, tags)
-  const want = (p: SocialPlatform) => platformWants(platforms, p)
+  const { segment } = await resolveAudienceSegment(`${title}\n${article}`, tags)
+  const platformOrder: PlatformId[] =
+    platforms?.length ? (platforms as PlatformId[]) : [...DEFAULT_PIPELINE_PLATFORMS]
+  const want = (p: SocialPlatform) => platformWants(platformOrder, p)
   const p = plan.contentPieces
   const drafts: DerivativeDraft[] = []
 
-  // X (Twitter) first — primary SM surface for egitim.today
-  if (want('TWITTER')) {
-    drafts.push(...(await generateSocialPostsBatch('TWITTER', p.twitterPosts, title, article, plan, 'twitter_post', articleUrl)))
-    drafts.push(...(await generateTwitterThreads(p.twitterThreads, title, article, plan, articleUrl)))
-  }
-
-  // YouTube Shorts (+ long-form handled separately as VIDEO_SCRIPT in pipeline)
-  if (want('YOUTUBE')) {
-    drafts.push(
-      ...(await generateShortVideos(p.youtubeShorts, title, article, plan, 'YOUTUBE', 'youtube_short', 'YouTube Short', articleUrl)),
-    )
-  }
-
-  if (want('LINKEDIN')) {
-    const seriesCount = Math.min(4, p.linkedinPosts)
-    drafts.push(...linkedinCaptionSeries(title, article, articleUrl, seriesCount))
-    const extraLinkedin = Math.max(0, p.linkedinPosts - seriesCount)
-    if (extraLinkedin) {
-      drafts.push(
-        ...(await generateSocialPostsBatch('LINKEDIN', extraLinkedin, title, article, plan, 'linkedin_post', articleUrl)),
-      )
+  const generateForPlatform = async (platform: PlatformId) => {
+    if (!want(platform)) return
+    switch (platform) {
+      case 'TWITTER':
+        drafts.push(
+          ...(await generateSocialPostsBatch(
+            'TWITTER',
+            p.twitterPosts,
+            title,
+            article,
+            plan,
+            'twitter_post',
+            articleUrl,
+          )),
+        )
+        drafts.push(...(await generateTwitterThreads(p.twitterThreads, title, article, plan, articleUrl)))
+        break
+      case 'YOUTUBE':
+        drafts.push(
+          ...(await generateShortVideos(
+            p.youtubeShorts,
+            title,
+            article,
+            plan,
+            'YOUTUBE',
+            'youtube_short',
+            'YouTube Short',
+            articleUrl,
+          )),
+        )
+        break
+      case 'LINKEDIN': {
+        const seriesCount = Math.min(4, p.linkedinPosts)
+        drafts.push(...linkedinCaptionSeries(title, article, articleUrl, seriesCount))
+        const extraLinkedin = Math.max(0, p.linkedinPosts - seriesCount)
+        if (extraLinkedin) {
+          drafts.push(
+            ...(await generateSocialPostsBatch(
+              'LINKEDIN',
+              extraLinkedin,
+              title,
+              article,
+              plan,
+              'linkedin_post',
+              articleUrl,
+            )),
+          )
+        }
+        drafts.push(...(await generateLinkedInCarousels(p.linkedinCarousels, title, article, plan, articleUrl)))
+        break
+      }
+      case 'INSTAGRAM':
+        drafts.push(
+          ...(await generateSocialPostsBatch(
+            'INSTAGRAM',
+            p.instagramPosts,
+            title,
+            article,
+            plan,
+            'instagram_post',
+            articleUrl,
+          )),
+        )
+        drafts.push(
+          ...(await generateShortVideos(
+            p.instagramReels,
+            title,
+            article,
+            plan,
+            'INSTAGRAM',
+            'instagram_reel',
+            'Reels',
+            articleUrl,
+          )),
+        )
+        break
+      case 'TIKTOK':
+        drafts.push(
+          ...(await generateShortVideos(
+            p.tiktokVideos,
+            title,
+            article,
+            plan,
+            'TIKTOK',
+            'tiktok_video',
+            'TikTok',
+            articleUrl,
+          )),
+        )
+        drafts.push(
+          ...(await generateShortVideos(
+            p.shortVideos,
+            title,
+            article,
+            plan,
+            'TIKTOK',
+            'short_video',
+            'Short video',
+            articleUrl,
+          )),
+        )
+        break
+      case 'FACEBOOK':
+        drafts.push(
+          ...(await generateSocialPostsBatch(
+            'FACEBOOK',
+            p.facebookPosts,
+            title,
+            article,
+            plan,
+            'facebook_post',
+            articleUrl,
+          )),
+        )
+        break
+      default:
+        break
     }
-    drafts.push(...(await generateLinkedInCarousels(p.linkedinCarousels, title, article, plan, articleUrl)))
   }
 
-  if (want('INSTAGRAM')) {
-    drafts.push(
-      ...(await generateSocialPostsBatch('INSTAGRAM', p.instagramPosts, title, article, plan, 'instagram_post', articleUrl)),
-    )
-    drafts.push(
-      ...(await generateShortVideos(p.instagramReels, title, article, plan, 'INSTAGRAM', 'instagram_reel', 'Reels', articleUrl)),
-    )
-  }
-
-  if (want('TIKTOK')) {
-    drafts.push(...(await generateShortVideos(p.tiktokVideos, title, article, plan, 'TIKTOK', 'tiktok_video', 'TikTok', articleUrl)))
-    drafts.push(
-      ...(await generateShortVideos(p.shortVideos, title, article, plan, 'TIKTOK', 'short_video', 'Short video', articleUrl)),
-    )
-  }
-
-  if (want('FACEBOOK')) {
-    drafts.push(...(await generateSocialPostsBatch('FACEBOOK', p.facebookPosts, title, article, plan, 'facebook_post', articleUrl)))
+  for (const platform of platformOrder) {
+    await generateForPlatform(platform)
   }
 
   // Pinterest when any social surface is selected (no enum on SocialPlatform)
-  if (!platforms?.length || platforms.some((x) => ['TWITTER', 'INSTAGRAM', 'FACEBOOK'].includes(x))) {
+  if (!platformOrder.length || platformOrder.some((x) => ['TWITTER', 'INSTAGRAM', 'FACEBOOK'].includes(x))) {
     drafts.push(...(await generatePinterestPins(p.pinterestPins, title, article, plan)))
   }
 
-  // Infographic copy: design-ready text, not tied to a single publish platform
+  // Infographic copy: design-ready text + structured points for ImageResponse render
   drafts.push(...(await generateInfographicText(p.infographicSlides, title, article, plan, articleUrl)))
 
   // Mark first N captions for auto image — do NOT overwrite atomKind/platform
@@ -397,6 +484,11 @@ export async function generateAllDerivatives(
       d.metadata.autoGenerateImage = true
       d.metadata.socialCard = true
       cardsMarked += 1
+    }
+  }
+  for (const d of drafts) {
+    if (d.contentType === 'INFOGRAPHIC_TEXT') {
+      d.metadata.autoGenerateImage = true
     }
   }
 
