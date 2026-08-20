@@ -3,6 +3,7 @@ import { prisma } from '../prisma'
 import { socialPostPublicUrl } from '../social/postUrl'
 import { toImagePreviewPath } from '../social/imagePreview'
 import { auditSocialAccounts, type AccountAudit } from '../social/accountAudit'
+import { isAudienceSegment, parseSegmentFromTags, type AudienceSegment } from '../audience/segments'
 
 export type WorkflowStepId =
   | 'discovery'
@@ -35,6 +36,8 @@ export type PublishedFeedItem = {
   isDryRun: boolean
   isMockPost: boolean
   imagePreviewUrl: string | null
+  /** Audience segment when known; null → UI shows «Segment yok» */
+  segment: AudienceSegment | null
 }
 
 export type WorkflowSnapshot = {
@@ -110,6 +113,12 @@ export async function getWorkflowSnapshot(): Promise<WorkflowSnapshot> {
         platformPostId: true,
         mediaUrls: true,
         account: { select: { accountName: true, accountId: true } },
+        derivedContent: {
+          select: {
+            metadata: true,
+            source: { select: { tags: true } },
+          },
+        },
       },
     }),
   ])
@@ -129,6 +138,13 @@ export async function getWorkflowSnapshot(): Promise<WorkflowSnapshot> {
     const isMockPost = Boolean(p.platformPostId?.startsWith('mock_'))
     const platformLabel =
       p.platform === 'TWITTER' ? 'X' : p.platform === 'LINKEDIN' ? 'LinkedIn' : p.platform
+    const meta =
+      p.derivedContent?.metadata && typeof p.derivedContent.metadata === 'object'
+        ? (p.derivedContent.metadata as Record<string, unknown>)
+        : {}
+    const fromMeta =
+      typeof meta.segment === 'string' && isAudienceSegment(meta.segment) ? meta.segment : null
+    const fromTags = parseSegmentFromTags(p.derivedContent?.source?.tags)
     return {
       id: p.id,
       platform: p.platform,
@@ -140,6 +156,7 @@ export async function getWorkflowSnapshot(): Promise<WorkflowSnapshot> {
       isDryRun,
       isMockPost,
       imagePreviewUrl: toImagePreviewPath(p.mediaUrls?.[0]),
+      segment: fromMeta || fromTags,
     }
   })
 

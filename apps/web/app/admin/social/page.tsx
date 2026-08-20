@@ -13,6 +13,10 @@ import { DEFAULT_ADMIN_API_KEY } from '@/lib/adminKey'
 import type { EngagementDigest } from '@/lib/social/engagementDigest'
 import { AUDIENCE_SEGMENTS, SEGMENT_LABELS, isAudienceSegment, type AudienceSegment } from '@/lib/audience/segments'
 
+function segmentBadgeLabel(segment: unknown): string {
+  return isAudienceSegment(segment) ? SEGMENT_LABELS[segment] : 'Segment yok'
+}
+
 function oauthErrorHint(reason: string): string {
   if (reason === 'unauthorized_scope_error') {
     return 'LinkedIn şirket sayfası izni (w_organization_social) bu uygulamada yok. LINKEDIN_ORG_POST=false yapın, npm run dev yeniden başlatın, sonra OAuth bağla.'
@@ -1212,9 +1216,12 @@ export default function SocialPage() {
                         <PlatformIconLink platform={p.platform} username={p.account?.accountName} />
                         {p.isDryRun ? <span className="badge warn">dry-run</span> : null}
                         {!p.account?.isActive && !p.isDryRun ? <span className="badge">off</span> : null}
-                        {typeof p.segment === 'string' && isAudienceSegment(p.segment) ? (
-                          <span className="badge">{SEGMENT_LABELS[p.segment]}</span>
-                        ) : null}
+                        <span
+                          className="badge"
+                          title={isAudienceSegment(p.segment) ? 'Hedef kitle segmenti' : 'Hedef kitle atanmamış'}
+                        >
+                          {segmentBadgeLabel(p.segment)}
+                        </span>
                         <span className={`badge ${p.status === 'PUBLISHED' ? 'ok' : p.status === 'FAILED' ? 'danger' : 'warn'}`}>
                           {p.status}
                         </span>

@@ -25,6 +25,12 @@ import { getValidAccessToken } from '@/lib/social/tokenRefresh'
 import { testYouTubeConnection } from '@/lib/social/youtubeApi'
 import { syncYouTubeFromApprovedVideos } from '@/lib/social/youtubeBackfill'
 import { generatePkce, generateTikTokPkce, pkceCookieName } from '@/lib/social/pkce'
+import {
+  tiktokConfigured,
+  validateTikTokOAuthRedirect,
+  tiktokCallbackUrl,
+  tiktokLocalhostSetupHint,
+} from '@/lib/social/tiktokApi'
 import { isAudienceSegment, parseSegmentFromTags, type AudienceSegment } from '@/lib/audience/segments'
 
 export const dynamic = 'force-dynamic'

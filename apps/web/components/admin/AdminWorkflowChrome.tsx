@@ -8,6 +8,7 @@ import type { WorkflowSnapshot } from '@/lib/workflow/status'
 import { PlatformIconLink } from '@/components/admin/PlatformIconLink'
 import { WorkerOpsPanel } from '@/components/admin/WorkerOpsPanel'
 import { DeployParityBanner } from '@/components/admin/DeployParityBanner'
+import { SEGMENT_LABELS, isAudienceSegment } from '@/lib/audience/segments'
 
 const NAV = [
   { href: '/admin', label: 'Pipeline', step: 'pipeline' },
@@ -168,6 +169,18 @@ export function AdminWorkflowChrome({ children }: { children: React.ReactNode })
                   <li key={item.id} className="published-feed-item">
                     <div className="published-feed-head">
                       <PlatformIconLink platform={item.platform} username={item.accountName} />
+                      <span
+                        className={
+                          item.segment && isAudienceSegment(item.segment)
+                            ? 'published-post-chip'
+                            : 'published-post-chip muted'
+                        }
+                        title="Hedef kitle segmenti"
+                      >
+                        {item.segment && isAudienceSegment(item.segment)
+                          ? SEGMENT_LABELS[item.segment]
+                          : 'Segment yok'}
+                      </span>
                       <time className="muted">{formatPublishedWhen(item.publishedAt)}</time>
                       {item.isDryRun || item.isMockPost ? (
                         <span className="badge warn">dry-run / mock</span>
