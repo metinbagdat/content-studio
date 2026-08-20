@@ -8,12 +8,12 @@
 
 GSC overlay (`fetchGscQueries`) is real Search Console API code, but auth is a **manual short-lived** `GSC_ACCESS_TOKEN`. There is no refresh-token store like X/LinkedIn (`lib/social/tokenRefresh.ts`).
 
-Do **not** build this until `blog.egitim.today` queries exist. Two live posts (#15, #20) still need crawl/index; GSC searchAnalytics will be empty or noisy until then. Same timing as Reach newsletter: after a small indexed corpus (target 3–5 posts + sitemap in GSC).
+Do **not** build this until `blog.egitim.today` **queries/impressions** exist in the GSC UI. Published corpus is already past the old “3–5 posts” bar (#15/#20/#23–#27); empty `fetchGscQueries()` after that is still expected if Google has not served impressions yet. OAuth only automates refresh of the access token — it does not create search data.
 
 ## Start when
 
-- [ ] GSC property has impressions on `blog.egitim.today` (not Rank Math wizard Google login)
-- [ ] At least ~3 indexed articles (or ~2 weeks after first publishes)
+- [ ] GSC Performance → Queries shows non-zero impressions (not Rank Math wizard Google login alone)
+- [ ] Sitemap submitted and URLs show as indexed (or ~2 weeks after the 2026-08 migrate wave)
 
 ## Scope
 

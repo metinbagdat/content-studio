@@ -14,7 +14,8 @@ import { ensureGeneratedPostImage, ensureGeneratedPostMedia, publishCaptionWithI
 import { buildYouTubePostContent } from './social/publishVideo'
 import { preparePostForPublish } from './social/preparePublish'
 import { DEFAULT_PIPELINE_PLATFORMS, normalizePlatforms } from './platforms/targets'
-import { detectAudienceSegment, platformsForSegment, withSegmentTag } from './audience/segments'
+import { platformsForSegment, withSegmentTag } from './audience/segments'
+import { resolveAudienceSegment } from './audience/resolveAudienceSegment'
 import { metaBulkPublishGapMs } from './social/metaReview'
 import { splitArticleForEpisodes, suggestedPodcastEpisodeCount } from './media/podcastEpisodes'
 import { canonicalArticleUrl } from './content/canonicalUrl'
@@ -43,7 +44,7 @@ export async function createPipeline(sourceId: string, config: Partial<PipelineC
   const source = await prisma.contentSource.findUnique({ where: { id: sourceId } })
   if (!source) throw new Error('Source not found')
 
-  const segment = detectAudienceSegment(`${source.title}\n${source.content}`, source.tags)
+  const { segment } = await resolveAudienceSegment(`${source.title}\n${source.content}`, source.tags)
   const tagged = withSegmentTag(source.tags, segment)
   if (tagged.join('\0') !== source.tags.join('\0')) {
     await prisma.contentSource.update({ where: { id: sourceId }, data: { tags: tagged } })

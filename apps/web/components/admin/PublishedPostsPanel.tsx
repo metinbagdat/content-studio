@@ -2,6 +2,7 @@
 
 import { socialPostPublicUrl } from '@/lib/social/postUrl'
 import { PlatformIconLink } from '@/components/admin/PlatformIconLink'
+import { SEGMENT_LABELS, isAudienceSegment } from '@/lib/audience/segments'
 
 export type PublishedPostRow = {
   id: string
@@ -46,6 +47,11 @@ function snippet(text: string, n = 72): string {
   return t.length > n ? `${t.slice(0, n)}…` : t
 }
 
+function segmentLabel(segment?: string | null): string {
+  if (segment && isAudienceSegment(segment)) return SEGMENT_LABELS[segment]
+  return 'Segment yok'
+}
+
 export function PublishedPostsPanel({
   posts,
   emptyHint,
@@ -72,7 +78,16 @@ export function PublishedPostsPanel({
           <li key={p.id} className="published-post-card" tabIndex={0}>
             <div className="published-post-row">
               <PlatformIconLink platform={p.platform} username={accountName} />
-              {p.segment ? <span className="published-post-chip">{p.segment.toUpperCase()}</span> : null}
+              <span
+                className={
+                  p.segment && isAudienceSegment(p.segment)
+                    ? 'published-post-chip'
+                    : 'published-post-chip muted'
+                }
+                title="Hedef kitle segmenti"
+              >
+                {segmentLabel(p.segment)}
+              </span>
               <span className="published-post-line">{snippet(p.postContent)}</span>
               {a?.engagement != null ? (
                 <span className="published-post-chip">{a.engagement.toLocaleString('tr-TR')}</span>

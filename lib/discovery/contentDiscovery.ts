@@ -1,14 +1,14 @@
 import { prisma } from '../prisma'
 import { fetchEgitimTodayBlog } from '../blog/fetchEgitimToday'
 import { createPipeline } from '../pipeline'
-import { DEFAULT_PIPELINE_PLATFORMS } from '../platforms/targets'
 import { isDuplicateArticle, isLikelyHubPage } from './duplicateDetection'
 import { fetchBlogSitemap, type SitemapEntry } from './sitemap'
 import { fetchWpPostSitemap } from './wpSitemap'
 import { fetchWpPostBySlug, wpHtmlToText } from '../wordpress/fetchWpPost'
 import { ingestWordpressPublished } from '../wordpress/ingestPublished'
 import { fetchBlogRss, isRssAvailable } from './rss'
-import { detectAudienceSegment, withSegmentTag } from '../audience/segments'
+import { withSegmentTag } from '../audience/segments'
+import { resolveAudienceSegment } from '../audience/resolveAudienceSegment'
 
 export type DiscoveryResult = {
   scanned: number
@@ -70,12 +70,13 @@ async function ingestBlogSlug(slug: string): Promise<{ sourceId: string; title: 
   if (await isDuplicateArticle(slug, blog.title, blog.contentMarkdown)) {
     throw new Error(`DUPLICATE:${slug}`)
   }
+  const { segment } = await resolveAudienceSegment(`${blog.title}\n${blog.contentMarkdown}`, blog.tags)
   const source = await prisma.contentSource.create({
     data: {
       title: blog.title,
       content: blog.contentMarkdown,
       category: 'blog',
-      tags: withSegmentTag(blog.tags, detectAudienceSegment(`${blog.title}\n${blog.contentMarkdown}`, blog.tags)),
+      tags: withSegmentTag(blog.tags, segment),
     },
   })
   return { sourceId: source.id, title: blog.title }
@@ -168,19 +169,20 @@ export async function runContentDiscovery(options: DiscoveryOptions = {}): Promi
         result.skippedDuplicates += 1
         continue
       }
+      const { segment } = await resolveAudienceSegment(`${blog.title}\n${blog.contentMarkdown}`, blog.tags)
       const source = await prisma.contentSource.create({
         data: {
           title: blog.title,
           content: blog.contentMarkdown,
           category: 'blog',
-          tags: withSegmentTag(blog.tags, detectAudienceSegment(`${blog.title}\n${blog.contentMarkdown}`, blog.tags)),
+          tags: withSegmentTag(blog.tags, segment),
         },
       })
       result.newArticles += 1
       result.ingested.push({ slug: entry.slug, sourceId: source.id, title: blog.title })
       if (triggerPipeline) {
+        // Omit platforms → createPipeline uses platformsForSegment via resolveAudienceSegment
         await createPipeline(source.id, {
-          platforms: [...DEFAULT_PIPELINE_PLATFORMS],
           includeMarchSong: true,
         })
       }

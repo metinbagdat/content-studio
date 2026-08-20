@@ -15,11 +15,11 @@ LearnCon `/blog` stays for **product news / Haberler** (in-app feed), not Rank M
 
 - [x] Discovery default origin = WordPress sitemap (`DISCOVERY_ORIGIN=wordpress`)
 - [x] First migrate: `zamani-zafere-donusturmek` → WP **#23** `https://blog.egitim.today/zamani-zafere-donusturmek/`
-- [ ] Remaining LearnCon editorial posts: one-by-one migrate (same script `--slug=`)
+- [x] Remaining LearnCon editorial posts migrated: WP **#24–#27** (`lgs-6-ay-calisma-plani`, `tyt-matematik-7-gun-tekrar`, `ayt-turk-dili-edebiyat-tam-rehber`, `tyt-matematik-90-almak-icin-stratejiler`)
 
 ## LearnCon (not this repo)
 
-- [ ] After each WP URL is live: 301 `/blog/{slug}` → `https://blog.egitim.today/{slug}`
+- [ ] After each WP URL is live: 301 `/blog/{slug}` → `https://blog.egitim.today/{slug}` (LearnCon PR: `feat/blog-haberler-only-wp-hub`)
 - [ ] Canonical / OG on leftover `/blog` index must not compete with WP posts
 - [ ] Haberler feed can link WP URLs or keep short product notes only
 

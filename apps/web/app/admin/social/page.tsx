@@ -11,7 +11,7 @@ import { EngagementDigestPanel } from '@/components/admin/EngagementDigestPanel'
 import { PlatformIconLink } from '@/components/admin/PlatformIconLink'
 import { DEFAULT_ADMIN_API_KEY } from '@/lib/adminKey'
 import type { EngagementDigest } from '@/lib/social/engagementDigest'
-import { AUDIENCE_SEGMENTS, SEGMENT_LABELS, type AudienceSegment } from '@/lib/audience/segments'
+import { AUDIENCE_SEGMENTS, SEGMENT_LABELS, isAudienceSegment, type AudienceSegment } from '@/lib/audience/segments'
 
 function oauthErrorHint(reason: string): string {
   if (reason === 'unauthorized_scope_error') {
@@ -846,10 +846,16 @@ export default function SocialPage() {
   const canDeletePost = (p: { status: string; isDryRun?: boolean; isMockPost?: boolean }) =>
     canMutate(p.status) || Boolean(p.isDryRun || p.isMockPost)
 
+  const matchesSegment = useCallback(
+    (p: { segment?: string | null }) =>
+      segmentFilter === 'ALL' || p.segment === segmentFilter,
+    [segmentFilter],
+  )
+
   const publishedPosts = useMemo(() => {
     const list = posts.filter((p) => {
       if (p.status !== 'PUBLISHED') return false
-      if (segmentFilter !== 'ALL' && p.segment !== segmentFilter) return false
+      if (!matchesSegment(p)) return false
       return true
     })
     return list.sort((a, b) => {
@@ -857,22 +863,24 @@ export default function SocialPage() {
       const tb = b.publishedAt || b.createdAt
       return new Date(tb).getTime() - new Date(ta).getTime()
     })
-  }, [posts, segmentFilter])
+  }, [posts, matchesSegment])
 
   const readyDraftsByPlatform = useMemo(() => {
-    const map: Record<string, Array<{ id: string; preview: string; accountName: string; isDryRun: boolean }>> = {}
+    const map: Record<string, Array<{ id: string; preview: string; accountName: string; isDryRun: boolean; segment: string | null }>> = {}
     for (const p of posts) {
       if (p.status !== 'DRAFT' && p.status !== 'FAILED') continue
+      if (!matchesSegment(p)) continue
       if (!map[p.platform]) map[p.platform] = []
       map[p.platform].push({
         id: p.id,
         preview: String(p.postContent || '').slice(0, 90),
         accountName: p.account?.accountName || 'Hesap',
         isDryRun: Boolean(p.isDryRun),
+        segment: typeof p.segment === 'string' ? p.segment : null,
       })
     }
     return map
-  }, [posts])
+  }, [posts, matchesSegment])
 
   const recentPublishedByPlatform = useMemo(() => {
     const map: Record<string, Array<{ id: string; preview: string; publishedAt: string; url: string | null }>> = {}
@@ -889,7 +897,10 @@ export default function SocialPage() {
     return map
   }, [publishedPosts])
 
-  const visiblePosts = hideDryRun ? posts.filter((p) => !p.isDryRun) : posts
+  const visiblePosts = useMemo(() => {
+    const base = hideDryRun ? posts.filter((p) => !p.isDryRun) : posts
+    return base.filter((p) => matchesSegment(p))
+  }, [posts, hideDryRun, matchesSegment])
 
   const captionGroups = useMemo(() => {
     const map = new Map<string, typeof visiblePosts>()
@@ -1017,8 +1028,9 @@ export default function SocialPage() {
         <select
           value={segmentFilter}
           onChange={(e) => setSegmentFilter(e.target.value as 'ALL' | AudienceSegment)}
-          style={{ marginBottom: 0, minWidth: '8rem' }}
-          aria-label="Segment filtresi"
+          style={{ marginBottom: 0, minWidth: '9rem' }}
+          aria-label="Segment filtresi — Onay’daki aynı TYT/AYT/LGS etiketleri"
+          title="Taslak + yayın listesini segmente göre daraltır"
         >
           <option value="ALL">Segment: tümü</option>
           {AUDIENCE_SEGMENTS.map((s) => (
@@ -1027,6 +1039,11 @@ export default function SocialPage() {
             </option>
           ))}
         </select>
+        {segmentFilter !== 'ALL' ? (
+          <span className="badge" title="Aktif segment filtresi">
+            Filtre: {SEGMENT_LABELS[segmentFilter]}
+          </span>
+        ) : null}
       </div>
       <div className="keybar">
         <div style={{ flex: 1 }}>
@@ -1195,6 +1212,9 @@ export default function SocialPage() {
                         <PlatformIconLink platform={p.platform} username={p.account?.accountName} />
                         {p.isDryRun ? <span className="badge warn">dry-run</span> : null}
                         {!p.account?.isActive && !p.isDryRun ? <span className="badge">off</span> : null}
+                        {typeof p.segment === 'string' && isAudienceSegment(p.segment) ? (
+                          <span className="badge">{SEGMENT_LABELS[p.segment]}</span>
+                        ) : null}
                         <span className={`badge ${p.status === 'PUBLISHED' ? 'ok' : p.status === 'FAILED' ? 'danger' : 'warn'}`}>
                           {p.status}
                         </span>
