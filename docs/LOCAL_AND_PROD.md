@@ -1,6 +1,28 @@
-# Yerel + Prod paralel çalışma (öncelik: local)
+# Yerel + Prod — hedef mimari
 
-Aynı kod tabanı, **aynı veritabanı**, **farklı URL** ile local ve `studio.egitim.today` birlikte çalışır.
+**Tek kaynak (onay / Arı / sosyal durum):** Supabase.  
+**Günlük browse / egress güvenliği:** yerel Docker Postgres (`localhost:5434`).  
+**Ağır üretim (video, uzun toplu medya):** yerel Next/worker → mümkünse **aynı Supabase** job’ına tick.
+
+```
+                    ┌─────────────────┐
+                    │  Supabase (tek) │
+                    │  onay · Arı ·   │
+                    │  ReviewBulkJob  │
+                    └────────┬────────┘
+               ┌─────────────┴─────────────┐
+     studio.egitim.today            localhost:3100
+     (incele, OAuth, yayın)         (ffmpeg / uzun tick)
+```
+
+| Ne | Nerede |
+|----|--------|
+| Canlı onay kuyruğu | Supabase (prod) |
+| Scratch / deneme | Docker `:5434` |
+| Toplu onay ilerlemesi (75/127) | `ReviewBulkJob` tablosu — sekme/makine bağımsız |
+| Video üretimi | Yerel (Vercel serverless’ta atlanır → Arı) |
+
+**Egress:** Sürekli `DATABASE_URL=Supabase` ile `npm run dev` Hobby kotasını yer. Günlük UI için Docker; prod kuyruğunu yerelden işlemek için kısa session (Supabase URL + bitince Docker’a dön). Worker: `CS_ALLOW_SUPABASE_WORKER=1` yalnız one-shot.
 
 ## Env nerede?
 
@@ -11,17 +33,24 @@ Aynı kod tabanı, **aynı veritabanı**, **farklı URL** ile local ve `studio.e
 
 Evet — **Vercel env = Environment Variables**. Production ortamına ekleyin; redeploy gerekir.
 
-## Paralel mimari
+## Paralel UI (eski varsayılan — scratch)
 
 ```
 ┌─────────────────────┐     ┌──────────────────────────┐
 │ localhost:3100      │     │ studio.egitim.today      │
 │ Docker Postgres     │     │ Vercel + Supabase        │
-│ :5434 (günlük iş)   │     │ (OAuth + prod yayın)     │
+│ :5434 (scratch)     │     │ (canlı kuyruk)           │
 └─────────────────────┘     └──────────────────────────┘
 ```
 
-Aynı Supabase URL’yi local + prod paylaşmak **Hobby egress kotasını yer** (DB → senin PC’ne giden her satır). Günlük `npm run dev` için local Docker kullan.
+Scratch Docker ve prod **ayrı veri** — Onay 220 ≠ 423 normal. Canlı kuyruk için prod UI veya yerelde geçici Supabase URL.
+
+Aynı Supabase URL’yi sürekli local + prod paylaşmak **Hobby egress kotasını yer**. Günlük browse için Docker kullan.
+
+## ReviewBulkJob (75/127)
+
+`POST /api/review/bulk-job` — `create` → döngüde `tick` → `pause` / `cancel` / `resume`.  
+İlerleme DB’de; prod’da 75’te kalıp yerelde aynı Supabase’e bağlanınca devam edilebilir.
 
 ## Yerel kurulum (öncelik)
 
