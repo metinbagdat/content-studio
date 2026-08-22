@@ -83,6 +83,29 @@ function formatWhen(iso?: string | null): string | null {
   }
 }
 
+type BulkProgress = {
+  action: 'bulkApprove' | 'bulkReject'
+  total: number
+  done: number
+  startedAt: number
+  currentLabel?: string
+  errors: string[]
+}
+
+function formatDuration(ms: number): string {
+  const s = Math.max(0, Math.floor(ms / 1000))
+  if (s < 60) return `${s} sn`
+  const m = Math.floor(s / 60)
+  const rs = s % 60
+  return rs > 0 ? `${m} dk ${rs} sn` : `${m} dk`
+}
+
+function formatEta(elapsedMs: number, done: number, total: number): string {
+  if (done <= 0 || done >= total) return done >= total ? '—' : 'hesaplanıyor…'
+  const avgMs = elapsedMs / done
+  return formatDuration(avgMs * (total - done))
+}
+
 function sortItems(items: Item[], prioritySourceId?: string, customOrder?: string[]): Item[] {
   const rank: Record<string, number> = {
     IN_REVIEW: 0,
@@ -167,8 +190,10 @@ export default function ReviewPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [autoMedia, setAutoMedia] = useState(true)
   const [bulkBusy, setBulkBusy] = useState(false)
+  const [bulkProgress, setBulkProgress] = useState<BulkProgress | null>(null)
+  const [, setProgressTick] = useState(0)
   const [prioritySourceId, setPrioritySourceId] = useState('')
-type AiImageState = { msg: string; urls: string[]; mediaIds?: string[] }
+  type AiImageState = { msg: string; urls: string[]; mediaIds?: string[] }
   const [aiImageState, setAiImageState] = useState<Record<string, AiImageState>>({})
   const [customOrder, setCustomOrder] = useState<string[]>([])
   const pendingItems = useMemo(() => items.filter((i) => i.status === 'IN_REVIEW'), [items])
@@ -264,6 +289,12 @@ type AiImageState = { msg: string; urls: string[]; mediaIds?: string[] }
       }
     }
   }, [])
+
+  useEffect(() => {
+    if (!bulkProgress) return
+    const timer = setInterval(() => setProgressTick((n) => n + 1), 500)
+    return () => clearInterval(timer)
+  }, [bulkProgress])
 
   function updatePrioritySource(id: string) {
     setPrioritySourceId(id)
@@ -502,30 +533,70 @@ type AiImageState = { msg: string; urls: string[]; mediaIds?: string[] }
     }
     if (action === 'bulkReject' && !confirm(`${ids.length} öğe reddedilsin mi?`)) return
 
+    const startedAt = Date.now()
     setBulkBusy(true)
+    setBulkProgress({ action, total: ids.length, done: 0, startedAt, errors: [] })
     setMsg(`${ids.length} öğe işleniyor…`)
-    const res = await fetch('/api/content', {
-      method: 'POST',
-      headers: adminHeaders(adminKey, true),
-      body: JSON.stringify({
-        action,
-        ids,
-        autoMedia: action === 'bulkApprove' && autoMedia,
-      }),
-    })
-    setBulkBusy(false)
-    const data = await res.json().catch(() => ({}))
-    if (!res.ok) {
-      setMsg(data.error || 'Toplu işlem başarısız')
-      return
+
+    let approved = 0
+    let rejected = 0
+    let draftsCreated = 0
+    let mediaGenerated = 0
+    const errors: string[] = []
+
+    for (let i = 0; i < ids.length; i++) {
+      const id = ids[i]
+      const item = items.find((row) => row.id === id)
+      const label = item?.title?.slice(0, 80) || id
+      setBulkProgress((prev) =>
+        prev ? { ...prev, done: i, currentLabel: label } : null,
+      )
+
+      const body =
+        action === 'bulkApprove'
+          ? { action: 'approve', id, autoMedia }
+          : { action: 'reject', id }
+
+      try {
+        const res = await fetch('/api/content', {
+          method: 'POST',
+          headers: adminHeaders(adminKey, true),
+          body: JSON.stringify(body),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) {
+          errors.push(`${label}: ${data.error || res.status}`)
+          continue
+        }
+        if (action === 'bulkApprove') {
+          approved += 1
+          const r = data.result
+          if (r) {
+            draftsCreated += r.draftsCreated ?? 0
+            mediaGenerated += r.mediaGenerated ?? 0
+            if (Array.isArray(r.errors)) errors.push(...r.errors)
+          }
+        } else {
+          rejected += 1
+        }
+      } catch (err) {
+        errors.push(`${label}: ${err instanceof Error ? err.message : String(err)}`)
+      }
+
+      setBulkProgress((prev) =>
+        prev ? { ...prev, done: i + 1, errors: [...errors] } : null,
+      )
     }
-    const r = data.result || {}
+
+    setBulkProgress(null)
+    setBulkBusy(false)
     setSelectedIds(new Set())
     setMsg(
-      `Toplu: ${r.processed ?? ids.length} işlendi · ${r.approved ?? 0} onay · ${r.rejected ?? 0} red` +
-        (r.draftsCreated ? ` · ${r.draftsCreated} taslak` : '') +
-        (r.mediaGenerated ? ` · ${r.mediaGenerated} medya` : '') +
-        (r.errors?.length ? ` · hata: ${r.errors.length}` : ''),
+      `Toplu: ${ids.length} işlendi · ${approved} onay · ${rejected} red` +
+        (draftsCreated ? ` · ${draftsCreated} taslak` : '') +
+        (mediaGenerated ? ` · ${mediaGenerated} medya` : '') +
+        (errors.length ? ` · hata: ${errors.length}` : '') +
+        ` · süre: ${formatDuration(Date.now() - startedAt)}`,
     )
     await load()
   }
@@ -598,8 +669,14 @@ type AiImageState = { msg: string; urls: string[]; mediaIds?: string[] }
         <h1>Onay kuyruğu</h1>
         <p className="lead" style={{ marginBottom: '0.65rem' }}>
           Otomatik üretilen LinkedIn / X / YouTube metinleri ve podcast scriptleri önce burada. Toplu onayla →
-          <a href="/admin/social">Sosyal</a> taslakları; podcast MP3 için{' '}
+          <a href="/admin/social"> Sosyal</a> taslakları; podcast MP3 için{' '}
           <a href="/admin/media">Medya</a> veya aşağıdaki otomatik ses üretimi.
+        </p>
+        <p className="review-wp-hint">
+          <strong>WordPress (blog.egitim.today):</strong> yalnızca{' '}
+          <code>BLOG_POST</code>, <code>PODCAST_SCRIPT</code>, <code>VIDEO_SCRIPT</code> vb. — önce{' '}
+          <strong>Onayla</strong>, sonra <strong>WP draft gönder</strong>. Facebook/LinkedIn caption (
+          <code>SOCIAL_CAPTION</code>) → <a href="/admin/social">Sosyal</a> sayfası, WP değil.
         </p>
         <div className="row">
           <span className="badge warn">{counts.pending} bekliyor</span>
@@ -740,6 +817,36 @@ type AiImageState = { msg: string; urls: string[]; mediaIds?: string[] }
           >
             Tüm bekleyenleri seç
           </button>
+          {bulkProgress ? (
+            <div className="bulk-progress" role="status" aria-live="polite">
+              <div className="bulk-progress-head">
+                <strong>
+                  {bulkProgress.action === 'bulkApprove' ? 'Toplu onay' : 'Toplu red'} — {bulkProgress.done}/
+                  {bulkProgress.total} tamamlandı
+                </strong>
+                <span className="muted">
+                  Geçen: {formatDuration(Date.now() - bulkProgress.startedAt)} · Tahmini kalan:{' '}
+                  {formatEta(Date.now() - bulkProgress.startedAt, bulkProgress.done, bulkProgress.total)}
+                </span>
+              </div>
+              <div className="bulk-progress-track" aria-hidden="true">
+                <div
+                  className="bulk-progress-fill"
+                  style={{
+                    width: `${bulkProgress.total ? Math.round((bulkProgress.done / bulkProgress.total) * 100) : 0}%`,
+                  }}
+                />
+              </div>
+              {bulkProgress.currentLabel && bulkProgress.done < bulkProgress.total ? (
+                <p className="muted bulk-progress-current">Şu an: {bulkProgress.currentLabel}</p>
+              ) : null}
+              {bulkProgress.errors.length > 0 ? (
+                <p className="muted bulk-progress-errors">
+                  {bulkProgress.errors.length} hata — son: {bulkProgress.errors[bulkProgress.errors.length - 1]}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -773,11 +880,16 @@ type AiImageState = { msg: string; urls: string[]; mediaIds?: string[] }
         </section>
       ) : null}
 
-      <ul className="list">
+      <ul className="list review-list">
         {visibleItems.map((item, index) => (
-          <li key={item.id} className={panelClass(item.status)} style={{ marginBottom: '0.75rem' }}>
-            <div className="row">
-              <span className="badge seq-badge" title="Listedeki sırası">#{index + 1}</span>
+          <li
+            key={item.id}
+            className={`${panelClass(item.status)} review-row${editingId === item.id ? ' is-editing' : ''}`}
+          >
+            <div className="review-row-summary">
+              <span className="badge seq-badge" title="Listedeki sırası">
+                #{index + 1}
+              </span>
               {item.status === 'IN_REVIEW' ? (
                 <>
                   <input
@@ -826,7 +938,7 @@ type AiImageState = { msg: string; urls: string[]; mediaIds?: string[] }
                   style={{ flex: 1, marginBottom: 0 }}
                 />
               ) : (
-                <strong>{item.title}</strong>
+                <strong title={item.title}>{item.title}</strong>
               )}
               <span className={`badge plat-${itemPlatform(item) || 'NONE'}`}>
                 {platformLabel(itemPlatform(item))}
@@ -837,22 +949,26 @@ type AiImageState = { msg: string; urls: string[]; mediaIds?: string[] }
               <span className="badge">{item.contentType}</span>
               <span className={statusBadgeClass(item.status)}>{statusLabel(item.status)}</span>
               {prioritySourceId && item.source?.id === prioritySourceId ? (
-                <span className="badge ok">↑ öncelikli</span>
+                <span className="badge ok">↑ öncelik</span>
               ) : null}
-              <span className="muted">{item.source?.title}</span>
+              <span className="muted" title={item.source?.title}>
+                {item.source?.title}
+              </span>
             </div>
-            {editingId === item.id ? (
-              <textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} style={{ marginTop: '0.5rem' }} />
-            ) : item.contentType === 'PODCAST_SCRIPT' ? (
-              <PodcastTimeline
-                content={item.content}
-                episodeIndex={typeof item.metadata?.episodeIndex === 'number' ? item.metadata.episodeIndex : undefined}
-                episodeTotal={typeof item.metadata?.episodeTotal === 'number' ? item.metadata.episodeTotal : undefined}
-              />
-            ) : (
-              <div className="pre">{item.content}</div>
-            )}
-            <div className="row" style={{ marginTop: '0.5rem' }}>
+            <div className="review-row-expand">
+              <div className="review-row-expand-inner">
+                {editingId === item.id ? (
+                  <textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} style={{ marginTop: '0.35rem' }} />
+                ) : item.contentType === 'PODCAST_SCRIPT' ? (
+                  <PodcastTimeline
+                    content={item.content}
+                    episodeIndex={typeof item.metadata?.episodeIndex === 'number' ? item.metadata.episodeIndex : undefined}
+                    episodeTotal={typeof item.metadata?.episodeTotal === 'number' ? item.metadata.episodeTotal : undefined}
+                  />
+                ) : (
+                  <div className="pre">{item.content}</div>
+                )}
+                <div className="row" style={{ marginTop: '0.5rem' }}>
               {editingId === item.id ? (
                 <>
                   <button type="button" className="ok" disabled={busyId === item.id} onClick={() => saveEdit(item.id)}>
@@ -989,6 +1105,8 @@ type AiImageState = { msg: string; urls: string[]; mediaIds?: string[] }
                     : null}
               </p>
             ) : null}
+              </div>
+            </div>
           </li>
         ))}
         {!visibleItems.length ? (
