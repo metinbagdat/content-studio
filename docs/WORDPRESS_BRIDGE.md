@@ -53,15 +53,37 @@ HPV gate: HPV ≥ 75 **and** search volume ≥ 500 → WP adayı; aksi halde yal
 
 ```http
 POST /api/webhooks/wordpress-published
-X-API-Key: $CONNECT_STUDIO_API_KEY
+# alias: POST /api/wordpress/webhook
+x-wp-webhook-secret: $WP_PUBLISH_WEBHOOK_SECRET
+```
 
-{
-  "post_id": 123,
-  "title": "...",
-  "link": "https://blog.egitim.today/...",
-  "post_type": "article",
-  "content": "<p>...</p>"
-}
+Dedicated secret preferred (`WP_PUBLISH_WEBHOOK_SECRET`). Legacy: `X-API-Key: $CONNECT_STUDIO_API_KEY` still accepted until WP `CS_WEBHOOK_SECRET` is set.
+
+WP (`wp-config.php` / Safe SamurAI plugin):
+
+**Bugün (mevcut prod #58 — legacy auth):**
+
+```php
+define('CS_WEBHOOK_URL', 'https://studio.egitim.today/api/webhooks/wordpress-published');
+define('CS_WEBHOOK_SECRET', '...'); // geçici: CONNECT_STUDIO_API_KEY ile AYNI değer
+```
+
+**Hedef (Vercel `WP_PUBLISH_WEBHOOK_SECRET` + redeploy sonrası):**
+
+```php
+define('CS_WEBHOOK_URL', 'https://studio.egitim.today/api/wordpress/webhook');
+define('CS_WEBHOOK_SECRET', '...'); // = Vercel WP_PUBLISH_WEBHOOK_SECRET (64 char hex)
+// isteğe bağlı — plugin default zaten doğru:
+// define('CS_WEBHOOK_POST_TYPES', ['post', 'podcast_episode', 'anthem_song', 'video_script']);
+```
+
+Secret nereden: local `.env.local` → `WP_PUBLISH_WEBHOOK_SECRET` (64 char). Yoksa `openssl rand -hex 32` üret; aynı değeri Vercel env + wp-config'e koy.
+
+Legacy alias (plugin hâlâ okur):
+
+```php
+// define('CONNECT_STUDIO_WEBHOOK_URL', 'https://studio.egitim.today/api/webhooks/wordpress-published');
+// define('CONNECT_STUDIO_API_KEY', '...');
 ```
 
 Idempotent on `post_id` (`wp-post:{id}` tag). Creates a `ContentSource` and queues the existing SM pipeline.
