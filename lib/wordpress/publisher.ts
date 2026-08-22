@@ -36,7 +36,11 @@ export async function sendDraftToWordPress(payload: WpContentPayload): Promise<W
     content: payload.content,
     excerpt: payload.excerpt || excerptFromHtml(payload.content),
     post_type: payload.post_type,
-    meta: payload.meta || {},
+    meta: {
+      ...(payload.meta || {}),
+      // CS Safe Samurai gate passed before send — WP stores on draft for publish webhook.
+      _cs_safe_samurai_validated: 'yes',
+    },
     acf: payload.acf || {},
   }
 
@@ -100,6 +104,14 @@ export async function sendViaCoreRest(
   }
   const restBase = typeMap[payload.post_type] || 'posts'
   const auth = Buffer.from(`${username}:${appPassword}`).toString('base64')
+  const status = options.status || 'draft'
+
+  // Draft from CS after Safe Samurai: AI yes, human WP approval still pending.
+  const draftMeta = {
+    _is_ai_generated: 'yes',
+    _safe_samurai_approved: 'no',
+    _cs_safe_samurai_validated: 'yes',
+  }
 
   try {
     const res = await fetch(`${baseUrl}/wp-json/wp/v2/${restBase}`, {
@@ -112,12 +124,9 @@ export async function sendViaCoreRest(
         title: payload.title,
         content: payload.content,
         excerpt: payload.excerpt || excerptFromHtml(payload.content),
-        status: options.status || 'draft',
+        status,
         ...(options.slug ? { slug: options.slug } : {}),
-        meta: {
-          _is_ai_generated: options.status === 'publish' ? 'no' : 'yes',
-          _safe_samurai_approved: options.status === 'publish' ? 'yes' : 'no',
-        },
+        meta: draftMeta,
       }),
       signal: AbortSignal.timeout(30_000),
     })
@@ -129,7 +138,7 @@ export async function sendViaCoreRest(
       success: true,
       wpPostId: data.id,
       editLink: data.id ? `${baseUrl}/wp-admin/post.php?post=${data.id}&action=edit` : undefined,
-      message: `${options.status || 'draft'} (core REST)`,
+      message: `${status} (core REST)`,
     }
   } catch (err) {
     return {
