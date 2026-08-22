@@ -57,27 +57,25 @@ const SOCIAL_BULK_TYPES = [
   'INFOGRAPHIC_TEXT',
 ] as const
 
-const BULK_JOB_KEY = 'cs_review_bulk_job'
 const BULK_FETCH_TIMEOUT_MS = 280_000
 
-function bulkChunkSize(
-  action: 'bulkApprove' | 'bulkReject',
-  withAutoMedia: boolean,
-  withAutoWpDraft: boolean,
-): number {
-  if (action === 'bulkReject') return 15
-  if (withAutoMedia || withAutoWpDraft) return 1
-  return 10
-}
-
-type StoredBulkJob = {
-  action: 'bulkApprove' | 'bulkReject'
-  ids: string[]
-  done: number
+type DbBulkJob = {
+  id: string
+  action: 'APPROVE' | 'REJECT'
+  status: string
+  cursor: number
+  total: number
   autoMedia: boolean
   autoWpDraft: boolean
-  bulkScopeFilter: BulkScopeFilter
-  startedAt: number
+  scopeFilter: string
+  errors: string[]
+  approvedCount: number
+  rejectedCount: number
+  draftsCount: number
+  mediaCount: number
+  wpDraftCount: number
+  currentLabel: string | null
+  startedAt: string | null
 }
 
 function matchesBulkScope(contentType: string, scope: BulkScopeFilter): boolean {
@@ -86,13 +84,6 @@ function matchesBulkScope(contentType: string, scope: BulkScopeFilter): boolean 
   if (scope === 'BLOG_POST') return contentType === 'BLOG_POST'
   if (scope === 'SOCIAL') return (SOCIAL_BULK_TYPES as readonly string[]).includes(contentType)
   return true
-}
-
-function contentTypesForScope(scope: BulkScopeFilter): string[] | undefined {
-  if (scope === 'WP') return [...WP_BULK_TYPES]
-  if (scope === 'BLOG_POST') return ['BLOG_POST']
-  if (scope === 'SOCIAL') return [...SOCIAL_BULK_TYPES]
-  return undefined
 }
 
 function adminHeaders(key: string, json = false): HeadersInit {
@@ -152,6 +143,7 @@ type BulkProgress = {
   startedAt: number
   currentLabel?: string
   errors: string[]
+  jobId?: string
 }
 
 function formatDuration(ms: number): string {
@@ -253,7 +245,7 @@ export default function ReviewPage() {
   const [autoMedia, setAutoMedia] = useState(false)
   const [autoWpDraft, setAutoWpDraft] = useState(false)
   const [bulkScopeFilter, setBulkScopeFilter] = useState<BulkScopeFilter>('ALL')
-  const [pendingBulkResume, setPendingBulkResume] = useState<StoredBulkJob | null>(null)
+  const [pendingBulkResume, setPendingBulkResume] = useState<DbBulkJob | null>(null)
   const [bulkBusy, setBulkBusy] = useState(false)
   const [bulkProgress, setBulkProgress] = useState<BulkProgress | null>(null)
   const [, setProgressTick] = useState(0)
@@ -398,15 +390,28 @@ export default function ReviewPage() {
   }, [bulkProgress])
 
   useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem(BULK_JOB_KEY)
-      if (!raw) return
-      const job = JSON.parse(raw) as StoredBulkJob
-      if (job.done < job.ids.length) setPendingBulkResume(job)
-    } catch {
-      sessionStorage.removeItem(BULK_JOB_KEY)
+    if (!adminKey.trim()) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch('/api/review/bulk-job', {
+          headers: adminHeaders(adminKey),
+          cache: 'no-store',
+        })
+        if (!res.ok || cancelled) return
+        const data = await res.json().catch(() => ({}))
+        const job = data.job as DbBulkJob | null
+        if (job && job.cursor < job.total && ['PENDING', 'RUNNING', 'PAUSED'].includes(job.status)) {
+          setPendingBulkResume(job)
+        }
+      } catch {
+        /* ignore */
+      }
+    })()
+    return () => {
+      cancelled = true
     }
-  }, [])
+  }, [adminKey])
 
   function updatePrioritySource(id: string) {
     setPrioritySourceId(id)
@@ -720,172 +725,202 @@ export default function ReviewPage() {
     }
   }
 
-  function cancelBulk() {
+  function applyJobToProgress(job: DbBulkJob, startedAt: number) {
+    setBulkProgress({
+      action: job.action === 'REJECT' ? 'bulkReject' : 'bulkApprove',
+      total: job.total,
+      done: job.cursor,
+      startedAt,
+      currentLabel: job.currentLabel || undefined,
+      errors: job.errors || [],
+      jobId: job.id,
+    })
+  }
+
+  async function cancelBulk() {
     bulkAbortRef.current?.abort()
+    const jobId = bulkProgress?.jobId || pendingBulkResume?.id
+    if (jobId && adminKey) {
+      await fetch('/api/review/bulk-job', {
+        method: 'POST',
+        headers: adminHeaders(adminKey, true),
+        body: JSON.stringify({ action: 'pause', id: jobId }),
+      }).catch(() => {})
+      const res = await fetch(`/api/review/bulk-job?id=${encodeURIComponent(jobId)}`, {
+        headers: adminHeaders(adminKey),
+        cache: 'no-store',
+      }).catch(() => null)
+      const data = res ? await res.json().catch(() => ({})) : {}
+      if (data.job) setPendingBulkResume(data.job as DbBulkJob)
+    }
     bulkAbortRef.current = null
     setBulkBusy(false)
     setBulkProgress(null)
-    setMsg('Toplu iş durduruldu — sayfayı yenileyip kaldığı yerden devam edebilirsin')
+    setMsg('Toplu iş duraklatıldı — DB’de kayıtlı; kaldığı yerden devam edebilirsin')
   }
 
-  async function bulkAct(action: 'bulkApprove' | 'bulkReject', resumeJob?: StoredBulkJob) {
-    const startedAt = resumeJob?.startedAt ?? Date.now()
-    let ids =
-      resumeJob?.ids ??
-      Array.from(selectedIds).filter((id) => {
-        const item = items.find((i) => i.id === id)
-        return (
-          item?.status === 'IN_REVIEW' &&
-          item &&
-          !itemFault(item).fault &&
-          matchesBulkScope(item.contentType, bulkScopeFilter)
-        )
-      })
-    if (!ids.length) {
-      setMsg('Önce onay bekleyen öğeleri seç (filtre kapsamına uyan)')
-      return
-    }
-    if (!resumeJob && action === 'bulkReject' && !confirm(`${ids.length} öğe reddedilsin mi?`)) return
-
-    const job: StoredBulkJob = resumeJob ?? {
-      action,
-      ids,
-      done: 0,
-      autoMedia,
-      autoWpDraft,
-      bulkScopeFilter,
-      startedAt,
-    }
-    const useAutoMedia = job.autoMedia
-    const useAutoWpDraft = job.autoWpDraft
-    const chunkSize = bulkChunkSize(action, useAutoMedia, useAutoWpDraft)
-
+  async function runBulkTicks(jobId: string, startedAt: number) {
     setBulkBusy(true)
     setPendingBulkResume(null)
-    setBulkProgress({ action, total: ids.length, done: job.done, startedAt, errors: [] })
-    setMsg(
-      `${ids.length} öğe · ${chunkSize === 1 ? 'tek tek' : `${chunkSize}'lik paket`}` +
-        (useAutoMedia || useAutoWpDraft ? ' (medya/WP — yavaş ama ilerleme görünür)' : '') +
-        '…',
-    )
-
-    let approved = 0
-    let rejected = 0
-    let draftsCreated = 0
-    let mediaGenerated = 0
-    let wpDraftsSent = 0
-    const errors: string[] = []
-    let cancelled = false
-    let lastDone = job.done
-
     bulkAbortRef.current = new AbortController()
+    let lastJob: DbBulkJob | null = null
+    let cancelled = false
 
-    for (let i = job.done; i < ids.length; i += chunkSize) {
-      if (bulkAbortRef.current.signal.aborted) {
-        cancelled = true
-        break
-      }
-
-      const chunk = ids.slice(i, i + chunkSize)
-      const chunkId = chunk[0]
-      const chunkLabel =
-        items.find((row) => row.id === chunkId)?.title?.slice(0, 80) || `öğe ${i + 1}/${ids.length}`
-      setBulkProgress((prev) =>
-        prev ? { ...prev, done: i, currentLabel: chunkLabel } : null,
-      )
-
+    while (!bulkAbortRef.current.signal.aborted) {
       const timeout = setTimeout(() => bulkAbortRef.current?.abort(), BULK_FETCH_TIMEOUT_MS)
-
       try {
-        const res = await fetch('/api/content', {
+        const res = await fetch('/api/review/bulk-job', {
           method: 'POST',
           headers: adminHeaders(adminKey, true),
-          body: JSON.stringify({
-            action,
-            ids: chunk,
-            autoMedia: action === 'bulkApprove' ? useAutoMedia : false,
-            autoWpDraft: action === 'bulkApprove' ? useAutoWpDraft : false,
-            contentTypes: contentTypesForScope(job.bulkScopeFilter),
-          }),
+          body: JSON.stringify({ action: 'tick', id: jobId }),
           signal: bulkAbortRef.current.signal,
         })
         const data = await res.json().catch(() => ({}))
         if (!res.ok) {
-          errors.push(`${chunkLabel}: ${data.error || res.status}`)
-        } else {
-          const r = data.result || {}
-          if (action === 'bulkApprove') {
-            approved += r.approved ?? chunk.length
-            draftsCreated += r.draftsCreated ?? 0
-            mediaGenerated += r.mediaGenerated ?? 0
-            wpDraftsSent += r.wpDraftsSent ?? 0
-          } else {
-            rejected += r.rejected ?? chunk.length
-          }
-          if (Array.isArray(r.errors)) errors.push(...r.errors)
+          setMsg(data.error || `Tick başarısız (${res.status})`)
+          cancelled = true
+          break
+        }
+        const job = data.job as DbBulkJob
+        lastJob = job
+        applyJobToProgress(job, startedAt)
+        if (data.done || job.status === 'COMPLETED' || job.status === 'CANCELLED') break
+        if (job.status === 'PAUSED') {
+          cancelled = true
+          break
         }
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') {
           cancelled = true
-          errors.push(`${chunkLabel}: iptal veya ${Math.round(BULK_FETCH_TIMEOUT_MS / 60000)} dk zaman aşımı`)
           break
         }
-        errors.push(`${chunkLabel}: ${err instanceof Error ? err.message : String(err)}`)
+        setMsg(err instanceof Error ? err.message : 'Tick hatası')
+        cancelled = true
+        break
       } finally {
         clearTimeout(timeout)
       }
-
-      const done = Math.min(i + chunk.length, ids.length)
-      lastDone = done
-      sessionStorage.setItem(BULK_JOB_KEY, JSON.stringify({ ...job, done }))
-      setBulkProgress((prev) =>
-        prev ? { ...prev, done, errors: [...errors] } : null,
-      )
     }
 
     bulkAbortRef.current = null
-
-    if (cancelled && lastDone < ids.length) {
-      setPendingBulkResume({ ...job, done: lastDone })
-    } else {
-      sessionStorage.removeItem(BULK_JOB_KEY)
-    }
-
     setBulkProgress(null)
     setBulkBusy(false)
     setSelectedIds(new Set())
 
-    const faultFromErrors = [
-      ...new Set(
-        errors
-          .map((line) => parseBulkErrorLine(line))
-          .filter((p): p is { id: string; message: string } => Boolean(p && isStorageOrVideoFault(p.message)))
-          .map((p) => p.id),
-      ),
-    ]
-    let quarantined = 0
-    if (faultFromErrors.length) {
-      try {
-        quarantined = await quarantineFaultIds(
-          faultFromErrors,
-          'Toplu onay hatası — video/storage; Arı kuyruğuna alındı',
-        )
-      } catch {
-        /* load will still refresh metadata if server marked faults */
+    if (cancelled && lastJob && lastJob.cursor < lastJob.total) {
+      await fetch('/api/review/bulk-job', {
+        method: 'POST',
+        headers: adminHeaders(adminKey, true),
+        body: JSON.stringify({ action: 'pause', id: jobId }),
+      }).catch(() => {})
+      const res = await fetch(`/api/review/bulk-job?id=${encodeURIComponent(jobId)}`, {
+        headers: adminHeaders(adminKey),
+        cache: 'no-store',
+      })
+      const data = await res.json().catch(() => ({}))
+      if (data.job) setPendingBulkResume(data.job as DbBulkJob)
+      setMsg(
+        `Duraklatıldı: ${lastJob.cursor}/${lastJob.total}` +
+          (lastJob.errors?.length ? ` · hata: ${lastJob.errors.length}` : ''),
+      )
+    } else if (lastJob) {
+      const faultFromErrors = [
+        ...new Set(
+          (lastJob.errors || [])
+            .map((line) => parseBulkErrorLine(line))
+            .filter((p): p is { id: string; message: string } =>
+              Boolean(p && isStorageOrVideoFault(p.message)),
+            )
+            .map((p) => p.id),
+        ),
+      ]
+      let quarantined = 0
+      if (faultFromErrors.length) {
+        try {
+          quarantined = await quarantineFaultIds(
+            faultFromErrors,
+            'Toplu onay hatası — video/storage; Arı kuyruğuna alındı',
+          )
+        } catch {
+          /* ignore */
+        }
       }
+      setMsg(
+        `Toplu: ${lastJob.total} · ${lastJob.approvedCount} onay · ${lastJob.rejectedCount} red` +
+          (lastJob.draftsCount ? ` · ${lastJob.draftsCount} taslak` : '') +
+          (lastJob.mediaCount ? ` · ${lastJob.mediaCount} medya` : '') +
+          (lastJob.wpDraftCount ? ` · ${lastJob.wpDraftCount} WP draft` : '') +
+          (quarantined ? ` · ${quarantined} Arı'ya alındı` : '') +
+          (lastJob.errors?.length ? ` · hata: ${lastJob.errors.length}` : '') +
+          ` · süre: ${formatDuration(Date.now() - startedAt)}`,
+      )
+      if (quarantined > 0) setReviewTab('ari')
     }
-
-    setMsg(
-      `Toplu: ${ids.length} işlendi · ${approved} onay · ${rejected} red` +
-        (draftsCreated ? ` · ${draftsCreated} taslak` : '') +
-        (mediaGenerated ? ` · ${mediaGenerated} medya` : '') +
-        (wpDraftsSent ? ` · ${wpDraftsSent} WP draft` : '') +
-        (quarantined ? ` · ${quarantined} Arı'ya alındı` : '') +
-        (errors.length ? ` · hata: ${errors.length} (devam edildi)` : '') +
-        ` · süre: ${formatDuration(Date.now() - startedAt)}`,
-    )
-    if (quarantined > 0) setReviewTab('ari')
     await load()
+  }
+
+  async function bulkAct(action: 'bulkApprove' | 'bulkReject') {
+    const ids = Array.from(selectedIds).filter((id) => {
+      const item = items.find((i) => i.id === id)
+      return (
+        item?.status === 'IN_REVIEW' &&
+        item &&
+        !itemFault(item).fault &&
+        matchesBulkScope(item.contentType, bulkScopeFilter)
+      )
+    })
+    if (!ids.length) {
+      setMsg('Önce onay bekleyen öğeleri seç (filtre kapsamına uyan)')
+      return
+    }
+    if (action === 'bulkReject' && !confirm(`${ids.length} öğe reddedilsin mi?`)) return
+
+    setBulkBusy(true)
+    setPendingBulkResume(null)
+    try {
+      const res = await fetch('/api/review/bulk-job', {
+        method: 'POST',
+        headers: adminHeaders(adminKey, true),
+        body: JSON.stringify({
+          action: 'create',
+          bulkAction: action === 'bulkReject' ? 'REJECT' : 'APPROVE',
+          itemIds: ids,
+          autoMedia: action === 'bulkApprove' ? autoMedia : false,
+          autoWpDraft: action === 'bulkApprove' ? autoWpDraft : false,
+          scopeFilter: bulkScopeFilter,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Job oluşturulamadı')
+      const job = data.job as DbBulkJob
+      const startedAt = Date.now()
+      applyJobToProgress(job, startedAt)
+      setMsg(
+        `${job.total} öğe DB job · ${autoMedia || autoWpDraft ? 'tek tek tick' : "paket tick"} (aynı DB’de devam edilebilir)…`,
+      )
+      await runBulkTicks(job.id, startedAt)
+    } catch (e) {
+      setBulkBusy(false)
+      setBulkProgress(null)
+      setMsg(e instanceof Error ? e.message : 'Toplu iş başlatılamadı')
+    }
+  }
+
+  async function resumeDbBulk(job: DbBulkJob) {
+    const startedAt = job.startedAt ? new Date(job.startedAt).getTime() : Date.now()
+    applyJobToProgress(job, startedAt)
+    setMsg(`Devam: ${job.cursor}/${job.total}`)
+    await runBulkTicks(job.id, startedAt)
+  }
+
+  async function cancelDbBulk(jobId: string) {
+    await fetch('/api/review/bulk-job', {
+      method: 'POST',
+      headers: adminHeaders(adminKey, true),
+      body: JSON.stringify({ action: 'cancel', id: jobId }),
+    })
+    setPendingBulkResume(null)
+    setMsg('Toplu iş iptal edildi')
   }
 
   async function reopen(id: string) {
@@ -1115,22 +1150,20 @@ export default function ReviewPage() {
 
       {pendingBulkResume ? (
         <p className="flash" style={{ marginBottom: '0.75rem' }}>
-          Yarım kalan toplu iş: {pendingBulkResume.done}/{pendingBulkResume.ids.length} —{' '}
+          Yarım kalan toplu iş (DB): {pendingBulkResume.cursor}/{pendingBulkResume.total} —{' '}
           <button
             type="button"
             className="ok"
             disabled={bulkBusy}
-            onClick={() => bulkAct(pendingBulkResume.action, pendingBulkResume)}
+            onClick={() => resumeDbBulk(pendingBulkResume)}
           >
             Kaldığı yerden devam
           </button>{' '}
           <button
             type="button"
             className="secondary"
-            onClick={() => {
-              sessionStorage.removeItem(BULK_JOB_KEY)
-              setPendingBulkResume(null)
-            }}
+            disabled={bulkBusy}
+            onClick={() => cancelDbBulk(pendingBulkResume.id)}
           >
             İptal
           </button>
@@ -1189,9 +1222,8 @@ export default function ReviewPage() {
             Onay + WP draft
           </label>
           <p className="muted" style={{ flexBasis: '100%', margin: 0, fontSize: '0.78rem' }}>
-            Prod Vercel: <strong>Otomatik medya</strong> veya <strong>WP draft</strong> açıkken her öğe ayrı istek
-            (1/30, 2/30…). Kapalıyken 10&apos;lu paket — hızlı onay. Uzun işler: yerel{' '}
-            <code>npm run dev</code> önerilir.
+            İlerleme DB’de (ReviewBulkJob) — sekme kapanırsa veya yerelde aynı Supabase’e bağlanınca
+            75/127 kaldığı yerden devam eder. Medya/WP açıkken tick=1; kapalıyken paket.
           </p>
           <button
             type="button"
