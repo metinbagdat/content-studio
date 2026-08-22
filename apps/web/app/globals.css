@@ -1599,6 +1599,49 @@ button:disabled {
   margin-bottom: 0;
 }
 
+.bulk-progress {
+  flex-basis: 100%;
+  width: 100%;
+  margin-top: 0.35rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid rgba(62, 207, 142, 0.22);
+}
+
+.bulk-progress-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1rem;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 0.45rem;
+  font-size: 0.88rem;
+}
+
+.bulk-progress-track {
+  height: 0.55rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.08);
+  overflow: hidden;
+}
+
+.bulk-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2ecc71, #3ecf8e);
+  transition: width 0.25s ease;
+}
+
+.bulk-progress-current,
+.bulk-progress-errors {
+  margin: 0.35rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.bulk-progress-errors {
+  color: var(--danger, #e74c3c);
+}
+
 .review-check {
   width: auto;
   margin: 0;
@@ -1623,6 +1666,94 @@ button:disabled {
   font-size: 0.72rem;
   line-height: 1;
   min-width: auto;
+}
+
+/* Onay kuyruğu — tek satır özet, hover/focus ile detay */
+.list.review-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.list.review-list li.review-row {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0;
+  background: var(--surface);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.list.review-list li.review-row:hover,
+.list.review-list li.review-row:focus-within {
+  border-color: rgba(58, 160, 255, 0.45);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
+}
+
+.review-row-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: nowrap;
+  padding: 0.45rem 0.65rem;
+  min-height: 2.35rem;
+  overflow: hidden;
+}
+
+.review-row-summary strong {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.92rem;
+}
+
+.review-row-summary .muted {
+  flex: 0 1 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.78rem;
+}
+
+.review-row-expand {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.2s ease;
+}
+
+.review-row:hover .review-row-expand,
+.review-row:focus-within .review-row-expand,
+.review-row.is-editing .review-row-expand {
+  grid-template-rows: 1fr;
+}
+
+.review-row-expand-inner {
+  overflow: hidden;
+  padding: 0 0.65rem 0.65rem;
+}
+
+.review-row:not(:hover):not(:focus-within):not(.is-editing) .review-row-expand-inner {
+  pointer-events: none;
+}
+
+.review-row-expand .pre {
+  max-height: 160px;
+  margin-top: 0.35rem;
+}
+
+.review-row-expand .row {
+  margin-top: 0.45rem;
+}
+
+.review-wp-hint {
+  margin: 0 0 0.75rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: var(--radius);
+  border: 1px solid rgba(58, 160, 255, 0.25);
+  background: rgba(58, 160, 255, 0.06);
+  font-size: 0.88rem;
+  line-height: 1.45;
 }
 
 @media (max-width: 720px) {
