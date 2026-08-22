@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { DEFAULT_ADMIN_API_KEY } from '@/lib/adminKey'
 import { PodcastTimeline } from '@/components/admin/PodcastTimeline'
 import { CommentTopicBanner } from '@/components/admin/CommentTopicBanner'
@@ -57,8 +57,18 @@ const SOCIAL_BULK_TYPES = [
   'INFOGRAPHIC_TEXT',
 ] as const
 
-const BULK_CHUNK_SIZE = 15
 const BULK_JOB_KEY = 'cs_review_bulk_job'
+const BULK_FETCH_TIMEOUT_MS = 280_000
+
+function bulkChunkSize(
+  action: 'bulkApprove' | 'bulkReject',
+  withAutoMedia: boolean,
+  withAutoWpDraft: boolean,
+): number {
+  if (action === 'bulkReject') return 15
+  if (withAutoMedia || withAutoWpDraft) return 1
+  return 10
+}
 
 type StoredBulkJob = {
   action: 'bulkApprove' | 'bulkReject'
@@ -240,7 +250,7 @@ export default function ReviewPage() {
   const [newTitle, setNewTitle] = useState('')
   const [newContent, setNewContent] = useState('')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-  const [autoMedia, setAutoMedia] = useState(true)
+  const [autoMedia, setAutoMedia] = useState(false)
   const [autoWpDraft, setAutoWpDraft] = useState(false)
   const [bulkScopeFilter, setBulkScopeFilter] = useState<BulkScopeFilter>('ALL')
   const [pendingBulkResume, setPendingBulkResume] = useState<StoredBulkJob | null>(null)
@@ -252,6 +262,7 @@ export default function ReviewPage() {
   type AiImageState = { msg: string; urls: string[]; mediaIds?: string[] }
   const [aiImageState, setAiImageState] = useState<Record<string, AiImageState>>({})
   const [customOrder, setCustomOrder] = useState<string[]>([])
+  const bulkAbortRef = useRef<AbortController | null>(null)
   const pendingItems = useMemo(() => items.filter((i) => i.status === 'IN_REVIEW'), [items])
   const faultItems = useMemo(
     () => pendingItems.filter((i) => itemFault(i).fault),
@@ -709,6 +720,14 @@ export default function ReviewPage() {
     }
   }
 
+  function cancelBulk() {
+    bulkAbortRef.current?.abort()
+    bulkAbortRef.current = null
+    setBulkBusy(false)
+    setBulkProgress(null)
+    setMsg('Toplu iş durduruldu — sayfayı yenileyip kaldığı yerden devam edebilirsin')
+  }
+
   async function bulkAct(action: 'bulkApprove' | 'bulkReject', resumeJob?: StoredBulkJob) {
     const startedAt = resumeJob?.startedAt ?? Date.now()
     let ids =
@@ -739,11 +758,16 @@ export default function ReviewPage() {
     }
     const useAutoMedia = job.autoMedia
     const useAutoWpDraft = job.autoWpDraft
+    const chunkSize = bulkChunkSize(action, useAutoMedia, useAutoWpDraft)
 
     setBulkBusy(true)
     setPendingBulkResume(null)
     setBulkProgress({ action, total: ids.length, done: job.done, startedAt, errors: [] })
-    setMsg(`${ids.length} öğe işleniyor (sunucu, ${BULK_CHUNK_SIZE}'lik paketler)…`)
+    setMsg(
+      `${ids.length} öğe · ${chunkSize === 1 ? 'tek tek' : `${chunkSize}'lik paket`}` +
+        (useAutoMedia || useAutoWpDraft ? ' (medya/WP — yavaş ama ilerleme görünür)' : '') +
+        '…',
+    )
 
     let approved = 0
     let rejected = 0
@@ -751,14 +775,26 @@ export default function ReviewPage() {
     let mediaGenerated = 0
     let wpDraftsSent = 0
     const errors: string[] = []
+    let cancelled = false
+    let lastDone = job.done
 
-    for (let i = job.done; i < ids.length; i += BULK_CHUNK_SIZE) {
-      const chunk = ids.slice(i, i + BULK_CHUNK_SIZE)
+    bulkAbortRef.current = new AbortController()
+
+    for (let i = job.done; i < ids.length; i += chunkSize) {
+      if (bulkAbortRef.current.signal.aborted) {
+        cancelled = true
+        break
+      }
+
+      const chunk = ids.slice(i, i + chunkSize)
+      const chunkId = chunk[0]
       const chunkLabel =
-        items.find((row) => row.id === chunk[0])?.title?.slice(0, 80) || `paket ${i / BULK_CHUNK_SIZE + 1}`
+        items.find((row) => row.id === chunkId)?.title?.slice(0, 80) || `öğe ${i + 1}/${ids.length}`
       setBulkProgress((prev) =>
         prev ? { ...prev, done: i, currentLabel: chunkLabel } : null,
       )
+
+      const timeout = setTimeout(() => bulkAbortRef.current?.abort(), BULK_FETCH_TIMEOUT_MS)
 
       try {
         const res = await fetch('/api/content', {
@@ -771,6 +807,7 @@ export default function ReviewPage() {
             autoWpDraft: action === 'bulkApprove' ? useAutoWpDraft : false,
             contentTypes: contentTypesForScope(job.bulkScopeFilter),
           }),
+          signal: bulkAbortRef.current.signal,
         })
         const data = await res.json().catch(() => ({}))
         if (!res.ok) {
@@ -788,17 +825,32 @@ export default function ReviewPage() {
           if (Array.isArray(r.errors)) errors.push(...r.errors)
         }
       } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') {
+          cancelled = true
+          errors.push(`${chunkLabel}: iptal veya ${Math.round(BULK_FETCH_TIMEOUT_MS / 60000)} dk zaman aşımı`)
+          break
+        }
         errors.push(`${chunkLabel}: ${err instanceof Error ? err.message : String(err)}`)
+      } finally {
+        clearTimeout(timeout)
       }
 
       const done = Math.min(i + chunk.length, ids.length)
+      lastDone = done
       sessionStorage.setItem(BULK_JOB_KEY, JSON.stringify({ ...job, done }))
       setBulkProgress((prev) =>
         prev ? { ...prev, done, errors: [...errors] } : null,
       )
     }
 
-    sessionStorage.removeItem(BULK_JOB_KEY)
+    bulkAbortRef.current = null
+
+    if (cancelled && lastDone < ids.length) {
+      setPendingBulkResume({ ...job, done: lastDone })
+    } else {
+      sessionStorage.removeItem(BULK_JOB_KEY)
+    }
+
     setBulkProgress(null)
     setBulkBusy(false)
     setSelectedIds(new Set())
@@ -1137,8 +1189,9 @@ export default function ReviewPage() {
             Onay + WP draft
           </label>
           <p className="muted" style={{ flexBasis: '100%', margin: 0, fontSize: '0.78rem' }}>
-            Uzun toplu işler: yerel <code>npm run dev</code> + Docker Postgres önerilir (timeout/egress yok).
-            Prod Vercel: sosyal onay OK; video üretimi atlanır. Hatalar işlemi durdurmaz.
+            Prod Vercel: <strong>Otomatik medya</strong> veya <strong>WP draft</strong> açıkken her öğe ayrı istek
+            (1/30, 2/30…). Kapalıyken 10&apos;lu paket — hızlı onay. Uzun işler: yerel{' '}
+            <code>npm run dev</code> önerilir.
           </p>
           <button
             type="button"
@@ -1148,6 +1201,11 @@ export default function ReviewPage() {
           >
             {bulkBusy ? 'İşleniyor…' : 'Toplu onayla'}
           </button>
+          {bulkBusy ? (
+            <button type="button" className="danger" onClick={cancelBulk}>
+              Durdur
+            </button>
+          ) : null}
           <button
             type="button"
             className="danger"
