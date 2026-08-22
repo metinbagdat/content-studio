@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { DEFAULT_ADMIN_API_KEY } from '@/lib/adminKey'
+import { HoverExpandList, HoverExpandRow, hoverSnippet } from '@/components/admin/HoverExpandList'
 
 type TopPost = {
   id: string
@@ -105,21 +106,28 @@ export default function AnalyticsPage() {
 
       <section className="panel">
         <h2>En iyi performans gösteren postlar</h2>
-        <ul className="list">
+        <HoverExpandList>
           {(data?.topPosts || []).map((post) => (
-            <li key={post.id} className="panel" style={{ marginBottom: '0.5rem' }}>
-              <div className="row">
-                <span className={`badge plat-${post.platform}`}>{post.platform}</span>
-                <span className="badge">skor: {post.score.toFixed(1)}</span>
-                <span className="muted">
-                  {post.publishedAt ? new Date(post.publishedAt).toLocaleString('tr-TR') : '—'}
-                </span>
-              </div>
-              <div className="pre">{post.postContent.slice(0, 200)}</div>
-            </li>
+            <HoverExpandRow
+              key={post.id}
+              summary={
+                <>
+                  <span className={`badge plat-${post.platform}`}>{post.platform}</span>
+                  <span className="badge">skor: {post.score.toFixed(1)}</span>
+                  <span className="hover-row-line">{hoverSnippet(post.postContent, 80)}</span>
+                  <span className="muted hover-row-when">
+                    {post.publishedAt ? new Date(post.publishedAt).toLocaleString('tr-TR') : '—'}
+                  </span>
+                </>
+              }
+            >
+              <div className="pre">{post.postContent.slice(0, 400)}</div>
+            </HoverExpandRow>
           ))}
-          {!data?.topPosts?.length ? <li className="muted">Henüz veri yok</li> : null}
-        </ul>
+          {!data?.topPosts?.length ? (
+            <li className="muted hover-row" style={{ border: 'none', boxShadow: 'none' }}>Henüz veri yok</li>
+          ) : null}
+        </HoverExpandList>
       </section>
     </div>
   )

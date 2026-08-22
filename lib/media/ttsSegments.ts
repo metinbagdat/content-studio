@@ -2,6 +2,7 @@ import { mkdir, writeFile, rm, readFile } from 'fs/promises'
 import path from 'path'
 import ffmpeg from 'fluent-ffmpeg'
 import { configureFfmpeg } from '@/lib/media/ffmpegPaths'
+import { storageSubdir } from '../storage/writableRoot'
 import { synthesizeSpeech, audioDiskPath } from './tts'
 import { sanitizeSpeechText } from './speechText'
 import { getAudioDurationSec } from '../video/audioDuration'
@@ -75,7 +76,7 @@ export async function assembleSpeechVoiceover(options: {
     outroPadSec = DEFAULT_OUTRO_PAD_SEC,
   } = options
 
-  const workDir = path.join(process.cwd(), 'storage', 'audio', `speech-${workKey}`)
+  const workDir = path.join(storageSubdir('audio'), `speech-${workKey}`)
   await mkdir(workDir, { recursive: true })
 
   const segmentPaths: string[] = []

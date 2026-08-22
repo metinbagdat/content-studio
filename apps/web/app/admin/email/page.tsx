@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { DEFAULT_ADMIN_API_KEY } from '@/lib/adminKey'
+import { HoverExpandList, HoverExpandRow } from '@/components/admin/HoverExpandList'
 
 type ReachContact = {
   uuid?: string
@@ -20,6 +21,8 @@ type ReachInfo = {
   groups: ReachGroup[]
   total: number | null
   error?: string | null
+  contactsError?: string | null
+  groupsError?: string | null
 }
 
 function headers(key: string, json = false): HeadersInit {
@@ -103,7 +106,6 @@ export default function EmailReachPage() {
         </button>
       </div>
       {msg ? <p className="muted">{msg}</p> : null}
-      {info?.error ? <p className="muted">Reach: {info.error}</p> : null}
 
       <div className="grid two">
         <section className="panel">
@@ -112,10 +114,27 @@ export default function EmailReachPage() {
             API: {info?.configured ? 'token var' : 'HOSTINGER_API_TOKEN yok'}
             {info?.profileScoped ? ' · profil UUID bağlı' : ''}
           </p>
+          {info?.error || info?.contactsError ? (
+            <p style={{ color: '#b91c1c', fontWeight: 600 }}>
+              Reach API hata: {info.error || info.contactsError}
+              {String(info.error || info.contactsError || '')
+                .toLowerCase()
+                .includes('unauth')
+                ? ' — Token geçersiz. hPanel → API’den Bearer token üret.'
+                : ''}
+            </p>
+          ) : null}
+          {info?.groupsError ? (
+            <p className="muted">
+              Gruplar alınamadı ({info.groupsError}) — kişi listesi etkilenmez; Reach paneli grupları kullanır.
+            </p>
+          ) : null}
           <p className="muted">Kişi sayısı: {info?.total ?? info?.contacts?.length ?? '—'}</p>
           <p className="muted">
-            Token: Hostinger Reach → <strong>Integrations → Public API</strong>. Vercel / `.env` içine{' '}
-            <code>HOSTINGER_API_TOKEN</code> (isteğe bağlı <code>HOSTINGER_REACH_PROFILE_UUID</code>).
+            Token: <strong>hPanel → API</strong> (Account Bearer). Vercel / <code>.env</code> →{' '}
+            <code>HOSTINGER_API_TOKEN</code>
+            {', '}
+            isteğe bağlı <code>HOSTINGER_REACH_PROFILE_UUID</code>.
           </p>
           <p>
             <a href="https://hpanel.hostinger.com" target="_blank" rel="noreferrer">
@@ -146,14 +165,22 @@ export default function EmailReachPage() {
 
       <section className="panel" style={{ marginTop: '1.5rem' }}>
         <h2>Gruplar</h2>
-        <ul className="list">
+        <HoverExpandList>
           {(info?.groups || []).map((g) => (
-            <li key={g.uuid}>
-              {g.title} <span className="muted">{g.uuid}</span>
-            </li>
+            <HoverExpandRow
+              key={g.uuid}
+              summary={
+                <>
+                  <strong className="hover-row-title">{g.title}</strong>
+                  <span className="muted hover-row-chip">{g.uuid}</span>
+                </>
+              }
+            />
           ))}
-          {!info?.groups?.length ? <li className="muted">Grup yok veya API grupları döndürmedi</li> : null}
-        </ul>
+          {!info?.groups?.length ? (
+            <li className="muted hover-row" style={{ border: 'none', boxShadow: 'none' }}>Grup yok veya API grupları döndürmedi</li>
+          ) : null}
+        </HoverExpandList>
       </section>
 
       <section className="panel" style={{ marginTop: '1.5rem' }}>

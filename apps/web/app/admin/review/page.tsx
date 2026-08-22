@@ -5,6 +5,7 @@ import { DEFAULT_ADMIN_API_KEY } from '@/lib/adminKey'
 import { PodcastTimeline } from '@/components/admin/PodcastTimeline'
 import { CommentTopicBanner } from '@/components/admin/CommentTopicBanner'
 import { AUDIENCE_SEGMENTS, SEGMENT_LABELS, isAudienceSegment, parseSegmentFromTags, type AudienceSegment } from '@/lib/audience/segments'
+import { readReviewFault, parseBulkErrorLine, isStorageOrVideoFault, VIDEO_FAULT_TYPES } from '@/lib/review/faultMeta'
 
 type Item = {
   id: string
@@ -32,6 +33,57 @@ const CONTENT_TYPES = [
   'SONG_LYRICS',
   'INFOGRAPHIC_TEXT',
 ] as const
+
+type BulkScopeFilter = 'ALL' | 'WP' | 'BLOG_POST' | 'SOCIAL'
+type ReviewTab = 'onay' | 'ari'
+
+function itemFault(item: Item): { fault: boolean; last?: string } {
+  return readReviewFault(item.metadata)
+}
+
+const WP_BULK_TYPES = [
+  'BLOG_POST',
+  'PODCAST_SCRIPT',
+  'VIDEO_SCRIPT',
+  'SHORT_VIDEO_SCRIPT',
+  'MARCH_LYRICS',
+  'SONG_LYRICS',
+] as const
+
+const SOCIAL_BULK_TYPES = [
+  'SOCIAL_CAPTION',
+  'TWITTER_THREAD',
+  'LINKEDIN_CAROUSEL',
+  'INFOGRAPHIC_TEXT',
+] as const
+
+const BULK_CHUNK_SIZE = 15
+const BULK_JOB_KEY = 'cs_review_bulk_job'
+
+type StoredBulkJob = {
+  action: 'bulkApprove' | 'bulkReject'
+  ids: string[]
+  done: number
+  autoMedia: boolean
+  autoWpDraft: boolean
+  bulkScopeFilter: BulkScopeFilter
+  startedAt: number
+}
+
+function matchesBulkScope(contentType: string, scope: BulkScopeFilter): boolean {
+  if (scope === 'ALL') return true
+  if (scope === 'WP') return (WP_BULK_TYPES as readonly string[]).includes(contentType)
+  if (scope === 'BLOG_POST') return contentType === 'BLOG_POST'
+  if (scope === 'SOCIAL') return (SOCIAL_BULK_TYPES as readonly string[]).includes(contentType)
+  return true
+}
+
+function contentTypesForScope(scope: BulkScopeFilter): string[] | undefined {
+  if (scope === 'WP') return [...WP_BULK_TYPES]
+  if (scope === 'BLOG_POST') return ['BLOG_POST']
+  if (scope === 'SOCIAL') return [...SOCIAL_BULK_TYPES]
+  return undefined
+}
 
 function adminHeaders(key: string, json = false): HeadersInit {
   const h: Record<string, string> = { 'x-admin-key': key }
@@ -189,25 +241,45 @@ export default function ReviewPage() {
   const [newContent, setNewContent] = useState('')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [autoMedia, setAutoMedia] = useState(true)
+  const [autoWpDraft, setAutoWpDraft] = useState(false)
+  const [bulkScopeFilter, setBulkScopeFilter] = useState<BulkScopeFilter>('ALL')
+  const [pendingBulkResume, setPendingBulkResume] = useState<StoredBulkJob | null>(null)
   const [bulkBusy, setBulkBusy] = useState(false)
   const [bulkProgress, setBulkProgress] = useState<BulkProgress | null>(null)
   const [, setProgressTick] = useState(0)
+  const [reviewTab, setReviewTab] = useState<ReviewTab>('onay')
   const [prioritySourceId, setPrioritySourceId] = useState('')
   type AiImageState = { msg: string; urls: string[]; mediaIds?: string[] }
   const [aiImageState, setAiImageState] = useState<Record<string, AiImageState>>({})
   const [customOrder, setCustomOrder] = useState<string[]>([])
   const pendingItems = useMemo(() => items.filter((i) => i.status === 'IN_REVIEW'), [items])
+  const faultItems = useMemo(
+    () => pendingItems.filter((i) => itemFault(i).fault),
+    [pendingItems],
+  )
+  const cleanPendingItems = useMemo(
+    () => pendingItems.filter((i) => !itemFault(i).fault),
+    [pendingItems],
+  )
 
   const counts = useMemo(() => {
-    const pending = items.filter((i) => i.status === 'IN_REVIEW').length
+    const pending = cleanPendingItems.length
+    const fault = faultItems.length
     const approved = items.filter((i) => i.status === 'APPROVED' || i.status === 'PUBLISHED').length
     const rejected = items.filter((i) => i.status === 'REJECTED').length
     const linkedin = items.filter((i) => itemPlatform(i) === 'LINKEDIN').length
-    return { pending, approved, rejected, linkedin }
-  }, [items])
+    const pendingVideos = cleanPendingItems.filter((i) => VIDEO_FAULT_TYPES.has(i.contentType)).length
+    return { pending, fault, approved, rejected, linkedin, pendingVideos }
+  }, [items, cleanPendingItems, faultItems])
 
   const visibleItems = useMemo(() => {
     let filtered = showAll ? items : items.filter((i) => i.status === 'IN_REVIEW')
+    if (!showAll) {
+      filtered =
+        reviewTab === 'ari'
+          ? filtered.filter((i) => itemFault(i).fault)
+          : filtered.filter((i) => !itemFault(i).fault)
+    }
     if (platformFilter !== 'ALL') {
       filtered = filtered.filter((i) => itemPlatform(i) === platformFilter)
     }
@@ -215,11 +287,26 @@ export default function ReviewPage() {
       filtered = filtered.filter((i) => itemSegment(i) === segmentFilter)
     }
     return sortItems(filtered, prioritySourceId, customOrder)
-  }, [items, showAll, platformFilter, segmentFilter, prioritySourceId, customOrder])
+  }, [items, showAll, reviewTab, platformFilter, segmentFilter, prioritySourceId, customOrder])
 
   const visiblePendingIds = useMemo(
-    () => visibleItems.filter((i) => i.status === 'IN_REVIEW').map((i) => i.id),
-    [visibleItems],
+    () =>
+      reviewTab === 'onay'
+        ? visibleItems
+            .filter(
+              (i) =>
+                i.status === 'IN_REVIEW' &&
+                !itemFault(i).fault &&
+                matchesBulkScope(i.contentType, bulkScopeFilter),
+            )
+            .map((i) => i.id)
+        : [],
+    [visibleItems, bulkScopeFilter, reviewTab],
+  )
+
+  const scopedPendingCount = useMemo(
+    () => cleanPendingItems.filter((i) => matchesBulkScope(i.contentType, bulkScopeFilter)).length,
+    [cleanPendingItems, bulkScopeFilter],
   )
 
   const allVisibleSelected =
@@ -251,7 +338,8 @@ export default function ReviewPage() {
       const sData = await sRes.json()
       setSources((sData.sources || []).map((s: { id: string; title: string }) => ({ id: s.id, title: s.title })))
     }
-    const pending = all.filter((i) => i.status === 'IN_REVIEW').length
+    const pending = all.filter((i) => i.status === 'IN_REVIEW' && !readReviewFault(i.metadata).fault).length
+    const fault = all.filter((i) => i.status === 'IN_REVIEW' && readReviewFault(i.metadata).fault).length
     const approved = all.filter((i) => i.status === 'APPROVED' || i.status === 'PUBLISHED').length
     const rejected = all.filter((i) => i.status === 'REJECTED').length
     const linkedin = all.filter((i) => itemPlatform(i) === 'LINKEDIN').length
@@ -263,13 +351,15 @@ export default function ReviewPage() {
           : 'Kayıt yok — Pipeline’da LinkedIn seçili çalıştır veya Discovery ile kaynak ekle',
       )
     } else if (showAll) {
-      setMsg(`${pending} onay bekliyor · ${approved} onaylı · ${rejected} reddedildi · ${linkedin} LinkedIn${segNote}`)
+      setMsg(`${pending} onay bekliyor · ${fault} arı · ${approved} onaylı · ${rejected} reddedildi · ${linkedin} LinkedIn${segNote}`)
+    } else if (reviewTab === 'ari') {
+      setMsg(`${fault} arı kuyruğunda${segNote} — yerelde npm run dev ile video üretin, sonra Arı'dan çıkarın`)
     } else if (pending) {
-      setMsg(`${pending} onay bekliyor · ${linkedin} LinkedIn türev (platform: ${platformFilter}${segNote})`)
+      setMsg(`${pending} onay bekliyor · ${fault ? `${fault} arı · ` : ''}${linkedin} LinkedIn türev (platform: ${platformFilter}${segNote})`)
     } else {
       setMsg(`Onay bekleyen yok${segNote} — "Tümünü göster" veya filtreyi gevşet`)
     }
-  }, [adminKey, showAll, platformFilter, segmentFilter])
+  }, [adminKey, showAll, platformFilter, segmentFilter, reviewTab])
 
   useEffect(() => {
     const saved = localStorage.getItem('cs_admin_key')
@@ -295,6 +385,17 @@ export default function ReviewPage() {
     const timer = setInterval(() => setProgressTick((n) => n + 1), 500)
     return () => clearInterval(timer)
   }, [bulkProgress])
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(BULK_JOB_KEY)
+      if (!raw) return
+      const job = JSON.parse(raw) as StoredBulkJob
+      if (job.done < job.ids.length) setPendingBulkResume(job)
+    } catch {
+      sessionStorage.removeItem(BULK_JOB_KEY)
+    }
+  }, [])
 
   function updatePrioritySource(id: string) {
     setPrioritySourceId(id)
@@ -332,7 +433,7 @@ export default function ReviewPage() {
       localStorage.setItem('cs_admin_key', adminKey)
       load()
     }
-  }, [adminKey, showAll, platformFilter, load])
+  }, [adminKey, showAll, platformFilter, reviewTab, load])
 
   function startEdit(item: Item) {
     setEditingId(item.id)
@@ -522,82 +623,216 @@ export default function ReviewPage() {
     }
   }
 
-  async function bulkAct(action: 'bulkApprove' | 'bulkReject') {
-    const ids = Array.from(selectedIds).filter((id) => {
-      const item = items.find((i) => i.id === id)
-      return item?.status === 'IN_REVIEW'
+  async function approveWithoutMedia(id: string) {
+    await fetch('/api/content', {
+      method: 'POST',
+      headers: adminHeaders(adminKey, true),
+      body: JSON.stringify({ action: 'clearFault', ids: [id] }),
     })
-    if (!ids.length) {
-      setMsg('Önce onay bekleyen öğeleri seç')
+    await act(id, 'approve', false)
+  }
+
+  async function quarantineOne(id: string) {
+    setBusyId(id)
+    try {
+      await quarantineFaultIds([id], 'Manuel — video prod\'da atlanacak')
+      setReviewTab('ari')
+      await load()
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : 'Arı kuyruğu başarısız')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function quarantineFaultIds(ids: string[], reason: string) {
+    if (!ids.length) return 0
+    const res = await fetch('/api/content', {
+      method: 'POST',
+      headers: adminHeaders(adminKey, true),
+      body: JSON.stringify({ action: 'quarantine', ids, reason }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.error || 'Arı kuyruğuna alınamadı')
+    return data.count ?? 0
+  }
+
+  async function quarantineAllVideos() {
+    if (
+      !confirm(
+        `${counts.pendingVideos} video scripti Arı kuyruğuna alınsın mı? Toplu onaya bir daha girmezler.`,
+      )
+    ) {
       return
     }
-    if (action === 'bulkReject' && !confirm(`${ids.length} öğe reddedilsin mi?`)) return
-
-    const startedAt = Date.now()
     setBulkBusy(true)
-    setBulkProgress({ action, total: ids.length, done: 0, startedAt, errors: [] })
-    setMsg(`${ids.length} öğe işleniyor…`)
+    try {
+      const res = await fetch('/api/content', {
+        method: 'POST',
+        headers: adminHeaders(adminKey, true),
+        body: JSON.stringify({
+          action: 'quarantineVideos',
+          reason: 'Video — prod/Vercel\'de üretilemez; Arı kuyruğuna alındı (yerel npm run dev)',
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Başarısız')
+      setMsg(`${data.count ?? 0} video Arı kuyruğuna alındı`)
+      setReviewTab('ari')
+      await load()
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : 'Arı kuyruğu başarısız')
+    } finally {
+      setBulkBusy(false)
+    }
+  }
+
+  async function clearFaultFromIds(ids: string[]) {
+    if (!ids.length) return
+    setBulkBusy(true)
+    try {
+      const res = await fetch('/api/content', {
+        method: 'POST',
+        headers: adminHeaders(adminKey, true),
+        body: JSON.stringify({ action: 'clearFault', ids }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Arı\'dan çıkarılamadı')
+      setSelectedIds(new Set())
+      setMsg(`${data.cleared ?? ids.length} kayıt onay kuyruğuna döndü`)
+      setReviewTab('onay')
+      await load()
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : 'Arı\'dan çıkarma başarısız')
+    } finally {
+      setBulkBusy(false)
+    }
+  }
+
+  async function bulkAct(action: 'bulkApprove' | 'bulkReject', resumeJob?: StoredBulkJob) {
+    const startedAt = resumeJob?.startedAt ?? Date.now()
+    let ids =
+      resumeJob?.ids ??
+      Array.from(selectedIds).filter((id) => {
+        const item = items.find((i) => i.id === id)
+        return (
+          item?.status === 'IN_REVIEW' &&
+          item &&
+          !itemFault(item).fault &&
+          matchesBulkScope(item.contentType, bulkScopeFilter)
+        )
+      })
+    if (!ids.length) {
+      setMsg('Önce onay bekleyen öğeleri seç (filtre kapsamına uyan)')
+      return
+    }
+    if (!resumeJob && action === 'bulkReject' && !confirm(`${ids.length} öğe reddedilsin mi?`)) return
+
+    const job: StoredBulkJob = resumeJob ?? {
+      action,
+      ids,
+      done: 0,
+      autoMedia,
+      autoWpDraft,
+      bulkScopeFilter,
+      startedAt,
+    }
+    const useAutoMedia = job.autoMedia
+    const useAutoWpDraft = job.autoWpDraft
+
+    setBulkBusy(true)
+    setPendingBulkResume(null)
+    setBulkProgress({ action, total: ids.length, done: job.done, startedAt, errors: [] })
+    setMsg(`${ids.length} öğe işleniyor (sunucu, ${BULK_CHUNK_SIZE}'lik paketler)…`)
 
     let approved = 0
     let rejected = 0
     let draftsCreated = 0
     let mediaGenerated = 0
+    let wpDraftsSent = 0
     const errors: string[] = []
 
-    for (let i = 0; i < ids.length; i++) {
-      const id = ids[i]
-      const item = items.find((row) => row.id === id)
-      const label = item?.title?.slice(0, 80) || id
+    for (let i = job.done; i < ids.length; i += BULK_CHUNK_SIZE) {
+      const chunk = ids.slice(i, i + BULK_CHUNK_SIZE)
+      const chunkLabel =
+        items.find((row) => row.id === chunk[0])?.title?.slice(0, 80) || `paket ${i / BULK_CHUNK_SIZE + 1}`
       setBulkProgress((prev) =>
-        prev ? { ...prev, done: i, currentLabel: label } : null,
+        prev ? { ...prev, done: i, currentLabel: chunkLabel } : null,
       )
-
-      const body =
-        action === 'bulkApprove'
-          ? { action: 'approve', id, autoMedia }
-          : { action: 'reject', id }
 
       try {
         const res = await fetch('/api/content', {
           method: 'POST',
           headers: adminHeaders(adminKey, true),
-          body: JSON.stringify(body),
+          body: JSON.stringify({
+            action,
+            ids: chunk,
+            autoMedia: action === 'bulkApprove' ? useAutoMedia : false,
+            autoWpDraft: action === 'bulkApprove' ? useAutoWpDraft : false,
+            contentTypes: contentTypesForScope(job.bulkScopeFilter),
+          }),
         })
         const data = await res.json().catch(() => ({}))
         if (!res.ok) {
-          errors.push(`${label}: ${data.error || res.status}`)
-          continue
-        }
-        if (action === 'bulkApprove') {
-          approved += 1
-          const r = data.result
-          if (r) {
+          errors.push(`${chunkLabel}: ${data.error || res.status}`)
+        } else {
+          const r = data.result || {}
+          if (action === 'bulkApprove') {
+            approved += r.approved ?? chunk.length
             draftsCreated += r.draftsCreated ?? 0
             mediaGenerated += r.mediaGenerated ?? 0
-            if (Array.isArray(r.errors)) errors.push(...r.errors)
+            wpDraftsSent += r.wpDraftsSent ?? 0
+          } else {
+            rejected += r.rejected ?? chunk.length
           }
-        } else {
-          rejected += 1
+          if (Array.isArray(r.errors)) errors.push(...r.errors)
         }
       } catch (err) {
-        errors.push(`${label}: ${err instanceof Error ? err.message : String(err)}`)
+        errors.push(`${chunkLabel}: ${err instanceof Error ? err.message : String(err)}`)
       }
 
+      const done = Math.min(i + chunk.length, ids.length)
+      sessionStorage.setItem(BULK_JOB_KEY, JSON.stringify({ ...job, done }))
       setBulkProgress((prev) =>
-        prev ? { ...prev, done: i + 1, errors: [...errors] } : null,
+        prev ? { ...prev, done, errors: [...errors] } : null,
       )
     }
 
+    sessionStorage.removeItem(BULK_JOB_KEY)
     setBulkProgress(null)
     setBulkBusy(false)
     setSelectedIds(new Set())
+
+    const faultFromErrors = [
+      ...new Set(
+        errors
+          .map((line) => parseBulkErrorLine(line))
+          .filter((p): p is { id: string; message: string } => Boolean(p && isStorageOrVideoFault(p.message)))
+          .map((p) => p.id),
+      ),
+    ]
+    let quarantined = 0
+    if (faultFromErrors.length) {
+      try {
+        quarantined = await quarantineFaultIds(
+          faultFromErrors,
+          'Toplu onay hatası — video/storage; Arı kuyruğuna alındı',
+        )
+      } catch {
+        /* load will still refresh metadata if server marked faults */
+      }
+    }
+
     setMsg(
       `Toplu: ${ids.length} işlendi · ${approved} onay · ${rejected} red` +
         (draftsCreated ? ` · ${draftsCreated} taslak` : '') +
         (mediaGenerated ? ` · ${mediaGenerated} medya` : '') +
-        (errors.length ? ` · hata: ${errors.length}` : '') +
+        (wpDraftsSent ? ` · ${wpDraftsSent} WP draft` : '') +
+        (quarantined ? ` · ${quarantined} Arı'ya alındı` : '') +
+        (errors.length ? ` · hata: ${errors.length} (devam edildi)` : '') +
         ` · süre: ${formatDuration(Date.now() - startedAt)}`,
     )
+    if (quarantined > 0) setReviewTab('ari')
     await load()
   }
 
@@ -680,6 +915,7 @@ export default function ReviewPage() {
         </p>
         <div className="row">
           <span className="badge warn">{counts.pending} bekliyor</span>
+          {counts.fault > 0 ? <span className="badge danger">{counts.fault} arı</span> : null}
           <span className="badge plat-TWITTER">X</span>
           <span className="badge" style={{ borderColor: 'rgba(10,102,194,0.5)' }}>
             LinkedIn · {counts.linkedin}
@@ -763,14 +999,108 @@ export default function ReviewPage() {
       </div>
       {msg ? <p className="flash">{msg}</p> : null}
       {adminKey ? <CommentTopicBanner adminKey={adminKey} /> : null}
+
+      {!showAll ? (
+        <div className="review-tabs" role="tablist">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={reviewTab === 'onay'}
+            className={reviewTab === 'onay' ? 'review-tab active' : 'review-tab'}
+            onClick={() => setReviewTab('onay')}
+          >
+            Onay ({counts.pending})
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={reviewTab === 'ari'}
+            className={reviewTab === 'ari' ? 'review-tab active' : 'review-tab'}
+            onClick={() => setReviewTab('ari')}
+          >
+            Arı ({counts.fault})
+          </button>
+        </div>
+      ) : null}
+
+      {!showAll && reviewTab === 'onay' && counts.pendingVideos > 0 ? (
+        <p className="flash" style={{ marginBottom: '0.75rem' }}>
+          {counts.pendingVideos} video scripti prod&apos;da üretilemez —{' '}
+          <button type="button" className="secondary" disabled={bulkBusy} onClick={quarantineAllVideos}>
+            Hepsini Arı&apos;ya al
+          </button>{' '}
+          (toplu onaya girmez; yerelde npm run dev)
+        </p>
+      ) : null}
+
+      {!showAll && reviewTab === 'ari' && counts.fault > 0 ? (
+        <p className="flash" style={{ marginBottom: '0.75rem' }}>
+          Arı kuyruğu: prod/Vercel hataları veya video scriptleri. Yerelde üretin, sonra{' '}
+          <button
+            type="button"
+            className="ok"
+            disabled={bulkBusy || selectedIds.size === 0}
+            onClick={() => clearFaultFromIds(Array.from(selectedIds))}
+          >
+            Seçilenleri onay kuyruğuna döndür
+          </button>
+          {' · '}
+          <button
+            type="button"
+            className="secondary"
+            disabled={bulkBusy}
+            onClick={() => clearFaultFromIds(faultItems.map((i) => i.id))}
+          >
+            Tümünü döndür
+          </button>
+        </p>
+      ) : null}
       {!showAll && counts.approved + counts.rejected > 0 ? (
         <p className="muted" style={{ marginTop: '-0.5rem' }}>
           {counts.approved} onaylı, {counts.rejected} reddedildi — geçmiş için &quot;Tümünü göster&quot;
         </p>
       ) : null}
 
-      {counts.pending > 0 ? (
+      {pendingBulkResume ? (
+        <p className="flash" style={{ marginBottom: '0.75rem' }}>
+          Yarım kalan toplu iş: {pendingBulkResume.done}/{pendingBulkResume.ids.length} —{' '}
+          <button
+            type="button"
+            className="ok"
+            disabled={bulkBusy}
+            onClick={() => bulkAct(pendingBulkResume.action, pendingBulkResume)}
+          >
+            Kaldığı yerden devam
+          </button>{' '}
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => {
+              sessionStorage.removeItem(BULK_JOB_KEY)
+              setPendingBulkResume(null)
+            }}
+          >
+            İptal
+          </button>
+        </p>
+      ) : null}
+
+      {reviewTab === 'onay' && counts.pending > 0 ? (
         <div className="bulk-bar">
+          <label className="row muted" style={{ marginBottom: 0 }}>
+            <span>Toplu kapsam</span>
+            <select
+              value={bulkScopeFilter}
+              onChange={(e) => setBulkScopeFilter(e.target.value as BulkScopeFilter)}
+              disabled={bulkBusy}
+              style={{ marginBottom: 0, minWidth: '9rem' }}
+            >
+              <option value="ALL">Tüm tipler ({counts.pending})</option>
+              <option value="SOCIAL">Sosyal only ({cleanPendingItems.filter((i) => matchesBulkScope(i.contentType, 'SOCIAL')).length})</option>
+              <option value="WP">WP türevleri ({cleanPendingItems.filter((i) => matchesBulkScope(i.contentType, 'WP')).length})</option>
+              <option value="BLOG_POST">BLOG_POST only ({cleanPendingItems.filter((i) => i.contentType === 'BLOG_POST').length})</option>
+            </select>
+          </label>
           <label className="row muted" style={{ marginBottom: 0 }}>
             <input
               type="checkbox"
@@ -781,16 +1111,35 @@ export default function ReviewPage() {
             />
             Görünenleri seç ({visiblePendingIds.length})
           </label>
-          <span className="muted">{selectedIds.size} seçili</span>
-          <label className="row muted" style={{ marginBottom: 0 }} title="Podcast script → MP3, caption → görsel">
+          <span className="muted">{selectedIds.size} seçili · kapsamda {scopedPendingCount} bekliyor</span>
+          <label className="row muted" style={{ marginBottom: 0 }} title="Podcast → MP3, caption → AI görsel. Yerelde çalıştır; prod'da video atlanır.">
             <input
               type="checkbox"
               className="review-check"
               checked={autoMedia}
               onChange={(e) => setAutoMedia(e.target.checked)}
+              disabled={bulkBusy}
             />
-            Onayda otomatik medya (podcast ses + görsel)
+            Otomatik medya
           </label>
+          <label
+            className="row muted"
+            style={{ marginBottom: 0 }}
+            title="Onay sonrası blog.egitim.today WP draft (BLOG_POST vb.)"
+          >
+            <input
+              type="checkbox"
+              className="review-check"
+              checked={autoWpDraft}
+              onChange={(e) => setAutoWpDraft(e.target.checked)}
+              disabled={bulkBusy}
+            />
+            Onay + WP draft
+          </label>
+          <p className="muted" style={{ flexBasis: '100%', margin: 0, fontSize: '0.78rem' }}>
+            Uzun toplu işler: yerel <code>npm run dev</code> + Docker Postgres önerilir (timeout/egress yok).
+            Prod Vercel: sosyal onay OK; video üretimi atlanır. Hatalar işlemi durdurmaz.
+          </p>
           <button
             type="button"
             className="ok"
@@ -812,10 +1161,31 @@ export default function ReviewPage() {
             className="secondary"
             disabled={bulkBusy}
             onClick={() => {
-              setSelectedIds(new Set(pendingItems.map((i) => i.id)))
+              setSelectedIds(
+                new Set(
+                  cleanPendingItems
+                    .filter((i) => matchesBulkScope(i.contentType, bulkScopeFilter))
+                    .map((i) => i.id),
+                ),
+              )
             }}
           >
-            Tüm bekleyenleri seç
+            Kapsamdaki bekleyenleri seç
+          </button>
+          <button
+            type="button"
+            className="secondary"
+            disabled={bulkBusy}
+            onClick={() => {
+              setBulkScopeFilter('BLOG_POST')
+              setSelectedIds(
+                new Set(cleanPendingItems.filter((i) => i.contentType === 'BLOG_POST').map((i) => i.id)),
+              )
+              setAutoMedia(false)
+              setAutoWpDraft(true)
+            }}
+          >
+            WP test: BLOG_POST seç
           </button>
           {bulkProgress ? (
             <div className="bulk-progress" role="status" aria-live="polite">
@@ -880,13 +1250,13 @@ export default function ReviewPage() {
         </section>
       ) : null}
 
-      <ul className="list review-list">
+      <ul className="list hover-list">
         {visibleItems.map((item, index) => (
           <li
             key={item.id}
-            className={`${panelClass(item.status)} review-row${editingId === item.id ? ' is-editing' : ''}`}
+            className={`${panelClass(item.status)} hover-row${editingId === item.id ? ' is-expanded' : ''}`}
           >
-            <div className="review-row-summary">
+            <div className="hover-row-summary">
               <span className="badge seq-badge" title="Listedeki sırası">
                 #{index + 1}
               </span>
@@ -900,6 +1270,7 @@ export default function ReviewPage() {
                     disabled={bulkBusy}
                     aria-label="Seç"
                   />
+                  {reviewTab === 'onay' ? (
                   <span className="row reorder-controls">
                     <button
                       type="button"
@@ -929,6 +1300,7 @@ export default function ReviewPage() {
                       ⤒
                     </button>
                   </span>
+                  ) : null}
                 </>
               ) : null}
               {editingId === item.id ? (
@@ -948,6 +1320,11 @@ export default function ReviewPage() {
               ) : null}
               <span className="badge">{item.contentType}</span>
               <span className={statusBadgeClass(item.status)}>{statusLabel(item.status)}</span>
+              {itemFault(item).fault ? (
+                <span className="badge danger" title={itemFault(item).last}>
+                  Arı
+                </span>
+              ) : null}
               {prioritySourceId && item.source?.id === prioritySourceId ? (
                 <span className="badge ok">↑ öncelik</span>
               ) : null}
@@ -955,8 +1332,13 @@ export default function ReviewPage() {
                 {item.source?.title}
               </span>
             </div>
-            <div className="review-row-expand">
-              <div className="review-row-expand-inner">
+            <div className="hover-row-expand">
+              <div className="hover-row-expand-inner">
+                {itemFault(item).last ? (
+                  <p className="flash" style={{ margin: '0 0 0.5rem', fontSize: '0.85rem' }}>
+                    Arı: {itemFault(item).last}
+                  </p>
+                ) : null}
                 {editingId === item.id ? (
                   <textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} style={{ marginTop: '0.35rem' }} />
                 ) : item.contentType === 'PODCAST_SCRIPT' ? (
@@ -985,7 +1367,7 @@ export default function ReviewPage() {
                       Düzenle
                     </button>
                   ) : null}
-                  {item.status === 'IN_REVIEW' ? (
+                  {item.status === 'IN_REVIEW' && !itemFault(item).fault ? (
                     <>
                       <button
                         type="button"
@@ -994,6 +1376,40 @@ export default function ReviewPage() {
                         onClick={() => act(item.id, 'approve', autoMedia)}
                       >
                         Onayla
+                      </button>
+                      <button type="button" className="danger" disabled={busyId === item.id} onClick={() => act(item.id, 'reject')}>
+                        Reddet
+                      </button>
+                      {VIDEO_FAULT_TYPES.has(item.contentType) ? (
+                        <button
+                          type="button"
+                          className="secondary"
+                          disabled={busyId === item.id || bulkBusy}
+                          onClick={() => quarantineOne(item.id)}
+                        >
+                          Arı&apos;ya al
+                        </button>
+                      ) : null}
+                    </>
+                  ) : null}
+                  {item.status === 'IN_REVIEW' && itemFault(item).fault ? (
+                    <>
+                      <button
+                        type="button"
+                        className="ok"
+                        disabled={busyId === item.id || bulkBusy}
+                        onClick={() => clearFaultFromIds([item.id])}
+                      >
+                        Arı&apos;dan çıkar
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary"
+                        disabled={busyId === item.id || bulkBusy}
+                        onClick={() => approveWithoutMedia(item.id)}
+                        title="Yerelde video ürettikten sonra, medya olmadan onayla"
+                      >
+                        Medyasız onayla
                       </button>
                       <button type="button" className="danger" disabled={busyId === item.id} onClick={() => act(item.id, 'reject')}>
                         Reddet
@@ -1111,7 +1527,11 @@ export default function ReviewPage() {
         ))}
         {!visibleItems.length ? (
           <li className="muted">
-            {showAll ? 'Kayıt yok' : 'Onay bekleyen yok — tümü onaylandıysa "Tümünü göster" ile geçmişe bak'}
+            {showAll
+              ? 'Kayıt yok'
+              : reviewTab === 'ari'
+                ? 'Arı kuyruğu boş — video hataları burada görünür'
+                : 'Onay bekleyen yok — tümü onaylandıysa "Tümünü göster" ile geçmişe bak'}
           </li>
         ) : null}
       </ul>

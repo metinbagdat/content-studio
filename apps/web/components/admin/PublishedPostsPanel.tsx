@@ -2,6 +2,7 @@
 
 import { socialPostPublicUrl } from '@/lib/social/postUrl'
 import { PlatformIconLink } from '@/components/admin/PlatformIconLink'
+import { HoverExpandList, HoverExpandRow, hoverSnippet } from '@/components/admin/HoverExpandList'
 import { SEGMENT_LABELS, isAudienceSegment } from '@/lib/audience/segments'
 
 export type PublishedPostRow = {
@@ -42,11 +43,6 @@ function formatWhen(iso?: string | null): string {
   }
 }
 
-function snippet(text: string, n = 72): string {
-  const t = text.replace(/\s+/g, ' ').trim()
-  return t.length > n ? `${t.slice(0, n)}…` : t
-}
-
 function segmentLabel(segment?: string | null): string {
   if (segment && isAudienceSegment(segment)) return SEGMENT_LABELS[segment]
   return 'Segment yok'
@@ -69,74 +65,76 @@ export function PublishedPostsPanel({
   }
 
   return (
-    <ul className="published-posts-list">
+    <HoverExpandList>
       {posts.map((p) => {
         const publicUrl = socialPostPublicUrl(p.platform, p.platformPostId)
         const accountName = p.account?.accountName
         const a = p.analytics
         return (
-          <li key={p.id} className="published-post-card" tabIndex={0}>
-            <div className="published-post-row">
-              <PlatformIconLink platform={p.platform} username={accountName} />
-              <span
-                className={
-                  p.segment && isAudienceSegment(p.segment)
-                    ? 'published-post-chip'
-                    : 'published-post-chip muted'
-                }
-                title="Hedef kitle segmenti"
-              >
-                {segmentLabel(p.segment)}
-              </span>
-              <span className="published-post-line">{snippet(p.postContent)}</span>
-              {a?.engagement != null ? (
-                <span className="published-post-chip">{a.engagement.toLocaleString('tr-TR')}</span>
-              ) : null}
-              <time className="muted published-post-when">{formatWhen(p.publishedAt || p.createdAt)}</time>
-            </div>
-            <div className="published-post-grow">
-              <p className="published-post-preview">{p.postContent.trim() || '(içerik yok)'}</p>
-              {p.imagePreviewUrl ? (
-                <img src={p.imagePreviewUrl} alt="" className="published-post-thumb" loading="lazy" />
-              ) : null}
-              {a ? (
-                <div className="sm-post-stats row">
-                  {a.impressions != null ? (
-                    <span className="badge">gösterim {a.impressions.toLocaleString('tr-TR')}</span>
-                  ) : null}
-                  {a.engagement != null ? (
-                    <span className="badge ok">etkileşim {a.engagement.toLocaleString('tr-TR')}</span>
-                  ) : null}
-                  {a.likes != null ? <span className="badge">beğeni {a.likes.toLocaleString('tr-TR')}</span> : null}
-                  {a.comments != null ? (
-                    <span className="badge">yorum {a.comments.toLocaleString('tr-TR')}</span>
-                  ) : null}
-                  {a.shares != null ? (
-                    <span className="badge">paylaşım {a.shares.toLocaleString('tr-TR')}</span>
-                  ) : null}
-                  {a.clicks != null ? (
-                    <span className="badge">tıklama {a.clicks.toLocaleString('tr-TR')}</span>
-                  ) : null}
-                </div>
-              ) : (
-                <p className="muted published-post-nometrics">Metrik yok — «İstatistikleri yenile»</p>
-              )}
-              <div className="published-post-actions row">
-                {publicUrl ? (
-                  <a href={publicUrl} target="_blank" rel="noopener noreferrer">
-                    Paylaşımı aç ↗
-                  </a>
-                ) : p.platformPostId ? (
-                  <span className="muted">mock: {p.platformPostId}</span>
-                ) : (
-                  <span className="muted">{accountName || p.platform}</span>
-                )}
-                {p.isDryRun || p.isMockPost ? <span className="badge warn">dry-run / mock</span> : null}
+          <HoverExpandRow
+            key={p.id}
+            summary={
+              <>
+                <PlatformIconLink platform={p.platform} username={accountName} />
+                <span
+                  className={
+                    p.segment && isAudienceSegment(p.segment)
+                      ? 'hover-row-chip'
+                      : 'hover-row-chip muted'
+                  }
+                  title="Hedef kitle segmenti"
+                >
+                  {segmentLabel(p.segment)}
+                </span>
+                <span className="hover-row-line">{hoverSnippet(p.postContent)}</span>
+                {a?.engagement != null ? (
+                  <span className="hover-row-chip">{a.engagement.toLocaleString('tr-TR')}</span>
+                ) : null}
+                <time className="muted hover-row-when">{formatWhen(p.publishedAt || p.createdAt)}</time>
+              </>
+            }
+          >
+            <p className="hover-row-preview">{p.postContent.trim() || '(içerik yok)'}</p>
+            {p.imagePreviewUrl ? (
+              <img src={p.imagePreviewUrl} alt="" className="hover-row-thumb" loading="lazy" />
+            ) : null}
+            {a ? (
+              <div className="sm-post-stats row">
+                {a.impressions != null ? (
+                  <span className="badge">gösterim {a.impressions.toLocaleString('tr-TR')}</span>
+                ) : null}
+                {a.engagement != null ? (
+                  <span className="badge ok">etkileşim {a.engagement.toLocaleString('tr-TR')}</span>
+                ) : null}
+                {a.likes != null ? <span className="badge">beğeni {a.likes.toLocaleString('tr-TR')}</span> : null}
+                {a.comments != null ? (
+                  <span className="badge">yorum {a.comments.toLocaleString('tr-TR')}</span>
+                ) : null}
+                {a.shares != null ? (
+                  <span className="badge">paylaşım {a.shares.toLocaleString('tr-TR')}</span>
+                ) : null}
+                {a.clicks != null ? (
+                  <span className="badge">tıklama {a.clicks.toLocaleString('tr-TR')}</span>
+                ) : null}
               </div>
+            ) : (
+              <p className="muted published-post-nometrics">Metrik yok — «İstatistikleri yenile»</p>
+            )}
+            <div className="hover-row-actions row">
+              {publicUrl ? (
+                <a href={publicUrl} target="_blank" rel="noopener noreferrer">
+                  Paylaşımı aç ↗
+                </a>
+              ) : p.platformPostId ? (
+                <span className="muted">mock: {p.platformPostId}</span>
+              ) : (
+                <span className="muted">{accountName || p.platform}</span>
+              )}
+              {p.isDryRun || p.isMockPost ? <span className="badge warn">dry-run / mock</span> : null}
             </div>
-          </li>
+          </HoverExpandRow>
         )
       })}
-    </ul>
+    </HoverExpandList>
   )
 }

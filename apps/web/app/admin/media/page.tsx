@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 import { DEFAULT_ADMIN_API_KEY } from '@/lib/adminKey'
+import { HoverExpandList, HoverExpandRow } from '@/components/admin/HoverExpandList'
 
 type MediaItem = {
   id: string
@@ -202,11 +203,19 @@ export default function MediaPage() {
         <section className="panel" style={{ marginBottom: '1rem' }}>
           <h2>Görsel → platform export</h2>
           <p className="muted">Master görselden LinkedIn, X, IG, Pinterest vb. JPEG boyutları (sharp crop).</p>
-          <ul className="list">
+          <HoverExpandList>
             {imageMasters.map((m) => (
-              <li key={m.id}>
-                <strong>{m.derivedContent?.title || m.id}</strong>
-                <div className="muted">{formatSize(m.fileSize)} · {m.format}</div>
+              <HoverExpandRow
+                key={m.id}
+                summary={
+                  <>
+                    <strong className="hover-row-title">{m.derivedContent?.title || m.id}</strong>
+                    <span className="muted hover-row-chip">
+                      {formatSize(m.fileSize)} · {m.format}
+                    </span>
+                  </>
+                }
+              >
                 <div className="row" style={{ marginTop: '0.35rem', gap: '0.5rem' }}>
                   <a href={`/api/media/${m.id}/image`} target="_blank" rel="noreferrer" className="secondary btn" style={{ textDecoration: 'none', padding: '0.4rem 0.7rem' }}>
                     Önizle
@@ -215,25 +224,29 @@ export default function MediaPage() {
                     Tüm platform boyutları
                   </button>
                 </div>
-              </li>
+              </HoverExpandRow>
             ))}
-          </ul>
+          </HoverExpandList>
         </section>
       ) : null}
 
       <section className="panel">
         <h2>Üretilmiş dosyalar</h2>
-        <ul className="list">
+        <HoverExpandList>
           {items.map((m) => (
-            <li key={m.id}>
-              <div className="row">
-                <span className="badge">{m.mediaType}</span>
-                <span className={`badge ${m.processingStatus === 'COMPLETED' ? 'ok' : m.processingStatus === 'FAILED' ? 'danger' : 'warn'}`}>
-                  {m.processingStatus}
-                </span>
-                <span className="muted">{m.derivedContent?.contentType}</span>
-              </div>
-              <strong>{m.derivedContent?.title || m.id}</strong>
+            <HoverExpandRow
+              key={m.id}
+              summary={
+                <>
+                  <span className="badge">{m.mediaType}</span>
+                  <span className={`badge ${m.processingStatus === 'COMPLETED' ? 'ok' : m.processingStatus === 'FAILED' ? 'danger' : 'warn'}`}>
+                    {m.processingStatus}
+                  </span>
+                  <strong className="hover-row-title">{m.derivedContent?.title || m.id}</strong>
+                  <span className="muted hover-row-chip">{m.derivedContent?.contentType}</span>
+                </>
+              }
+            >
               <div className="muted">
                 {m.duration ? `~${m.duration}s` : ''} · {formatSize(m.fileSize)} · {m.format}
               </div>
@@ -247,10 +260,10 @@ export default function MediaPage() {
                   style={{ maxWidth: 200, marginTop: '0.5rem', borderRadius: 8 }}
                 />
               ) : null}
-            </li>
+            </HoverExpandRow>
           ))}
-          {!items.length ? <li className="muted">Henüz medya dosyası yok</li> : null}
-        </ul>
+          {!items.length ? <li className="muted hover-row" style={{ border: 'none', boxShadow: 'none' }}>Henüz medya dosyası yok</li> : null}
+        </HoverExpandList>
       </section>
     </div>
   )

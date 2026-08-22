@@ -6,6 +6,7 @@ import { createDerivedContent, setDerivedStatus } from '@/lib/content-crud'
 import { detectAudienceSegment, isAudienceSegment, parseSegmentFromTags } from '@/lib/audience/segments'
 
 export const dynamic = 'force-dynamic'
+export const maxDuration = 300
 
 export async function GET(req: NextRequest) {
   if (!requireAdmin(req)) {
@@ -61,15 +62,60 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
   const action = String(body.action || '')
 
-  if (action === 'bulkApprove' || action === 'bulkReject') {
+  if (action === 'quarantineVideos') {
+    const { quarantineVideoScripts } = await import('@/lib/review/fault')
+    const reason =
+      String(body.reason || '').trim() ||
+      'Video — prod/Vercel\'de üretilemez; Arı kuyruğuna alındı (yerel npm run dev)'
+    const count = await quarantineVideoScripts(reason)
+    return NextResponse.json({ count, reason })
+  }
+
+  if (action === 'quarantine') {
     const ids = Array.isArray(body.ids) ? body.ids.map(String).filter(Boolean) : []
     if (!ids.length) {
       return NextResponse.json({ error: 'ids[] required' }, { status: 400 })
+    }
+    const reason = String(body.reason || '').trim() || 'Manuel arı kuyruğu'
+    const { quarantineByIds } = await import('@/lib/review/fault')
+    const count = await quarantineByIds(ids, reason)
+    return NextResponse.json({ count, reason })
+  }
+
+  if (action === 'clearFault') {
+    const ids = Array.isArray(body.ids) ? body.ids.map(String).filter(Boolean) : []
+    if (!ids.length) {
+      return NextResponse.json({ error: 'ids[] required' }, { status: 400 })
+    }
+    const { clearReviewFault } = await import('@/lib/review/fault')
+    for (const id of ids) await clearReviewFault(id)
+    return NextResponse.json({ cleared: ids.length })
+  }
+
+  if (action === 'bulkApprove' || action === 'bulkReject') {
+    let ids = Array.isArray(body.ids) ? body.ids.map(String).filter(Boolean) : []
+    if (!ids.length) {
+      return NextResponse.json({ error: 'ids[] required' }, { status: 400 })
+    }
+    const contentTypes = Array.isArray(body.contentTypes)
+      ? body.contentTypes.map(String).filter(Boolean)
+      : []
+    if (contentTypes.length) {
+      const allowed = new Set(contentTypes)
+      const rows = await prisma.derivedContent.findMany({
+        where: { id: { in: ids }, contentType: { in: contentTypes as ContentType[] } },
+        select: { id: true },
+      })
+      ids = rows.map((r) => r.id)
+      if (!ids.length) {
+        return NextResponse.json({ error: 'Seçilen tiplerde eşleşen id yok', result: { processed: 0, errors: [] } })
+      }
     }
     const { bulkSetDerivedStatus } = await import('@/lib/pipeline')
     const status = action === 'bulkApprove' ? 'APPROVED' : 'REJECTED'
     const result = await bulkSetDerivedStatus(ids, status, {
       autoMedia: Boolean(body.autoMedia),
+      autoWpDraft: action === 'bulkApprove' && Boolean(body.autoWpDraft),
     })
     return NextResponse.json({ result })
   }

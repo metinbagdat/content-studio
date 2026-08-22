@@ -42,7 +42,7 @@ function contactsPath(): string {
 async function reachFetch(path: string, init: RequestInit = {}): Promise<Response> {
   const token = reachToken()
   if (!token) {
-    throw new Error('HOSTINGER_API_TOKEN eksik (Reach → Integrations → Public API)')
+    throw new Error('HOSTINGER_API_TOKEN eksik (hPanel → API Bearer token)')
   }
   const headers = new Headers(init.headers)
   headers.set('Authorization', `Bearer ${token}`)

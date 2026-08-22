@@ -1,8 +1,9 @@
 import { mkdir, writeFile, readFile } from 'fs/promises'
 import path from 'path'
+import { storageSubdir } from '../storage/writableRoot'
 
 export function imageStorageDir(): string {
-  return path.join(process.cwd(), 'storage', 'images')
+  return storageSubdir('images')
 }
 
 export async function writeImageFile(filename: string, data: Buffer): Promise<string> {

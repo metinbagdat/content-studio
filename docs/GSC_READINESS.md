@@ -13,7 +13,7 @@
 | 1 | Property correct | GSC → property picker | **Manual** — confirm `https://blog.egitim.today/` |
 | 2 | Sitemap submitted | GSC → Sitemaps | **Manual** — submit `sitemap_index.xml` if not done |
 | 3 | Sitemap live | HTTP | **Pass** — `sitemap_index.xml` 200, Rank Math comment present |
-| 4 | Post URLs in sitemap | `post-sitemap.xml` | **Pass** — 8 URLs (yazılar + 7 articles) |
+| 4 | Post URLs in sitemap | `post-sitemap.xml` | **Pass** — 9 locs (yazılar + **8 articles** incl. #28) |
 | 5 | robots.txt sitemap | HTTP | **Pass** — `Sitemap: https://blog.egitim.today/sitemap_index.xml` |
 | 6 | Rank Math on site | HTML | **Pass** — rank-math markers on home + sample posts |
 | 7 | GSC verification meta | HTML | **Pass** — `google-site-verification` on home |
@@ -53,4 +53,4 @@
 
 | Date | Impressions (28d) | Top query | Notes |
 |------|-------------------|-----------|-------|
-| 2026-08-20 | **0** (Last 3 months also 0) | _(empty)_ | GSC UI confirmed: Clicks 0, Impressions 0, Queries tab empty. **CS-WP-03b deferred.** |
+| 2026-08-20 | **0** (Last 3 months also 0) | _(empty)_ | GSC UI confirmed empty. Rank Math meta+links+categories for 8 posts done. **Next manual:** URL Inspection on #28 + one TYT post. |

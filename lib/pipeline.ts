@@ -19,6 +19,24 @@ import { resolveAudienceSegment } from './audience/resolveAudienceSegment'
 import { metaBulkPublishGapMs } from './social/metaReview'
 import { splitArticleForEpisodes, suggestedPodcastEpisodeCount } from './media/podcastEpisodes'
 import { canonicalArticleUrl } from './content/canonicalUrl'
+import { isServerlessRuntime } from './storage/writableRoot'
+import {
+  faultMessageFromBulkError,
+  isStorageOrVideoFault,
+  markReviewFault,
+  reopenReviewWithFault,
+  readReviewFault,
+  VIDEO_FAULT_TYPES,
+} from './review/fault'
+
+const WP_DRAFT_TYPES = new Set([
+  'BLOG_POST',
+  'PODCAST_SCRIPT',
+  'VIDEO_SCRIPT',
+  'SHORT_VIDEO_SCRIPT',
+  'MARCH_LYRICS',
+  'SONG_LYRICS',
+])
 
 export type PipelineConfig = {
   platforms: SocialPlatform[]
@@ -486,6 +504,7 @@ export type BulkStatusResult = {
   rejected: number
   draftsCreated: number
   mediaGenerated: number
+  wpDraftsSent: number
   errors: string[]
 }
 
@@ -493,7 +512,7 @@ export type BulkStatusResult = {
 export async function bulkSetDerivedStatus(
   ids: string[],
   status: 'APPROVED' | 'REJECTED',
-  options: { autoMedia?: boolean } = {},
+  options: { autoMedia?: boolean; autoWpDraft?: boolean } = {},
 ): Promise<BulkStatusResult> {
   const result: BulkStatusResult = {
     processed: 0,
@@ -501,11 +520,37 @@ export async function bulkSetDerivedStatus(
     rejected: 0,
     draftsCreated: 0,
     mediaGenerated: 0,
+    wpDraftsSent: 0,
     errors: [],
   }
 
   for (const id of ids) {
     try {
+      const existing = await prisma.derivedContent.findUnique({
+        where: { id },
+        select: { metadata: true, contentType: true, status: true },
+      })
+      if (!existing) {
+        result.errors.push(`${id}: bulunamadı`)
+        continue
+      }
+      if (readReviewFault(existing.metadata).fault) {
+        result.errors.push(`${id}: Arı kuyruğunda — toplu onay atlandı`)
+        continue
+      }
+
+      if (
+        status === 'APPROVED' &&
+        options.autoMedia &&
+        isServerlessRuntime() &&
+        VIDEO_FAULT_TYPES.has(existing.contentType)
+      ) {
+        const msg = 'Video — prod/Vercel\'de üretilemez; Arı kuyruğuna alındı (yerel npm run dev)'
+        await markReviewFault(id, msg)
+        result.errors.push(`${id}: ${msg}`)
+        continue
+      }
+
       const before = await prisma.socialMediaPost.count({ where: { derivedContentId: id } })
       const derived = await setDerivedStatus(id, status)
       result.processed += 1
@@ -528,7 +573,9 @@ export async function bulkSetDerivedStatus(
               await generateAiImageVariations(id, 2)
               result.mediaGenerated += 1
             } catch (err) {
-              result.errors.push(`${id}: AI gorsel - ${err instanceof Error ? err.message : String(err)}`)
+              const msg = `AI gorsel - ${err instanceof Error ? err.message : String(err)}`
+              await markReviewFault(id, msg)
+              result.errors.push(`${id}: ${msg}`)
             }
           }
           if (derived.contentType === 'MARCH_LYRICS' || derived.contentType === 'SONG_LYRICS') {
@@ -537,17 +584,44 @@ export async function bulkSetDerivedStatus(
               await generateSongAudio(id)
               result.mediaGenerated += 1
             } catch (err) {
-              result.errors.push(`${id}: Sarki sesi - ${err instanceof Error ? err.message : String(err)}`)
+              const msg = `Sarki sesi - ${err instanceof Error ? err.message : String(err)}`
+              await markReviewFault(id, msg)
+              result.errors.push(`${id}: ${msg}`)
             }
           }
           if (derived.contentType === 'VIDEO_SCRIPT' || derived.contentType === 'SHORT_VIDEO_SCRIPT') {
-            try {
-              const { ensureGeneratedVideo } = await import('./social/publishVideo')
-              await ensureGeneratedVideo(id)
-              result.mediaGenerated += 1
-            } catch (err) {
-              result.errors.push(`${id}: Video - ${err instanceof Error ? err.message : String(err)}`)
+            if (isServerlessRuntime()) {
+              const msg = "Video — Vercel'de atlandı; yerel npm run dev ile üretin"
+              await reopenReviewWithFault(id, msg)
+              result.approved -= 1
+              result.errors.push(`${id}: ${msg}`)
+            } else {
+              try {
+                const { ensureGeneratedVideo } = await import('./social/publishVideo')
+                await ensureGeneratedVideo(id)
+                result.mediaGenerated += 1
+              } catch (err) {
+                const msg = `Video - ${err instanceof Error ? err.message : String(err)}`
+                await reopenReviewWithFault(id, msg)
+                result.approved -= 1
+                result.errors.push(`${id}: ${msg}`)
+              }
             }
+          }
+        }
+
+        if (options.autoWpDraft && WP_DRAFT_TYPES.has(derived.contentType)) {
+          try {
+            const { sendDerivedToWordPressDraft } = await import('./wordpress/sendDraft')
+            const wp = await sendDerivedToWordPressDraft(id)
+            if (wp.publish?.success) result.wpDraftsSent += 1
+            else if (!wp.skipped) {
+              result.errors.push(
+                `${id}: WP draft - ${wp.publish?.errorMessage || wp.validation?.reason || 'başarısız'}`,
+              )
+            }
+          } catch (err) {
+            result.errors.push(`${id}: WP draft - ${err instanceof Error ? err.message : String(err)}`)
           }
         }
       } else {
@@ -556,6 +630,14 @@ export async function bulkSetDerivedStatus(
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       result.errors.push(`${id}: ${msg}`)
+      await markReviewFault(id, msg).catch(() => {})
+    }
+  }
+
+  for (const line of result.errors) {
+    const parsed = faultMessageFromBulkError(line)
+    if (parsed && isStorageOrVideoFault(parsed.message)) {
+      await reopenReviewWithFault(parsed.id, parsed.message).catch(() => {})
     }
   }
 
