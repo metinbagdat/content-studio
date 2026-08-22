@@ -77,8 +77,10 @@ async function edgeTts(text: string, voiceOverride?: string): Promise<Buffer> {
   return buffer
 }
 
+import { storageSubdir } from '../storage/writableRoot'
+
 export function audioStorageDir(): string {
-  return path.join(process.cwd(), 'storage', 'audio')
+  return storageSubdir('audio')
 }
 
 export async function writeAudioFile(filename: string, data: Buffer): Promise<string> {

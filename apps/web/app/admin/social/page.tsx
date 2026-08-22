@@ -9,6 +9,7 @@ import { DraftDiagnosticsPanel, type DraftDiagnostics } from '@/components/admin
 import { TopPerformersPanel, type TopPerformingPost } from '@/components/admin/TopPerformersPanel'
 import { EngagementDigestPanel } from '@/components/admin/EngagementDigestPanel'
 import { PlatformIconLink } from '@/components/admin/PlatformIconLink'
+import { HoverExpandList, HoverExpandRow, hoverSnippet } from '@/components/admin/HoverExpandList'
 import { DEFAULT_ADMIN_API_KEY } from '@/lib/adminKey'
 import type { EngagementDigest } from '@/lib/social/engagementDigest'
 import { AUDIENCE_SEGMENTS, SEGMENT_LABELS, isAudienceSegment, type AudienceSegment } from '@/lib/audience/segments'
@@ -1160,18 +1161,25 @@ export default function SocialPage() {
             ))}
           </div>
         ) : null}
-        <ul className="list">
+        <HoverExpandList>
           {captionGroups.map(([captionId, groupPosts]) => {
             const sample = groupPosts[0]
             const previewUrl = groupPosts.find((p) => p.imagePreviewUrl)?.imagePreviewUrl
+            const groupEditing = Boolean(editingId && groupPosts.some((p) => p.id === editingId))
             return (
-              <li key={captionId} style={{ marginBottom: '1.25rem' }}>
-                <div className="row" style={{ marginBottom: '0.5rem' }}>
-                  <strong>Caption</strong>
-                  <span className="badge">{groupPosts.length} hesap</span>
-                  <span className="muted" style={{ fontSize: '0.78rem' }}>{captionId.slice(0, 8)}…</span>
-                </div>
-                {editingId && groupPosts.some((p) => p.id === editingId) ? (
+              <HoverExpandRow
+                key={captionId}
+                expanded={groupEditing}
+                summary={
+                  <>
+                    <strong className="hover-row-title">Caption</strong>
+                    <span className="badge">{groupPosts.length} hesap</span>
+                    <span className="hover-row-line">{hoverSnippet(sample?.postContent || '', 90)}</span>
+                    <span className="muted hover-row-chip">{captionId.slice(0, 8)}…</span>
+                  </>
+                }
+              >
+                {groupEditing ? (
                   groupPosts
                     .filter((p) => p.id === editingId)
                     .map((p) => (
@@ -1208,26 +1216,31 @@ export default function SocialPage() {
                     ) : null}
                   </>
                 )}
-                <ul className="list" style={{ marginTop: '0.75rem', paddingLeft: '0.5rem' }}>
+                <HoverExpandList className="hover-list-nested">
                   {groupPosts.map((p) => (
-                    <li key={p.id} style={{ borderLeft: '3px solid var(--border)', paddingLeft: '0.75rem', marginTop: '0.5rem' }}>
-                      <div className="row">
-                        <strong>{p.account?.accountName || 'Hesap'}</strong>
-                        <PlatformIconLink platform={p.platform} username={p.account?.accountName} />
-                        {p.isDryRun ? <span className="badge warn">dry-run</span> : null}
-                        {!p.account?.isActive && !p.isDryRun ? <span className="badge">off</span> : null}
-                        <span
-                          className="badge"
-                          title={isAudienceSegment(p.segment) ? 'Hedef kitle segmenti' : 'Hedef kitle atanmamış'}
-                        >
-                          {segmentBadgeLabel(p.segment)}
-                        </span>
-                        <span className={`badge ${p.status === 'PUBLISHED' ? 'ok' : p.status === 'FAILED' ? 'danger' : 'warn'}`}>
-                          {p.status}
-                        </span>
-                        {p.imageAttached === true ? <span className="badge ok">görsel OK</span> : null}
-                        {p.imageError ? <span className="badge danger">görsel hata</span> : null}
-                      </div>
+                    <HoverExpandRow
+                      key={p.id}
+                      expanded={editingId === p.id}
+                      summary={
+                        <>
+                          <strong>{p.account?.accountName || 'Hesap'}</strong>
+                          <PlatformIconLink platform={p.platform} username={p.account?.accountName} />
+                          {p.isDryRun ? <span className="badge warn">dry-run</span> : null}
+                          {!p.account?.isActive && !p.isDryRun ? <span className="badge">off</span> : null}
+                          <span
+                            className="badge"
+                            title={isAudienceSegment(p.segment) ? 'Hedef kitle segmenti' : 'Hedef kitle atanmamış'}
+                          >
+                            {segmentBadgeLabel(p.segment)}
+                          </span>
+                          <span className={`badge ${p.status === 'PUBLISHED' ? 'ok' : p.status === 'FAILED' ? 'danger' : 'warn'}`}>
+                            {p.status}
+                          </span>
+                          {p.imageAttached === true ? <span className="badge ok">görsel OK</span> : null}
+                          {p.imageError ? <span className="badge danger">görsel hata</span> : null}
+                        </>
+                      }
+                    >
                       {p.imageError ? (
                         <p className="muted" style={{ margin: '0.25rem 0 0', color: 'var(--danger)', fontSize: '0.8rem' }}>
                           {String(p.imageError).slice(0, 180)}
@@ -1288,16 +1301,18 @@ export default function SocialPage() {
                           ) : null}
                         </div>
                       ) : null}
-                    </li>
+                    </HoverExpandRow>
                   ))}
-                </ul>
-              </li>
+                </HoverExpandList>
+              </HoverExpandRow>
             )
           })}
           {!visiblePosts.length ? (
-            <li className="muted">Onaylı caption + bağlı hesap → taslak oluşur (veya senkronize et)</li>
+            <li className="muted hover-row" style={{ border: 'none', boxShadow: 'none', padding: '0.5rem 0' }}>
+              Onaylı caption + bağlı hesap → taslak oluşur (veya senkronize et)
+            </li>
           ) : null}
-        </ul>
+        </HoverExpandList>
       </section>
       ) : null}
     </div>

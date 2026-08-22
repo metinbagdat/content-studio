@@ -49,8 +49,9 @@ __pycache__/
 venv/
 .venv/
 
-# App data
-storage/
+# App data (repo-root media cache — not lib/storage code)
+/storage/
+!lib/storage/
 
 # Deploy / misc
 .vercel

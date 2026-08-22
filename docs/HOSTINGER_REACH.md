@@ -8,7 +8,8 @@ Reach kampanya **gönderimi API’de yok**. AI ile mail yazma + Send, Reach pane
 
 1. hPanel → **Reach** (e-posta pazarlama) hesabını aç.
 2. Gönderen domain: `egitim.today` nameserver’ı Vercel’de. SPF/DKIM’i **Vercel DNS**’e ekle (Hostinger “otomatik auth” nameserver isterse kullanma).
-3. **Integrations → Reach public API** → token üret.
+3. **API token:** [hPanel → API](https://hpanel.hostinger.com/api) (Account / Bearer token).  
+   Reach eklentisi **Integrations → Public API** anahtarı çoğu zaman `Unauthenticated` verir — Content Studio **Hostinger Account API** token ister.
 4. WordPress (`blog.egitim.today`): eklenti **Hostinger Reach** (form / CF7 / Woo sync). Public kayıt formları WP’de; CS admin’e herkese açık subscribe koyma.
 
 ## Content Studio env
@@ -32,6 +33,8 @@ Vercel Production + Preview’a aynı değişkenler. Token’ı git’e yazma.
 Kod: `lib/email/hostingerReach.ts` → `https://developers.hostinger.com/api/reach/v1/...`
 
 Çift opt-in Reach’te açıksa kişi `pending` olur; onay maili Reach gönderir.
+
+**Gruplar:** `GET /api/reach/v1/contacts/groups` bazı hesaplarda `[Reach:9999]` döner. CS bunu yumuşak hata sayar — kişi listesi çalışmaya devam eder.
 
 ## Issue’lar
 

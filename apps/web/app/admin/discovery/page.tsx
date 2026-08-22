@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { DEFAULT_ADMIN_API_KEY } from '@/lib/adminKey'
+import { HoverExpandList, HoverExpandRow } from '@/components/admin/HoverExpandList'
 
 type RecentSource = {
   id: string
@@ -173,19 +174,25 @@ export default function DiscoveryPage() {
 
         <section className="panel">
           <h2>Son blog kaynakları</h2>
-          <ul className="list">
+          <HoverExpandList>
             {(info?.recent || []).map((s) => (
-              <li key={s.id} style={{ marginBottom: '0.5rem' }}>
-                <div className="row">
-                  <span className="badge">blog</span>
-                  <span className="muted">{new Date(s.createdAt).toLocaleString()}</span>
-                </div>
-                <div>{s.title}</div>
+              <HoverExpandRow
+                key={s.id}
+                summary={
+                  <>
+                    <span className="badge">blog</span>
+                    <strong className="hover-row-title">{s.title}</strong>
+                    <span className="muted hover-row-when">{new Date(s.createdAt).toLocaleString('tr-TR')}</span>
+                  </>
+                }
+              >
                 {s.slug ? <div className="muted">slug: {s.slug}</div> : null}
-              </li>
+              </HoverExpandRow>
             ))}
-            {!info?.recent?.length ? <li className="muted">Henüz discovery kaydı yok</li> : null}
-          </ul>
+            {!info?.recent?.length ? (
+              <li className="muted hover-row" style={{ border: 'none', boxShadow: 'none' }}>Henüz discovery kaydı yok</li>
+            ) : null}
+          </HoverExpandList>
         </section>
       </div>
 

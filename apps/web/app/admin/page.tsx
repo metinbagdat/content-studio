@@ -8,6 +8,7 @@ import {
   PLATFORM_TARGETS,
   type PlatformTarget,
 } from '@/lib/platforms/targets'
+import { HoverExpandList, HoverExpandRow, hoverSnippet } from '@/components/admin/HoverExpandList'
 
 type PlatformId = PlatformTarget['id']
 
@@ -381,9 +382,20 @@ export default function AdminPipelinePage() {
           Discovery bazen sitemap’taki <strong>kategori sayfalarını</strong> (ör. “TYT Hazırlık Rehberleri”)
           ayrı kaynak olarak ekler — slug farklı, başlık benzer görünür. Yeni discovery hub sayfalarını atlar.
         </p>
-        <ul className="list">
+        <HoverExpandList>
           {sources.map((s) => (
-            <li key={s.id}>
+            <HoverExpandRow
+              key={s.id}
+              expanded={editSourceId === s.id}
+              summary={
+                <>
+                  <strong className="hover-row-title">{s.title}</strong>
+                  <span className="badge">{s.category}</span>
+                  {sourceSlug(s.tags) ? <span className="badge muted">slug: {sourceSlug(s.tags)}</span> : null}
+                  <span className="muted hover-row-when">{new Date(s.createdAt).toLocaleString('tr-TR')}</span>
+                </>
+              }
+            >
               {editSourceId === s.id ? (
                 <>
                   <label>Başlık</label>
@@ -401,12 +413,7 @@ export default function AdminPipelinePage() {
                 </>
               ) : (
                 <>
-                  <div className="row">
-                    <strong>{s.title}</strong>
-                    <span className="badge">{s.category}</span>
-                    {sourceSlug(s.tags) ? <span className="badge muted">slug: {sourceSlug(s.tags)}</span> : null}
-                  </div>
-                  <div className="muted">{new Date(s.createdAt).toLocaleString()}</div>
+                  {s.content ? <p className="hover-row-preview">{hoverSnippet(s.content, 200)}</p> : null}
                   <div className="row" style={{ marginTop: '0.45rem' }}>
                     <button
                       type="button"
@@ -432,38 +439,42 @@ export default function AdminPipelinePage() {
                   </div>
                 </>
               )}
-            </li>
+            </HoverExpandRow>
           ))}
           {!sources.length ? (
-            <li className="empty-state">
+            <li className="empty-state hover-row" style={{ border: 'none', boxShadow: 'none' }}>
               <strong>Henüz kaynak yok</strong>
               Soldan makale ekle veya Discovery ile tara. DB boşsa `.env` DATABASE_URL’i kontrol et.
             </li>
           ) : null}
-        </ul>
+        </HoverExpandList>
       </section>
 
       <section className="panel" style={{ marginTop: '1rem' }}>
         <h2>Son pipeline’lar</h2>
-        <ul className="list">
+        <HoverExpandList>
           {pipelines.map((p) => {
             const stuckPending =
               p.status === 'PENDING' && Date.now() - new Date(p.createdAt).getTime() > 2 * 60_000
             return (
-              <li key={p.id}>
-                <div className="row">
-                  <strong>{p.source?.title || p.name}</strong>
-                  <span
-                    className={`badge ${
-                      p.status === 'COMPLETED' ? 'ok' : p.status === 'FAILED' ? 'danger' : 'warn'
-                    }`}
-                  >
-                    {p.status}
-                  </span>
-                </div>
-                <div className="muted">
-                  adım {p.currentStep}/{p.totalSteps}
-                </div>
+              <HoverExpandRow
+                key={p.id}
+                summary={
+                  <>
+                    <strong className="hover-row-title">{p.source?.title || p.name}</strong>
+                    <span
+                      className={`badge ${
+                        p.status === 'COMPLETED' ? 'ok' : p.status === 'FAILED' ? 'danger' : 'warn'
+                      }`}
+                    >
+                      {p.status}
+                    </span>
+                    <span className="muted hover-row-chip">
+                      adım {p.currentStep}/{p.totalSteps}
+                    </span>
+                  </>
+                }
+              >
                 {p.errors?.length ? (
                   <p className="muted" style={{ color: 'var(--danger)', fontSize: '0.8rem', margin: '0.3rem 0 0' }}>
                     {p.errors[p.errors.length - 1].slice(0, 200)}
@@ -490,16 +501,16 @@ export default function AdminPipelinePage() {
                     Sil
                   </button>
                 </div>
-              </li>
+              </HoverExpandRow>
             )
           })}
           {!pipelines.length ? (
-            <li className="empty-state">
+            <li className="empty-state hover-row" style={{ border: 'none', boxShadow: 'none' }}>
               <strong>Pipeline yok</strong>
               Kaynak seçip Start Pipeline ile X + YouTube türevlerini üret.
             </li>
           ) : null}
-        </ul>
+        </HoverExpandList>
       </section>
     </div>
   )

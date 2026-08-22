@@ -1,12 +1,13 @@
 import { mkdir, writeFile, readFile } from 'fs/promises'
 import path from 'path'
+import { storageSubdir } from '../storage/writableRoot'
 
 export function videoStorageDir(): string {
-  return path.join(process.cwd(), 'storage', 'videos')
+  return storageSubdir('videos')
 }
 
 export function videoWorkDir(): string {
-  return path.join(process.cwd(), 'storage', 'video-work')
+  return storageSubdir('video-work')
 }
 
 export async function writeVideoFile(filename: string, data: Buffer): Promise<string> {

@@ -5,8 +5,10 @@ import { configureFfmpeg } from '@/lib/media/ffmpegPaths'
 
 configureFfmpeg()
 
+import { storageSubdir } from '../storage/writableRoot'
+
 function musicLibraryDir(): string {
-  return path.join(process.cwd(), 'storage', 'music-library')
+  return storageSubdir('music-library')
 }
 
 const MOOD_FOLDERS: Record<string, string> = {

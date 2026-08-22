@@ -33,7 +33,7 @@ Status legend: `todo` · `doing` · `done` · `blocked` · `learncon` (tracked i
 | CS-10 | Image resize per platform | done | CS-03 | Batch JPEG export from master via sharp; template cards render direct per size |
 | CS-11 | Infographic text format | done | CS-01 | Bullet/stat copy + 5-point ImageResponse PNG (`generateInfographicImage`); DALL-E optional later |
 | CS-SM-01 | Audience segments (TYT/AYT/LGS/veli) | done | CS-SM-EPIC | Core done (tags, hashtags, platform order, Onay filter, LLM-on-genel). Sosyal panel polish → [#56](https://github.com/metinbagdat/content-studio/issues/56) (CS-SM-01b) |
-| CS-WP | WordPress SEO hub bridge | doing | wp-seo-hub repo | TT4 + Rank Math; **7 live articles** (#15/#20 + #23–#27). Next: Rank Math wizard + GSC *property* (manual). OAuth = CS-WP-03b **only after impressions** |
+| CS-WP | WordPress SEO hub bridge | doing | wp-seo-hub repo | **Foundation done:** 8 live posts, Rank Math, categories, GSC properties + indexing requested. LC pillars (#1338). **Gate:** wait GSC impressions before OAuth/Reach. SM: #28 atomizing in Studio |
 | CS-WP-03b | GSC OAuth refresh (durable token) | todo | GSC shows **impressions** (not “posts exist”) | Store refresh token like X/LI; stop pasting `GSC_ACCESS_TOKEN`. Published ≠ indexed ≠ queries |
 | CS-WP-04 | WP publish → SM webhook | doing | CS-WP | `POST /api/webhooks/wordpress-published` live |
 | CS-WP-05 | Canonical blog is WordPress | doing | WP live | Discovery = WP sitemap; 5 LearnCon long-forms on WP; LC 301s **merged** [#1328](https://github.com/metinbagdat/learncon/pull/1328) |
@@ -85,15 +85,15 @@ Do **not** put LearnCon product code in this repo. LC-G6 still lands in `metinba
 | # | Work | Status |
 |---|------|--------|
 | 1 | Real blog, not Hostinger AI / TT4 Études demo | **done** 2026-08-18: Twenty Twenty-Four, static home + CTA → `egitim.today` |
-| 2 | Technical SEO | Rank Math **plugin active**; sitemap OK (`sitemap_index.xml` / `post-sitemap.xml`). **Still you:** Rank Math setup wizard + GSC *property* verified (sitemap submitted). This is **not** Studio OAuth |
-| 3 | First real articles | **done (corpus):** WP **#15, #20, #23–#27** (7 articles). Canonical = `blog.egitim.today`. LearnCon `/blog` = Haberler only; 301s **merged** [learncon#1328](https://github.com/metinbagdat/learncon/pull/1328) |
-| 4 | Every post CTA → `egitim.today` | Homepage CTA live; keep on every article |
-| 5 | Topic engine (HPV) | **code done:** DataForSEO + optional GSC overlay. `fetchGscQueries()` = last **28 days** of *queries*. Empty rows are normal until Google indexes + shows impressions. **Do not build CS-WP-03b** until GSC UI has non-zero queries/impressions |
-| 6 | Product-site clusters + OG | LearnCon **LC-G6** (pulled forward) |
-| 7 | Publish webhook → SM | Live: WP ingest path exists; LI partial; YT/TT upload still open — [#47](https://github.com/metinbagdat/content-studio/issues/47) |
-| 8 | SM → SEO wiring | Canonical URL on captions [#48](https://github.com/metinbagdat/content-studio/issues/48); YouTube durable MP4 [#49](https://github.com/metinbagdat/content-studio/issues/49) |
-| 9 | Reach newsletter | Corpus size OK; wait for **search signal** (same gate as GSC OAuth), then token |
-| 10 | LearnCon `/blog` → WP | **done decision + migrate + 301s.** Long-form only on WP |
+| 2 | Technical SEO | **done for now** — Rank Math + sitemaps + GSC properties (`blog` + `www`); indexing requested. Re-check Performance in 1–2 days |
+| 3 | First real articles | **done** — WP **#15, #20, #23–#28** (8) + categories + CTA |
+| 4 | Every post CTA → `egitim.today` | **done** |
+| 5 | Topic engine (HPV) | code done; **blocked on GSC impressions** for live query overlay / OAuth |
+| 6 | Product-site clusters + OG | **done** LC-G6 + #1338 (manifesto on `/blog/konu/strateji`) |
+| 7 | Publish webhook → SM | ingest live; **#28 atomizing** (~47 derivatives). Drain other PENDING WP pipelines next |
+| 8 | SM → SEO wiring | captions/canonical — continue after Onay on #28 pack |
+| 9 | Reach newsletter | wait **search signal** |
+| 10 | LearnCon `/blog` → WP | **done** |
 
 ### GSC / Rank Math / OAuth — what each actually does
 

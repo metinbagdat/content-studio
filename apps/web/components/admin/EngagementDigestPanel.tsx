@@ -1,6 +1,7 @@
 'use client'
 
 import { PlatformIconLink } from '@/components/admin/PlatformIconLink'
+import { HoverExpandList, HoverExpandRow, hoverSnippet } from '@/components/admin/HoverExpandList'
 import type { EngagementDigest } from '@/lib/social/engagementDigest'
 
 export function EngagementDigestPanel({
@@ -120,74 +121,78 @@ export function EngagementDigestPanel({
           {!digest.posts.length ? (
             <p className="muted">Henüz yorum/etkileşimli yayın yok — yayınla, sonra yeniden derle.</p>
           ) : (
-            <ul className="published-posts-list" style={{ marginTop: '0.45rem' }}>
+            <div style={{ marginTop: '0.45rem' }}>
+            <HoverExpandList>
               {digest.posts.map((p) => (
-                <li key={p.id} className="published-post-card" tabIndex={0}>
-                  <div className="published-post-row">
-                    <PlatformIconLink platform={p.platform} />
-                    <span className="published-post-line">{p.preview}</span>
-                    <span className="published-post-chip">
-                      {p.comments} yorum · {p.engagement} etk.
-                    </span>
-                    <time className="muted published-post-when">
-                      {p.publishedAt
-                        ? new Date(p.publishedAt).toLocaleString('tr-TR', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })
-                        : '—'}
-                    </time>
-                  </div>
-                  <div className="published-post-grow">
-                    <div className="sm-post-stats row">
-                      <span className="badge ok">yorum {p.comments}</span>
-                      {p.likes != null ? <span className="badge">beğeni {p.likes}</span> : null}
-                      {p.shares != null ? <span className="badge">paylaşım {p.shares}</span> : null}
-                      {p.impressions != null ? (
-                        <span className="badge">gösterim {p.impressions}</span>
-                      ) : null}
-                    </div>
-
-                    {p.commentSamples.length ? (
-                      <ul className="digest-comments">
-                        {p.commentSamples.map((c, i) => (
-                          <li key={i}>
-                            <q>{c.text}</q>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : p.commentFetchNote ? (
-                      <p className="muted" style={{ fontSize: '0.78rem', margin: '0.4rem 0 0' }}>
-                        {p.commentFetchNote}
-                      </p>
+                <HoverExpandRow
+                  key={p.id}
+                  summary={
+                    <>
+                      <PlatformIconLink platform={p.platform} />
+                      <span className="hover-row-line">{hoverSnippet(p.preview, 80)}</span>
+                      <span className="hover-row-chip">
+                        {p.comments} yorum · {p.engagement} etk.
+                      </span>
+                      <time className="muted hover-row-when">
+                        {p.publishedAt
+                          ? new Date(p.publishedAt).toLocaleString('tr-TR', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })
+                          : '—'}
+                      </time>
+                    </>
+                  }
+                >
+                  <div className="sm-post-stats row">
+                    <span className="badge ok">yorum {p.comments}</span>
+                    {p.likes != null ? <span className="badge">beğeni {p.likes}</span> : null}
+                    {p.shares != null ? <span className="badge">paylaşım {p.shares}</span> : null}
+                    {p.impressions != null ? (
+                      <span className="badge">gösterim {p.impressions}</span>
                     ) : null}
-
-                    {p.suggestions.length ? (
-                      <ul className="digest-suggestions">
-                        {p.suggestions.map((s, i) => (
-                          <li key={i}>
-                            <strong>{s.kind}:</strong> {s.text}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : null}
-
-                    <div className="published-post-actions row">
-                      {p.publicUrl ? (
-                        <a href={p.publicUrl} target="_blank" rel="noopener noreferrer">
-                          Gönderiyi aç ↗
-                        </a>
-                      ) : (
-                        <span className="muted">{p.platform}</span>
-                      )}
-                      <span className="badge">yanıt yok</span>
-                    </div>
                   </div>
-                </li>
+
+                  {p.commentSamples.length ? (
+                    <ul className="digest-comments">
+                      {p.commentSamples.map((c, i) => (
+                        <li key={i}>
+                          <q>{c.text}</q>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : p.commentFetchNote ? (
+                    <p className="muted" style={{ fontSize: '0.78rem', margin: '0.4rem 0 0' }}>
+                      {p.commentFetchNote}
+                    </p>
+                  ) : null}
+
+                  {p.suggestions.length ? (
+                    <ul className="digest-suggestions">
+                      {p.suggestions.map((s, i) => (
+                        <li key={i}>
+                          <strong>{s.kind}:</strong> {s.text}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+
+                  <div className="hover-row-actions row">
+                    {p.publicUrl ? (
+                      <a href={p.publicUrl} target="_blank" rel="noopener noreferrer">
+                        Gönderiyi aç ↗
+                      </a>
+                    ) : (
+                      <span className="muted">{p.platform}</span>
+                    )}
+                    <span className="badge">yanıt yok</span>
+                  </div>
+                </HoverExpandRow>
               ))}
-            </ul>
+            </HoverExpandList>
+            </div>
           )}
         </>
       )}

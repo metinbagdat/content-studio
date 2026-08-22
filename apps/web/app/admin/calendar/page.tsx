@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { DEFAULT_ADMIN_API_KEY } from '@/lib/adminKey'
+import { HoverExpandList, HoverExpandRow } from '@/components/admin/HoverExpandList'
 
 type PipelineRow = {
   id: string
@@ -239,49 +240,59 @@ export default function CalendarPage() {
             <p className="muted">
               {preview.sourceTitle} · {preview.distributionDays} gün · {preview.totalSlots} slot
             </p>
-            <ul className="list">
+            <HoverExpandList>
               {preview.slots.slice(0, 40).map((s) => (
-                <li key={s.slotIndex} style={{ marginBottom: '0.35rem' }}>
-                  <div className="row">
-                    <span className="badge">{s.platform}</span>
-                    <span className="badge">{s.contentKind}</span>
-                    <span className={`badge ${s.schedulable ? 'ready' : 'skip'}`}>
-                      {s.schedulable ? 'hazır' : 'atla'}
-                    </span>
-                    <span className="muted">+{s.dayOffset}g · {new Date(s.scheduledAt).toLocaleString()}</span>
-                  </div>
+                <HoverExpandRow
+                  key={s.slotIndex}
+                  summary={
+                    <>
+                      <span className="badge">{s.platform}</span>
+                      <span className="badge">{s.contentKind}</span>
+                      <span className={`badge ${s.schedulable ? 'ready' : 'skip'}`}>
+                        {s.schedulable ? 'hazır' : 'atla'}
+                      </span>
+                      <span className="hover-row-line">{s.derivativeTitle || '—'}</span>
+                      <span className="muted hover-row-when">+{s.dayOffset}g</span>
+                    </>
+                  }
+                >
                   <div className="muted">
-                    {s.derivativeTitle || '—'}
+                    {new Date(s.scheduledAt).toLocaleString('tr-TR')}
                     {s.derivativeStatus ? ` · ${s.derivativeStatus}` : ''}
                     {s.skipReason ? ` · ${s.skipReason}` : ''}
                   </div>
-                </li>
+                </HoverExpandRow>
               ))}
-            </ul>
+            </HoverExpandList>
           </div>
         ) : null}
       </section>
 
       <h2>Planlanan / yayınlanan postlar</h2>
-      <ul className="list">
+      <HoverExpandList>
         {posts.map((p) => (
-          <li key={p.id} className="panel" style={{ marginBottom: '0.5rem' }}>
-            <div className="row">
-              <span className="badge">{p.platform}</span>
-              <span className="badge">{p.status}</span>
-              <span className="muted">
-                {p.scheduledAt
-                  ? `schedule ${new Date(p.scheduledAt).toLocaleString()}`
-                  : p.publishedAt
-                    ? `published ${new Date(p.publishedAt).toLocaleString()}`
-                    : new Date(p.createdAt).toLocaleString()}
-              </span>
-            </div>
-            <div className="muted">{(p.postContent || '').slice(0, 160)}…</div>
-          </li>
+          <HoverExpandRow
+            key={p.id}
+            summary={
+              <>
+                <span className="badge">{p.platform}</span>
+                <span className="badge">{p.status}</span>
+                <span className="hover-row-line">{(p.postContent || '').slice(0, 80)}</span>
+                <span className="muted hover-row-when">
+                  {p.scheduledAt
+                    ? new Date(p.scheduledAt).toLocaleString('tr-TR')
+                    : p.publishedAt
+                      ? new Date(p.publishedAt).toLocaleString('tr-TR')
+                      : new Date(p.createdAt).toLocaleString('tr-TR')}
+                </span>
+              </>
+            }
+          >
+            <div className="pre">{(p.postContent || '').slice(0, 400)}</div>
+          </HoverExpandRow>
         ))}
-        {!posts.length ? <li className="muted">Henüz post yok</li> : null}
-      </ul>
+        {!posts.length ? <li className="muted hover-row" style={{ border: 'none', boxShadow: 'none' }}>Henüz post yok</li> : null}
+      </HoverExpandList>
     </div>
   )
 }
