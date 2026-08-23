@@ -376,7 +376,11 @@ export function SocialPlatformDashboard({
     const published = recentPublishedByPlatform[platform] || []
     const connState = oauthConnectionState(account, Boolean(oauthSlot?.configured))
     return (
-      <article className={`sm-platform-card panel ${cardConnectionClass(connState)}`} key={platform}>
+      <article
+        className={`sm-platform-card panel ${cardConnectionClass(connState)}`}
+        data-platform={platform}
+        key={platform}
+      >
         <header className="sm-platform-head">
           <div className="row">
             <PlatformIconLink
@@ -608,6 +612,7 @@ export function SocialPlatformDashboard({
           return (
             <article
               className={`sm-platform-card panel ${cardConnectionClass(connState)} ${pipelineDim ? 'sm-pipeline-only' : ''}`}
+              data-platform={p.id}
               key={p.id}
             >
               <header className="sm-platform-head">

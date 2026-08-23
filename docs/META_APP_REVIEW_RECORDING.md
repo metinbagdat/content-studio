@@ -12,13 +12,26 @@ Meta resmi beklenti: **gerçek screen recording** — uygulamayı gerçek taray�
 
 Meta: **tek videoda birden fazla izin göstermeyin.** Her permission için ayrı screencast.
 
-| İzin | Video |
-|------|--------|
-| `pages_manage_posts` | Bu dokümandaki 6 adım (Facebook Page yayın) |
-| `instagram_content_publish` | Ayrı kayıt — sadece IG yayın akışı |
-| `pages_read_engagement` | Ayrı kayıt — sadece metrik okuma (varsa) |
+| İzin | Video | Script / storyboard |
+|------|--------|---------------------|
+| `pages_manage_posts` | Video 1 — Facebook Page yayın | `npm run meta:record-fb-review` · storyboard: `generate-meta-app-review-video.ts` |
+| `instagram_content_publish` | Video 2 — Instagram yayın | `npm run meta:record-ig-review` · storyboard: `generate-meta-ig-app-review-video.ts` |
+| `pages_read_engagement` | Video 3 (opsiyonel) — metrik okuma | Manuel kayıt |
 
-Şu an ilk başvuru: yalnızca **`pages_manage_posts`**.
+### Tek OAuth, iki video
+
+`metaOAuthPublishScopes()` + `META_LOGIN_CONFIG_ID_PUBLISH=919581157862599` **tek** Facebook Login for Business ekranında hem `pages_manage_posts` hem `instagram_content_publish` verir.
+
+Yine de Meta **izin başına ayrı video** ister:
+
+| Video | OAuth | Gösterilecek kullanım |
+|-------|-------|------------------------|
+| **Video 1 (FB)** | Facebook kartından OAuth (gerçek facebook.com) | Sadece **Page'e Yayınla** → facebook.com/Egitim.today |
+| **Video 2 (IG)** | Instagram kartından OAuth *veya* zaten Bağlı (Video 1'de OAuth gösterildiyse kısa/atla OK) | Sadece **IG DRAFT → Yayınla** → instagram.com/egitim.today |
+
+**Video 1'de IG yayını gösterme.** **Video 2'de FB yayını gösterme.**
+
+İlk başvuruda yalnızca `pages_manage_posts` istiyorsanız Video 1 yeter. IG Advanced Access için Video 2 ayrı submission.
 
 ---
 
@@ -53,7 +66,35 @@ Storyboard MP4 üretmek (iç prova, **submit etme**):
 
 ```bash
 npx tsx scripts/generate-meta-app-review-video.ts
+npm run meta:record-fb-review   # gerçek kayıt Video 1
 ```
+
+---
+
+## Storyboard → gerçek kayıt (`instagram_content_publish`) — Video 2
+
+| # | Ne göster | Gerçek URL / ekran | Süre |
+|---|-----------|-------------------|------|
+| 1 | Admin API key → **Yenile** — **Instagram kartı** | `https://studio.egitim.today/admin/social` | ~30s |
+| 2 | Instagram kartı → **Kes** → **OAuth bağla** | Aynı sayfa (FB kartına dokunma) | ~20s |
+| 3 | **Gerçek** Facebook Login for Business — IG Business hesabı, Allow | `facebook.com/.../dialog/oauth` | ~45s veya atla* |
+| 4 | Callback → Instagram **Bağlı** | `studio.egitim.today/admin/social` | ~15s |
+| 5 | Instagram **DRAFT** (görsel URL prod'da HTTPS) → **Yayınla** | Aynı sayfa | ~30s |
+| 6 | **instagram.com** profilde yeni post | `https://www.instagram.com/egitim.today/` | ~20s |
+
+\* Video 1'de aynı OAuth zaten gösterildiyse Video 2'de Instagram zaten **Bağlı** olabilir — OAuth adımını atlayıp doğrudan yayın + profil kanıtı yeterli.
+
+**IG görsel zorunlu:** localhost görsel URL çalışmaz; prod `studio.egitim.today` üzerinden public image URL gerekir.
+
+### Kayıt
+
+```bash
+npm run meta:record-ig-review
+# veya Win+G manuel — storyboard prova:
+npx tsx scripts/generate-meta-ig-app-review-video.ts
+```
+
+Dosya adı: `meta-instagram-content-publish-screencast-YYYY-MM-DD.mp4`
 
 ---
 
@@ -65,9 +106,9 @@ npx tsx scripts/generate-meta-app-review-video.ts
 
 ## Checklist (submit öncesi)
 
-- [ ] Video gerçek screen capture (mock SVG değil)
-- [ ] Adım 3 gerçek `facebook.com` OAuth ekranı
-- [ ] Sadece `pages_manage_posts` — başka izin aynı videoda yok
-- [ ] Privacy URL güncel: `https://studio.egitim.today/legal/privacy` (+ `https://www.egitim.today/privacy#sosyal-medya`)
+- [ ] **Video 1 (FB):** gerçek screen capture — sadece `pages_manage_posts`
+- [ ] **Video 2 (IG):** ayrı gerçek kayıt — sadece `instagram_content_publish` (IG başvurusu varsa)
+- [ ] Adım 3 gerçek `facebook.com` OAuth ekranı (en az bir videoda)
+- [ ] Privacy URL güncel: `https://studio.egitim.today/legal/privacy`
 - [ ] Reviewer instructions İngilizce metin (`META_APP_REVIEW_SUBMISSION.md`)
-- [ ] Test user: App Administrator, Page admin
+- [ ] SVG storyboard MP4'leri **App Review'a yükleme**
