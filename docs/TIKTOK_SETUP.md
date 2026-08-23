@@ -118,6 +118,12 @@ Vercel'de env ekledikten sonra **Redeploy** gerekir.
 
 ## 6. Sorun giderme
 
+- **App Review red: "Website is not accessible"** → Portalda **tam olarak** şu URL olmalı (başka domain/www **kullanma**):
+  - ✅ `https://studio.egitim.today`
+  - ❌ `https://www.egitim.today` (LearnCon — farklı site)
+  - ❌ `https://www.studio.egitim.today` (DNS yok)
+  - ❌ `http://studio.egitim.today` (http değil https)
+  Deploy sonrası kök sayfa + Privacy/Terms 200 dönmeli. TikTok doğrulama `.txt` dosyaları Vercel prebuilt'ta route ile sunulur (`/tiktokcZ6afbMSmeXfrvDVHDI20MKXqoy52cVQ.txt`).
 - **dry-run** → env eksik veya `npm run dev` restart gerekli
 - **client_key (local)** → Desktop platform açık mı? URI Desktop tab’da mı? Sandbox test hesabı eklendi mi?
 - **studio DNS conflict (TXT+CNAME)** → TikTok TXT sil, CNAME ekle (`scripts/fix-studio-dns-vercel.ps1`)

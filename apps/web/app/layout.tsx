@@ -26,6 +26,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </nav>
         </header>
         <main className="main">{children}</main>
+        <footer className="main muted" style={{ paddingTop: 0, fontSize: '0.9rem' }}>
+          <p>
+            LEARNCONNECT.NET ·{' '}
+            <a href="/legal/privacy">Privacy</a> · <a href="/legal/terms">Terms</a> ·{' '}
+            <a href="https://www.egitim.today">egitim.today</a>
+          </p>
+        </footer>
       </body>
     </html>
   )
