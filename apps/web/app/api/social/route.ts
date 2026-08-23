@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Prisma, type SocialPlatform } from '@prisma/client'
 import { prisma, withPrismaRetry } from '@/lib/prisma'
-import { requireAdmin } from '@/lib/auth'
+import { requireAdmin } from '@content-studio/core/auth'
 import { schedulePost, syncSocialDraftsFromApprovedCaptions, bulkPublishDraftPosts } from '@/lib/pipeline'
 import { getDraftDiagnostics } from '@/lib/social/draftDiagnostics'
 import { publishPost } from '@/lib/social/publish'

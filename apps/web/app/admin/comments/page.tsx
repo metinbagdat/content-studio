@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { DEFAULT_ADMIN_API_KEY } from '@/lib/adminKey'
+import { DEFAULT_ADMIN_API_KEY } from '@content-studio/core/adminKey'
 import { EngagementDigestPanel } from '@/components/admin/EngagementDigestPanel'
 import type { EngagementDigest } from '@/lib/social/engagementDigest'
 import { ENGAGEMENT_DIGEST_CACHE_KEY } from '@/components/admin/CommentTopicBanner'

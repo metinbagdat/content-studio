@@ -68,7 +68,7 @@ $searchRoots = @('apps\web', 'apps\worker', 'lib', 'packages\core\src', 'scripts
 $targets = Get-ChildItem -Path $searchRoots -Recurse -Include *.ts, *.tsx -File -ErrorAction SilentlyContinue
 $changed = 0
 foreach ($file in $targets) {
-  $content = Get-Content $file.FullName -Raw
+  $content = [System.IO.File]::ReadAllText($file.FullName)
   $orig = $content
   foreach ($m in $targetModules) {
     $escaped = [regex]::Escape($m.Old)
@@ -79,7 +79,7 @@ foreach ($file in $targets) {
     $content = $content -replace "from\s+(['""])\.\/$escaped\1", "from `$1$pkgName/$($m.New)`$1"
   }
   if ($content -ne $orig) {
-    Set-Content -Path $file.FullName -Value $content -NoNewline
+    [System.IO.File]::WriteAllText($file.FullName, $content)
     $changed++
   }
 }

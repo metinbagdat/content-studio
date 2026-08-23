@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { requireAdmin } from '@/lib/auth'
+import { requireAdmin } from '@content-studio/core/auth'
 import { createPipeline, processPipeline } from '@/lib/pipeline'
-import { normalizePlatforms } from '@/lib/platforms/targets'
+import { normalizePlatforms } from '@content-studio/core/platforms/targets'
 
 export const dynamic = 'force-dynamic'
 

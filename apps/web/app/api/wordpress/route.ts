@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdmin } from '@/lib/auth'
+import { requireAdmin } from '@content-studio/core/auth'
 import { runHpvOpportunityScan } from '@/lib/seo/hpvCron'
 import { HPV_MIN, VOLUME_MIN, scoreTopicOpportunity } from '@/lib/seo/keywordOpportunity'
 import { dataForSeoConfigured } from '@/lib/seo/dataForSeo'

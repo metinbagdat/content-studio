@@ -1,5 +1,5 @@
 import { ContentType } from '@prisma/client'
-import { brandCta } from '../auth'
+import { brandCta } from '@content-studio/core/auth'
 import { resolveLlm } from './llmClient'
 import { captionMetadataWithImage } from '../social/brandImage'
 import { fallbackPodcastScript, parsePodcastScript } from '../media/podcastSchema'

@@ -1,6 +1,6 @@
 import type { SocialPlatform } from '@prisma/client'
-import { brandCta } from '../auth'
-import { PLATFORM_FORMATS } from '../platforms/formats'
+import { brandCta } from '@content-studio/core/auth'
+import { PLATFORM_FORMATS } from '@content-studio/core/platforms/formats'
 
 const WP_LINK = 'wp-link:'
 const BLOG_SLUG = 'blog:'

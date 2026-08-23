@@ -1,6 +1,6 @@
 import type { ContentType } from '@prisma/client'
 import { prisma } from '../prisma'
-import { formatForPlatform } from '../platforms/formats'
+import { formatForPlatform } from '@content-studio/core/platforms/formats'
 import { youtubeDescriptionFooter } from '../content/canonicalUrl'
 import { generateVideoVariants, generateTikTokVideo } from '../video/generateVideo'
 import { generatePodcastVideo } from '../video/generatePodcastVideo'

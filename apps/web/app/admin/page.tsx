@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { adminApiErrorMessage } from '@/lib/adminApiHint'
-import { DEFAULT_ADMIN_API_KEY } from '@/lib/adminKey'
+import { DEFAULT_ADMIN_API_KEY } from '@content-studio/core/adminKey'
 import {
   DEFAULT_PIPELINE_PLATFORMS,
   PLATFORM_TARGETS,
   type PlatformTarget,
-} from '@/lib/platforms/targets'
+} from '@content-studio/core/platforms/targets'
 import { HoverExpandList, HoverExpandRow, hoverSnippet } from '@/components/admin/HoverExpandList'
 
 type PlatformId = PlatformTarget['id']

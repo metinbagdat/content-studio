@@ -1,8 +1,8 @@
 import type { Prisma, SocialPlatform } from '@prisma/client'
 import { prisma } from '../prisma'
 import { buildCaptionSeries, captionPartMetadata } from '../content/captionSeries'
-import { formatForPlatform, PINTEREST_FORMAT, PLATFORM_FORMATS } from '../platforms/formats'
-import { platformWants, DEFAULT_PIPELINE_PLATFORMS, type PlatformId } from '../platforms/targets'
+import { formatForPlatform, PINTEREST_FORMAT, PLATFORM_FORMATS } from '@content-studio/core/platforms/formats'
+import { platformWants, DEFAULT_PIPELINE_PLATFORMS, type PlatformId } from '@content-studio/core/platforms/targets'
 import type { AtomizationPlan } from './types'
 import {
   articleExcerpt,

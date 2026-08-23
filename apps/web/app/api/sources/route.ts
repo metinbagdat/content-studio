@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { requireAdmin } from '@/lib/auth'
+import { requireAdmin } from '@content-studio/core/auth'
 import { withSegmentTag } from '@/lib/audience/segments'
 import { resolveAudienceSegment } from '@/lib/audience/resolveAudienceSegment'
 

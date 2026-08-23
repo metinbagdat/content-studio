@@ -1,4 +1,4 @@
-import { brandCta } from '../auth'
+import { brandCta } from '@content-studio/core/auth'
 import type { AtomKind, AtomMetadata } from './types-derivative'
 
 export type ArticleSection = { heading: string; body: string }

@@ -16,7 +16,8 @@
     "plugins": [{ "name": "next" }],
     "paths": {
       "@/lib/*": ["../../lib/*"],
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@content-studio/core/*": ["../../packages/core/src/*"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "../../.next/types/**/*.ts"],

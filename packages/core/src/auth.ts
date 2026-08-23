@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { DEFAULT_ADMIN_API_KEY } from '@/lib/adminKey'
+import { DEFAULT_ADMIN_API_KEY } from './adminKey'
 
 /** Previous .env.example default — still accepted in non-production for local migration. */
 const LEGACY_ADMIN_API_KEY = 'dev-admin-change-me'
