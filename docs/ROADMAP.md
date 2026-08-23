@@ -106,9 +106,9 @@ Do **not** put LearnCon product code in this repo. LC-G6 still lands in `metinba
 
 **What OAuth concretely automates (and does not):** Overnight / admin HPV scan already can overlay real search queries onto topic scores (`gscBoostForTitle`). Today that needs a short-lived access token in env. OAuth only makes that call **durable** (like X/LI). It does **not** invent keywords if Google has zero impressions; it does **not** replace DataForSEO volume; it does **not** fix Rank Math or indexing.
 
-**Gate:** open GSC → Performance → last 28 days. If Queries is empty, OAuth skeleton = plumbing with no payload — defer next to CS-M2 / DALL-E / Suno (still correctly parked). Track checklist: `docs/GSC_READINESS.md`.
+**Gate:** open GSC → Performance → last 28 days. If Queries is empty, OAuth skeleton = plumbing with no payload — defer next to DALL-E / Suno (still correctly parked). Track checklist: `docs/GSC_READINESS.md`.
 
-**Defer (unchanged):** CS-M2, CS-03 DALL-E art, CS-04 Suno, CS-06 Meta/TikTok App Review, Pinterest, **CS-WP-03b until impressions**.
+**Defer (unchanged):** CS-03 DALL-E art, CS-04 Suno, CS-06 Meta/TikTok App Review, Pinterest, **CS-WP-03b until impressions**. ~~CS-M2~~ done (#65).
 
 ### CS-M1(+Prisma) (merged #43)
 
