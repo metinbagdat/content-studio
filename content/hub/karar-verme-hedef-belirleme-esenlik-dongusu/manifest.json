@@ -1,0 +1,50 @@
+{
+  "slug": "karar-verme-hedef-belirleme-esenlik-dongusu",
+  "title": "Kendi Mimarlığın: Karar Verme, Hedef Belirleme ve Esenlik Döngüsü",
+  "seoTitle": "Karar Verme Mekanizmaları ve Hedef Belirleme: Geleceğini İnşa Et | Eğitim.Today",
+  "excerpt": "Karar verme üç katmanı, hedef belirleme sanatı, kendini tanıma ve doğurgan döngü — egitim.today felsefesiyle geleceğinin mimarı ol.",
+  "segment": "genel",
+  "category": "kariyer-planlama",
+  "wpCategories": ["decision-making", "career-planning", "student-mentorship", "wellness"],
+  "wpTags": [
+    "hedef-belirleme",
+    "kendini-tanima",
+    "pozitif-dusunce",
+    "dogurgan-dongu",
+    "ogrenci-ogreticiligi",
+    "esenlik"
+  ],
+  "skillTags": [
+    "Karar Verme",
+    "Hedef Belirleme",
+    "Kendini Yönetme",
+    "Öğrenci Koçluğu",
+    "Pozitif Psikoloji"
+  ],
+  "internalLinks": ["/ai-coach", "/study-plan", "/skillup", "/community", "/career-insights"],
+  "hkmt": {
+    "hkmt_hazir_durum": "YKS/LGS adayları, üniversite ve kariyer planlaması yapan gençler",
+    "hkmt_kavramsal_hedef": "Bilişsel-duygusal-değerler katmanında bilinçli karar; SMART hedef; öz yansıma",
+    "hkmt_metodoloji": "3 katmanlı karar modeli + hedef yazdırma + öğrenci-öğretici + doğurgan döngü",
+    "hkmt_takip_transformasyon": "Kısır döngüden üretken döngüye; XP/streak/planlayıcı ile sürdürülebilir alışkanlık",
+    "hkmt_search_value_score": 78,
+    "hkmt_hpv_score": 72
+  },
+  "podcast": {
+    "title": "Karar Alma Sanatı: Geleceğin Mimarı Olmak",
+    "slug": "karar-alma-sanati-gelecegin-mimari",
+    "durationMinutes": 12,
+    "episodeNumber": 4
+  },
+  "anthem": {
+    "title": "Karar Alma Sanatı",
+    "slug": "karar-alma-sanati-mars"
+  },
+  "pipeline": {
+    "includeMarchSong": true,
+    "marchStyle": "motivational",
+    "musicGenre": "acoustic-pop",
+    "podcastDurationMinutes": 12,
+    "videoStyle": "educational"
+  }
+}

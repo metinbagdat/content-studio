@@ -53,7 +53,7 @@ async function generateSocialPostsBatch(
   return (batch.posts || fallback.posts).slice(0, count).map((p, i) => ({
     contentType: 'SOCIAL_CAPTION' as const,
     title: `${platform} ${i + 1}/${count}: ${title.slice(0, 60)}`,
-    content: withShareCta(p.text, articleUrl, platform),
+    content: withShareCta(p.text ?? '', articleUrl, platform),
     metadata: baseMetadata(atomKind, title, articleUrl, {
       platform,
       partIndex: i + 1,

@@ -42,7 +42,7 @@ export function withShareCta(
   const suffix = shareCtaBlock(articleUrl)
   const max = PLATFORM_FORMATS[platform].maxChars
   const room = Math.max(0, max - suffix.length)
-  const body = text.trim()
+  const body = (text ?? '').trim()
   const head = body.length <= room ? body : `${body.slice(0, Math.max(0, room - 1)).trim()}…`
   const out = `${head}${suffix}`
   return out.length <= max ? out : out.slice(0, max)
