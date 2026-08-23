@@ -1,4 +1,4 @@
-import { DEFAULT_ADMIN_API_KEY } from '@/lib/adminKey'
+import { DEFAULT_ADMIN_API_KEY } from '@content-studio/core/adminKey'
 
 export function adminApiErrorMessage(statuses: number[]): string {
   const codes = [...new Set(statuses.filter((s) => s > 0))].join(', ') || '?'

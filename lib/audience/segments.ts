@@ -1,5 +1,5 @@
-import type { PlatformId } from '@/lib/platforms/targets'
-import { DEFAULT_PIPELINE_PLATFORMS } from '@/lib/platforms/targets'
+import type { PlatformId } from '@content-studio/core/platforms/targets'
+import { DEFAULT_PIPELINE_PLATFORMS } from '@content-studio/core/platforms/targets'
 
 export const AUDIENCE_SEGMENTS = ['tyt', 'ayt', 'lgs', 'veli', 'egitimci', 'genel'] as const
 export type AudienceSegment = (typeof AUDIENCE_SEGMENTS)[number]

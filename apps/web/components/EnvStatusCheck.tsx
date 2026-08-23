@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { DEFAULT_ADMIN_API_KEY } from '@/lib/adminKey'
+import { DEFAULT_ADMIN_API_KEY } from '@content-studio/core/adminKey'
 
 type EnvCheck = {
   X_CLIENT_ID: boolean

@@ -6,7 +6,7 @@
  *   npx tsx lib/media/generateInfographicImage.selftest.ts
  */
 import assert from 'node:assert/strict'
-import { normalizePlatforms, DEFAULT_PIPELINE_PLATFORMS } from './targets'
+import { normalizePlatforms, DEFAULT_PIPELINE_PLATFORMS } from '@content-studio/core/platforms/targets'
 import { platformsForSegment } from '../audience/segments'
 
 const tyt = platformsForSegment('tyt')

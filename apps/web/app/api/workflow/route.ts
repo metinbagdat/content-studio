@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdmin } from '@/lib/auth'
+import { requireAdmin } from '@content-studio/core/auth'
 import { getWorkflowSnapshot } from '@/lib/workflow/status'
 import { runWorkflowContinueStep } from '@/lib/workflow/runContinueStep'
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { readFile } from 'fs/promises'
-import { requireAdmin } from '@/lib/auth'
+import { requireAdmin } from '@content-studio/core/auth'
 import { getMediaFile } from '@/lib/media/mediaDb'
 import { audioDiskPath } from '@/lib/media/tts'
 

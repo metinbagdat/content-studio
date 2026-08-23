@@ -1,7 +1,7 @@
 import type { SocialPlatform } from '@prisma/client'
 import type { AtomizationPlan } from '../atomization/types'
-import { maxPostsPerDay } from '../platforms/limits'
-import { DEFAULT_PIPELINE_PLATFORMS } from '../platforms/targets'
+import { maxPostsPerDay } from '@content-studio/core/platforms/limits'
+import { DEFAULT_PIPELINE_PLATFORMS } from '@content-studio/core/platforms/targets'
 import { isWeekendOffset, pickPostingSlot } from './postingTimes'
 import { getAdaptiveSlotOrder } from './postingPerformance'
 

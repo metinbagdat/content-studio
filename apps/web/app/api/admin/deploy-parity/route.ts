@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdmin } from '@/lib/auth'
+import { requireAdmin } from '@content-studio/core/auth'
 import { getDeployParityInfo } from '@/lib/env/deployParity'
 
 export const dynamic = 'force-dynamic'

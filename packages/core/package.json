@@ -1,0 +1,17 @@
+{
+  "name": "@content-studio/core",
+  "version": "0.0.0",
+  "private": true,
+  "types": "./src/index.ts",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*"
+  },
+  "peerDependencies": {
+    "next": ">=15.0.0"
+  },
+  "devDependencies": {
+    "@prisma/client": "^6.9.0"
+  }
+}

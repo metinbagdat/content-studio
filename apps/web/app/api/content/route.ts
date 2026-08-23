@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ContentType } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
-import { requireAdmin } from '@/lib/auth'
+import { requireAdmin } from '@content-studio/core/auth'
 import { createDerivedContent, setDerivedStatus } from '@/lib/content-crud'
 import { detectAudienceSegment, isAudienceSegment, parseSegmentFromTags } from '@/lib/audience/segments'
 

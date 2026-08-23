@@ -12,9 +12,10 @@
     "isolatedModules": true,
     "paths": {
       "@/*": ["./*"],
-      "@content-studio/db": ["./packages/db/src/index.ts"]
+      "@content-studio/db": ["./packages/db/src/index.ts"],
+      "@content-studio/core/*": ["./packages/core/src/*"]
     }
   },
-  "include": ["lib/**/*.ts", "scripts/**/*.ts", "apps/worker/**/*.ts", "packages/db/src/**/*.ts"],
+  "include": ["lib/**/*.ts", "scripts/**/*.ts", "apps/worker/**/*.ts", "packages/db/src/**/*.ts", "packages/core/src/**/*.ts"],
   "exclude": ["node_modules", "legacy", "apps/web"]
 }

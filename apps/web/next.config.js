@@ -7,7 +7,7 @@ loadEnvConfig(repoRoot)
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  transpilePackages: ['@content-studio/db'],
+  transpilePackages: ['@content-studio/db', '@content-studio/core'],
   serverExternalPackages: ['ws', 'msedge-tts', 'fluent-ffmpeg', 'ffmpeg-static', 'ffprobe-static'],
   // Keep Vercel/GHA `vercel build` from repo root: output still lands in root `.next`.
   distDir: '../../.next',

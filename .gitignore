@@ -51,6 +51,7 @@ venv/
 
 # App data (repo-root media cache — not lib/storage code)
 /storage/
+apps/web/storage/
 !lib/storage/
 
 # Deploy / misc

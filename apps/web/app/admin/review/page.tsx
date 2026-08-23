@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { DEFAULT_ADMIN_API_KEY } from '@/lib/adminKey'
+import { DEFAULT_ADMIN_API_KEY } from '@content-studio/core/adminKey'
 import { PodcastTimeline } from '@/components/admin/PodcastTimeline'
 import { CommentTopicBanner } from '@/components/admin/CommentTopicBanner'
 import { AUDIENCE_SEGMENTS, SEGMENT_LABELS, isAudienceSegment, parseSegmentFromTags, type AudienceSegment } from '@/lib/audience/segments'

@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { DEFAULT_ADMIN_API_KEY } from '@/lib/adminKey'
+import { DEFAULT_ADMIN_API_KEY } from '@content-studio/core/adminKey'
 import { HoverExpandList, HoverExpandRow, hoverSnippet } from '@/components/admin/HoverExpandList'
 
 type TopPost = {

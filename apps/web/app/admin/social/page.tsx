@@ -10,7 +10,7 @@ import { TopPerformersPanel, type TopPerformingPost } from '@/components/admin/T
 import { EngagementDigestPanel } from '@/components/admin/EngagementDigestPanel'
 import { PlatformIconLink } from '@/components/admin/PlatformIconLink'
 import { HoverExpandList, HoverExpandRow, hoverSnippet } from '@/components/admin/HoverExpandList'
-import { DEFAULT_ADMIN_API_KEY } from '@/lib/adminKey'
+import { DEFAULT_ADMIN_API_KEY } from '@content-studio/core/adminKey'
 import type { EngagementDigest } from '@/lib/social/engagementDigest'
 import { AUDIENCE_SEGMENTS, SEGMENT_LABELS, isAudienceSegment, type AudienceSegment } from '@/lib/audience/segments'
 

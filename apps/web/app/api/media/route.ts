@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdmin } from '@/lib/auth'
+import { requireAdmin } from '@content-studio/core/auth'
 import { listMedia } from '@/lib/media/mediaDb'
 import { ttsModeLabel } from '@/lib/media/tts'
 import { prisma } from '@/lib/prisma'

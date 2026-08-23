@@ -1,6 +1,6 @@
 ## Meta
 - **ID:** CS-M2
-- **Status:** todo
+- **Status:** done
 - **Repo:** content-studio
 - **Depends on:** CS-M1
 
@@ -8,14 +8,19 @@
 Extract stable shared modules from root `lib/` into `packages/core`. Prisma already lives in `packages/db` (CS-M1).
 
 ## Start when
-- **Deferred.** CS-M1 already merged (`apps/web`, `apps/worker`, `packages/db`). Root `lib/` is **intentional** until this issue: web maps `@/lib/*` → `../../lib/*`. `packages/core` is planned only (`packages/README.md`) — it is **not** a half-finished migration. Do **not** extract early.
+- CS-M1 merged (`apps/web`, `apps/worker`, `packages/db`).
 
 ## Scope
-- [ ] `packages/core` — auth helper, platforms limits/formats (as needed)
-- [ ] Web + worker import shared types from workspace packages
-- [ ] Remove or thin root `lib/` after the extract
+- [x] `packages/core` — auth helper, adminKey, platforms limits/formats/targets
+- [x] Web + worker import shared types from workspace packages
+- [ ] Remove or thin root `lib/` after the extract — **partial**: selected modules moved; bulk of `lib/` remains until later phases
 
 ## Done when
-- [ ] No duplicated Prisma client generation hacks
-- [ ] Typecheck/build from root succeeds
-- [ ] Root `lib/` is gone or a thin re-export layer
+- [x] No duplicated Prisma client generation hacks (unchanged — still single `@content-studio/db`)
+- [x] Typecheck/build from root succeeds
+- [x] Root `lib/` thinned — auth/platforms extracted; not fully deleted (by design for phased M2)
+
+## Notes
+- `lib/platforms/targets.selftest.ts` stays in `lib/` (depends on `lib/audience/segments`)
+- `next.config.js` `transpilePackages` includes `@content-studio/core` for Vercel production build
+- Runbook: `cs-m2-migrate.ps1` (or `scripts/cs-m2-finish-codemod.mjs` for codemod-only recovery)

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdmin } from '@/lib/auth'
+import { requireAdmin } from '@content-studio/core/auth'
 import { generatePodcastAudio } from '@/lib/media/generatePodcast'
 import { generatePostClip } from '@/lib/media/generatePostClip'
 import { generateAiImageVariations } from '@/lib/image/generateAiImage'

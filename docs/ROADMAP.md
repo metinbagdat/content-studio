@@ -19,7 +19,7 @@ Status legend: `todo` · `doing` · `done` · `blocked` · `learncon` (tracked i
 |----|-------|--------|------------|-----------|
 | CS-M0 | Monorepo foundation (workspaces + legacy quarantine) | doing | Roadmap approved | Root workspaces; legacy under `legacy/`; `npm run dev` still works |
 | CS-M1 | Move Next app → `apps/web`, worker → `apps/worker` (+ Prisma merge) | done | CS-M0 merged | #43 merged; `apps/web` + `apps/worker` + `packages/db` |
-| CS-M2 | Shared packages (`packages/core`) | todo | **defer** — root `lib/` is intentional until then | Extract selected `lib/*` → `packages/core`; `packages/core` does **not** exist yet (not a half-finished move) |
+| CS-M2 | Shared packages (`packages/core`) | done | CS-M1 merged | `auth`, `adminKey`, `platforms/*` in `@content-studio/core`; typecheck/build green; root `lib/` thinned (not deleted) |
 | CS-00 | Discovery cron + admin UI | done | — | `/admin/discovery` + worker 06:00 IST |
 | CS-01 | Atomization → ~50 derivatives | done | — | Counts match plan; THREAD/CAROUSEL/SHORT_VIDEO/INFOGRAPHIC stored |
 | CS-02 | Platform captions (X, LI, IG, TT, YT, FB, Pin) | done | — | Formatters + limits per platform, reviewable with platform badge |

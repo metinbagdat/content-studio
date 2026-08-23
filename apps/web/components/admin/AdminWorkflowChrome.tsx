@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
-import { DEFAULT_ADMIN_API_KEY } from '@/lib/adminKey'
+import { DEFAULT_ADMIN_API_KEY } from '@content-studio/core/adminKey'
 import type { WorkflowSnapshot } from '@/lib/workflow/status'
 import { PlatformIconLink } from '@/components/admin/PlatformIconLink'
 import { WorkerOpsPanel } from '@/components/admin/WorkerOpsPanel'
