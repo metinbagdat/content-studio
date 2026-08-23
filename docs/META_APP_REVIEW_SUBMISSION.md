@@ -117,4 +117,42 @@ Windows hızlı kayıt:
 3. OAuth bağla → **gerçek** Facebook izin ekranı → Yayınla → facebook.com/Egitim.today post
 4. 2–4 dk MP4 → Reviewer instructions upload
 
-Spam limiti varsa tek **Yayınla** (toplu değil). IG / başka izinler **ayrı video**.
+Spam limiti varsa tek **Yayınla** (toplu değil). IG / başka izinler **ayrı video** — bkz. aşağı `instagram_content_publish`.
+
+---
+
+## Yapıştır: Reviewer instructions — `instagram_content_publish` (Video 2, ayrı submission)
+
+```text
+App: www.egitim.today (Content Studio)
+Production URL: https://studio.egitim.today/admin/social
+Instagram Business: @egitim.today (linked to Facebook Page Egitim.today)
+Facebook Login user: Metin Bağdat (App Administrator)
+Login configuration ID: 919581157862599 (includes instagram_content_publish)
+
+How to sign in:
+1. Open https://studio.egitim.today/admin/social
+2. Paste production ADMIN_API_KEY → Yenile.
+
+How to grant instagram_content_publish:
+1. On the Instagram card, click Kes if needed, then OAuth bağla.
+2. Complete Facebook Login for Business — grant instagram_content_publish for the IG Business account.
+3. Return to dashboard; Instagram shows Bağlı.
+
+How we use instagram_content_publish:
+1. Under Instagram, open a DRAFT with a public HTTPS image URL.
+2. Click Yayınla. Content Studio publishes via the Instagram Content Publishing API.
+3. Open https://www.instagram.com/egitim.today/ to see the post.
+
+We do not post to accounts the user does not manage. Publish is an explicit admin click.
+
+Screencast: attached MP4 (Instagram publish only — no Facebook Page publish in this video).
+```
+
+## Yapıştır: Allowed usage — `instagram_content_publish`
+
+```text
+Content Studio publishes pre-approved educational images to our own Instagram Business account
+(@egitim.today). An administrator connects the account via Facebook Login for Business, then
+clicks Publish. We use instagram_content_publish only for content the admin owns and approves.
+```
