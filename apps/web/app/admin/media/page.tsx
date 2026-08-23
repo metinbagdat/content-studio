@@ -87,10 +87,9 @@ export default function MediaPage() {
     if (data.ttsMode) setTtsMode(data.ttsMode)
   }, [])
 
-  const load = useCallback(async () => {
-    if (!adminKey) return
-    const q = derivedId ? `?derivedContentId=${encodeURIComponent(derivedId)}` : ''
-    const res = await fetch(`/api/media${q}`, { headers: headers(adminKey), cache: 'no-store' })
+  const loadFiles = useCallback(async (key: string, filterDerivedId?: string) => {
+    const q = filterDerivedId ? `?derivedContentId=${encodeURIComponent(filterDerivedId)}` : ''
+    const res = await fetch(`/api/media${q}`, { headers: headers(key), cache: 'no-store' })
     if (!res.ok) {
       setMsg('Yetkisiz')
       return
@@ -98,11 +97,12 @@ export default function MediaPage() {
     const data = await res.json()
     setItems(data.items || [])
     setTtsMode(data.ttsMode || '')
-    if (derivedId && data.items?.[0]?.derivedContent?.contentType) {
-      setContentType(data.items[0].derivedContent.contentType)
-    }
-    await loadPending(adminKey)
-  }, [adminKey, derivedId, loadPending])
+  }, [])
+
+  const load = useCallback(async () => {
+    if (!adminKey) return
+    await Promise.all([loadFiles(adminKey), loadPending(adminKey)])
+  }, [adminKey, loadFiles, loadPending])
 
   useEffect(() => {
     const saved = localStorage.getItem('cs_admin_key')
@@ -120,6 +120,8 @@ export default function MediaPage() {
       load()
     }
   }, [adminKey, load])
+
+  // Formdaki Derived ID değişince dosya listesini filtreleme — tüm COMPLETED sesler görünsün.
 
   async function generateFor(
     id: string,
@@ -230,13 +232,14 @@ export default function MediaPage() {
 
   return (
     <div>
-      <h1>Medya (Faz 2)</h1>
+      <h1>Medya</h1>
       <p className="lead">
-        Podcast / marş / şarkı → MP3 · Görseller → platform export. TTS: <strong>{ttsMode || '…'}</strong>
+        <strong>Ses Drenajı</strong> — podcast / marş / şarkı → MP3 · görseller → platform export. TTS:{' '}
+        <strong>{ttsMode || '…'}</strong>
       </p>
       <p className="muted">
-        Sesi olmayanlar otomatik listelenir. Elle ID veya{' '}
-        <Link href="/admin/review">/admin/review</Link> → Ses üret.
+        Sesi olmayanlar otomatik listelenir (tek tık / hepsini üret). Elle ID veya{' '}
+        <Link href="/admin/review">/admin/review</Link>.
       </p>
 
       <div className="keybar">
@@ -375,7 +378,28 @@ export default function MediaPage() {
       ) : null}
 
       <section className="panel">
-        <h2>Üretilmiş dosyalar</h2>
+        <h2>Üretilmiş dosyalar (son {items.length})</h2>
+        <p className="muted" style={{ marginTop: 0 }}>
+          Tüm medya (AUDIO/IMAGE) — formdaki ID bunu filtrelemez. Filtre için{' '}
+          <button
+            type="button"
+            className="secondary"
+            style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem' }}
+            disabled={!derivedId.trim() || busy}
+            onClick={() => loadFiles(adminKey, derivedId.trim())}
+          >
+            Bu ID’ye filtrele
+          </button>{' '}
+          <button
+            type="button"
+            className="secondary"
+            style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem' }}
+            disabled={busy}
+            onClick={() => loadFiles(adminKey)}
+          >
+            Tümünü göster
+          </button>
+        </p>
         <HoverExpandList>
           {items.map((m) => (
             <HoverExpandRow
