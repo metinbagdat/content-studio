@@ -45,6 +45,6 @@ export async function GET(req: NextRequest) {
     })
   }
 
-  const items = await listMedia(derivedContentId)
+  const items = await listMedia(derivedContentId, { includeFailed })
   return NextResponse.json({ items, ttsMode: ttsModeLabel() })
 }

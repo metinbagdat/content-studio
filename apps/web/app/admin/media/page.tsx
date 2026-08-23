@@ -380,7 +380,7 @@ export default function MediaPage() {
       <section className="panel">
         <h2>Üretilmiş dosyalar (son {items.length})</h2>
         <p className="muted" style={{ marginTop: 0 }}>
-          Tüm medya (AUDIO/IMAGE) — formdaki ID bunu filtrelemez. Filtre için{' '}
+          FAILED kayıtlar gizli (ffmpeg denemesi artıkları). Filtre:{' '}
           <button
             type="button"
             className="secondary"
