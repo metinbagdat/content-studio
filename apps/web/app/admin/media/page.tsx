@@ -16,10 +16,24 @@ type MediaItem = {
   derivedContent?: { id: string; title: string; contentType: string; status: string }
 }
 
+type PendingAudio = {
+  id: string
+  title: string
+  contentType: string
+  status: string
+  createdAt: string
+}
+
 function headers(key: string, json = false): HeadersInit {
   const h: Record<string, string> = { 'x-admin-key': key }
   if (json) h['Content-Type'] = 'application/json'
   return h
+}
+
+function kindForContentType(contentType: string): 'podcast' | 'march' | 'song' {
+  if (contentType === 'MARCH_LYRICS') return 'march'
+  if (contentType === 'SONG_LYRICS') return 'song'
+  return 'podcast'
 }
 
 function AdminAudio({ mediaId, adminKey }: { mediaId: string; adminKey: string }) {
@@ -54,11 +68,24 @@ function AdminAudio({ mediaId, adminKey }: { mediaId: string; adminKey: string }
 export default function MediaPage() {
   const [adminKey, setAdminKey] = useState('')
   const [items, setItems] = useState<MediaItem[]>([])
+  const [pendingAudio, setPendingAudio] = useState<PendingAudio[]>([])
   const [ttsMode, setTtsMode] = useState('')
   const [derivedId, setDerivedId] = useState('')
   const [contentType, setContentType] = useState('')
   const [msg, setMsg] = useState('')
   const [busy, setBusy] = useState(false)
+  const [busyId, setBusyId] = useState<string | null>(null)
+
+  const loadPending = useCallback(async (key: string) => {
+    const res = await fetch('/api/media?needsAudio=1', {
+      headers: headers(key),
+      cache: 'no-store',
+    })
+    if (!res.ok) return
+    const data = await res.json()
+    setPendingAudio(data.pending || [])
+    if (data.ttsMode) setTtsMode(data.ttsMode)
+  }, [])
 
   const load = useCallback(async () => {
     if (!adminKey) return
@@ -74,7 +101,8 @@ export default function MediaPage() {
     if (derivedId && data.items?.[0]?.derivedContent?.contentType) {
       setContentType(data.items[0].derivedContent.contentType)
     }
-  }, [adminKey, derivedId])
+    await loadPending(adminKey)
+  }, [adminKey, derivedId, loadPending])
 
   useEffect(() => {
     const saved = localStorage.getItem('cs_admin_key')
@@ -87,47 +115,91 @@ export default function MediaPage() {
   }, [])
 
   useEffect(() => {
-    if (adminKey) load()
+    if (adminKey) {
+      localStorage.setItem('cs_admin_key', adminKey)
+      load()
+    }
   }, [adminKey, load])
+
+  async function generateFor(
+    id: string,
+    type: string,
+    force = false,
+  ): Promise<boolean> {
+    const kind = kindForContentType(type)
+    setBusy(true)
+    setBusyId(id)
+    setDerivedId(id)
+    setContentType(type)
+    setMsg(
+      force
+        ? `Yeniden üretiliyor… ${id.slice(0, 8)}…`
+        : kind === 'podcast'
+          ? `Ses üretiliyor… ${id.slice(0, 8)}… (30–120 sn)`
+          : `Ses + müzik yatağı… ${id.slice(0, 8)}…`,
+    )
+    try {
+      const res = await fetch('/api/media/generate', {
+        method: 'POST',
+        headers: headers(adminKey, true),
+        body: JSON.stringify({ derivedContentId: id, kind, force }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setMsg(data.error || 'Üretim başarısız')
+        return false
+      }
+      setMsg(
+        data.reused
+          ? `Mevcut ses kullanıldı — ${id.slice(0, 8)}…`
+          : kind === 'podcast'
+            ? `Podcast hazır · ~${data.durationSec}s · ${data.partCount ?? '?'} bölüm`
+            : `Ses hazır${data.hasMusicBed ? ' · müzik yatağı ile' : ''}`,
+      )
+      return true
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : 'Bağlantı hatası')
+      return false
+    } finally {
+      setBusy(false)
+      setBusyId(null)
+    }
+  }
 
   async function generate(force = false) {
     if (!derivedId.trim()) {
-      setMsg('Derived content ID gir')
+      setMsg('Derived content ID gir veya aşağıdaki listeden seç')
       return
     }
-    setBusy(true)
-    const kind =
-      contentType === 'MARCH_LYRICS'
-        ? 'march'
-        : contentType === 'SONG_LYRICS'
-          ? 'song'
-          : 'podcast'
-    setMsg(
-      force
-        ? 'Yeniden üretiliyor…'
-        : kind === 'podcast'
-          ? 'Ses üretiliyor… (segment başına jingle dahil, 30–120 sn)'
-          : 'Ses + müzik yatağı üretiliyor…',
-    )
-    const res = await fetch('/api/media/generate', {
-      method: 'POST',
-      headers: headers(adminKey, true),
-      body: JSON.stringify({ derivedContentId: derivedId.trim(), kind, force }),
-    })
-    const data = await res.json()
-    setBusy(false)
-    if (!res.ok) {
-      setMsg(data.error || 'Üretim başarısız')
-      return
+    const type =
+      contentType ||
+      pendingAudio.find((p) => p.id === derivedId.trim())?.contentType ||
+      'PODCAST_SCRIPT'
+    const ok = await generateFor(derivedId.trim(), type, force)
+    if (ok) await load()
+  }
+
+  async function generateOne(row: PendingAudio) {
+    const ok = await generateFor(row.id, row.contentType, false)
+    if (ok) await load()
+  }
+
+  async function generateAllPending() {
+    if (!pendingAudio.length) return
+    if (!confirm(`${pendingAudio.length} ses üretilecek (sırayla, uzun sürebilir). Devam?`)) return
+    const queue = [...pendingAudio]
+    for (let i = 0; i < queue.length; i++) {
+      const row = queue[i]
+      setMsg(`${i + 1}/${queue.length}: ${row.title.slice(0, 50)}…`)
+      const ok = await generateFor(row.id, row.contentType, false)
+      if (!ok) {
+        setMsg(`Durdu (${i + 1}/${queue.length}): ${row.title.slice(0, 40)}`)
+        await load()
+        return
+      }
     }
-    setMsg(
-      data.reused
-        ? `Mevcut ses kullanıldı — yeniden üretmek için "Yeniden üret" butonuna bas`
-        : kind === 'podcast'
-          ? `Podcast hazır · ~${data.durationSec}s · ${data.partCount ?? '?'} bölüm · ${data.hasJingles ? `${data.jingleCount} jingle` : 'jingle yok (müzik kütüphanesi boş)'}`
-          : `Ses hazır${data.hasMusicBed ? ' · müzik yatağı ile' : ''}`,
-    )
     await load()
+    setMsg(`${queue.length} ses üretildi`)
   }
 
   async function batchResize(masterMediaId: string) {
@@ -163,8 +235,8 @@ export default function MediaPage() {
         Podcast / marş / şarkı → MP3 · Görseller → platform export. TTS: <strong>{ttsMode || '…'}</strong>
       </p>
       <p className="muted">
-        Onay kuyruğundan ID kopyala veya{' '}
-        <Link href="/admin/review">/admin/review</Link> → Ses / AI görsel üret.
+        Sesi olmayanlar otomatik listelenir. Elle ID veya{' '}
+        <Link href="/admin/review">/admin/review</Link> → Ses üret.
       </p>
 
       <div className="keybar">
@@ -177,26 +249,92 @@ export default function MediaPage() {
             placeholder={DEFAULT_ADMIN_API_KEY}
           />
         </div>
-        <button type="button" className="secondary" onClick={load}>
+        <button type="button" className="secondary" onClick={load} disabled={busy}>
           Yenile
         </button>
       </div>
 
+      {msg ? <p className="flash">{msg}</p> : null}
+
       <section className="panel" style={{ marginBottom: '1rem' }}>
-        <h2>Ses üret</h2>
-        <label>Derived ID (PODCAST_SCRIPT / MARCH_LYRICS / SONG_LYRICS)</label>
+        <h2>Sesi olmayan ({pendingAudio.length})</h2>
+        <p className="muted" style={{ marginTop: 0 }}>
+          Onaylı / incelemede podcast · marş · şarkı — tamamlanmış AUDIO yok.
+        </p>
+        {pendingAudio.length ? (
+          <div className="row" style={{ marginBottom: '0.75rem', gap: '0.5rem' }}>
+            <button type="button" className="ok" disabled={busy} onClick={generateAllPending}>
+              {busy ? 'Üretiliyor…' : `Hepsini üret (${pendingAudio.length})`}
+            </button>
+          </div>
+        ) : (
+          <p className="muted">Bekleyen yok — tüm podcast/marş/şarkı sesleri hazır.</p>
+        )}
+        <HoverExpandList>
+          {pendingAudio.map((row) => (
+            <HoverExpandRow
+              key={row.id}
+              summary={
+                <>
+                  <span className="badge warn">{row.contentType}</span>
+                  <span className="badge">{row.status}</span>
+                  <strong className="hover-row-title">{row.title}</strong>
+                  <code className="muted hover-row-chip" title={row.id}>
+                    {row.id.slice(0, 8)}…
+                  </code>
+                </>
+              }
+            >
+              <p className="muted" style={{ margin: '0.35rem 0' }}>
+                <code>{row.id}</code>
+              </p>
+              <div className="row" style={{ gap: '0.5rem' }}>
+                <button
+                  type="button"
+                  className="ok"
+                  disabled={busy}
+                  onClick={() => generateOne(row)}
+                >
+                  {busyId === row.id ? 'Üretiliyor…' : 'MP3 üret'}
+                </button>
+                <button
+                  type="button"
+                  className="secondary"
+                  disabled={busy}
+                  onClick={() => {
+                    setDerivedId(row.id)
+                    setContentType(row.contentType)
+                    setMsg(`Seçildi: ${row.title.slice(0, 60)}`)
+                  }}
+                >
+                  ID’yi forma al
+                </button>
+              </div>
+            </HoverExpandRow>
+          ))}
+        </HoverExpandList>
+      </section>
+
+      <section className="panel" style={{ marginBottom: '1rem' }}>
+        <h2>Elle / yeniden üret</h2>
+        <label>Derived ID</label>
         <input
           value={derivedId}
           onChange={(e) => setDerivedId(e.target.value)}
-          placeholder="uuid from /admin/review"
+          placeholder="listeden seç veya uuid yapıştır"
         />
-        <button type="button" disabled={busy} onClick={() => generate(false)}>
+        <button type="button" disabled={busy || !derivedId.trim()} onClick={() => generate(false)}>
           {busy ? 'Üretiliyor…' : 'MP3 üret'}
         </button>
-        <button type="button" className="secondary" disabled={busy} onClick={() => generate(true)} style={{ marginLeft: '0.5rem' }}>
+        <button
+          type="button"
+          className="secondary"
+          disabled={busy || !derivedId.trim()}
+          onClick={() => generate(true)}
+          style={{ marginLeft: '0.5rem' }}
+        >
           Yeniden üret
         </button>
-        {msg ? <p className="muted" style={{ marginBottom: 0 }}>{msg}</p> : null}
       </section>
 
       {imageMasters.length ? (
@@ -217,7 +355,13 @@ export default function MediaPage() {
                 }
               >
                 <div className="row" style={{ marginTop: '0.35rem', gap: '0.5rem' }}>
-                  <a href={`/api/media/${m.id}/image`} target="_blank" rel="noreferrer" className="secondary btn" style={{ textDecoration: 'none', padding: '0.4rem 0.7rem' }}>
+                  <a
+                    href={`/api/media/${m.id}/image`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="secondary btn"
+                    style={{ textDecoration: 'none', padding: '0.4rem 0.7rem' }}
+                  >
                     Önizle
                   </a>
                   <button type="button" className="secondary" disabled={busy} onClick={() => batchResize(m.id)}>
@@ -239,7 +383,9 @@ export default function MediaPage() {
               summary={
                 <>
                   <span className="badge">{m.mediaType}</span>
-                  <span className={`badge ${m.processingStatus === 'COMPLETED' ? 'ok' : m.processingStatus === 'FAILED' ? 'danger' : 'warn'}`}>
+                  <span
+                    className={`badge ${m.processingStatus === 'COMPLETED' ? 'ok' : m.processingStatus === 'FAILED' ? 'danger' : 'warn'}`}
+                  >
                     {m.processingStatus}
                   </span>
                   <strong className="hover-row-title">{m.derivedContent?.title || m.id}</strong>
@@ -262,7 +408,11 @@ export default function MediaPage() {
               ) : null}
             </HoverExpandRow>
           ))}
-          {!items.length ? <li className="muted hover-row" style={{ border: 'none', boxShadow: 'none' }}>Henüz medya dosyası yok</li> : null}
+          {!items.length ? (
+            <li className="muted hover-row" style={{ border: 'none', boxShadow: 'none' }}>
+              Henüz medya dosyası yok
+            </li>
+          ) : null}
         </HoverExpandList>
       </section>
     </div>

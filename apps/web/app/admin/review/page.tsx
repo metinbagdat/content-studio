@@ -1002,7 +1002,20 @@ export default function ReviewPage() {
         </p>
         <div className="row">
           <span className="badge warn">{counts.pending} bekliyor</span>
-          {counts.fault > 0 ? <span className="badge danger">{counts.fault} arı</span> : null}
+          {counts.fault > 0 ? (
+            <button
+              type="button"
+              className="badge danger"
+              style={{ cursor: 'pointer', border: 'none', font: 'inherit' }}
+              title="Arı sekmesine geç"
+              onClick={() => {
+                setShowAll(false)
+                setReviewTab('ari')
+              }}
+            >
+              {counts.fault} arı
+            </button>
+          ) : null}
           <span className="badge plat-TWITTER">X</span>
           <span className="badge" style={{ borderColor: 'rgba(10,102,194,0.5)' }}>
             LinkedIn · {counts.linkedin}
@@ -1087,28 +1100,37 @@ export default function ReviewPage() {
       {msg ? <p className="flash">{msg}</p> : null}
       {adminKey ? <CommentTopicBanner adminKey={adminKey} /> : null}
 
-      {!showAll ? (
-        <div className="review-tabs" role="tablist">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={reviewTab === 'onay'}
-            className={reviewTab === 'onay' ? 'review-tab active' : 'review-tab'}
-            onClick={() => setReviewTab('onay')}
-          >
-            Onay ({counts.pending})
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={reviewTab === 'ari'}
-            className={reviewTab === 'ari' ? 'review-tab active' : 'review-tab'}
-            onClick={() => setReviewTab('ari')}
-          >
-            Arı ({counts.fault})
-          </button>
-        </div>
-      ) : null}
+      <div className="review-tabs" role="tablist">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={reviewTab === 'onay'}
+          className={reviewTab === 'onay' ? 'review-tab active' : 'review-tab'}
+          onClick={() => {
+            setShowAll(false)
+            setReviewTab('onay')
+          }}
+        >
+          Onay ({counts.pending})
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={reviewTab === 'ari'}
+          className={reviewTab === 'ari' ? 'review-tab active' : 'review-tab'}
+          onClick={() => {
+            setShowAll(false)
+            setReviewTab('ari')
+          }}
+        >
+          Arı ({counts.fault})
+        </button>
+        {showAll ? (
+          <span className="muted" style={{ alignSelf: 'center', fontSize: '0.8rem' }}>
+            «Tümünü göster» açık — sekme geçmişi de karıştırır; Arı için sekmeye tıkla
+          </span>
+        ) : null}
+      </div>
 
       {!showAll && reviewTab === 'onay' && counts.pendingVideos > 0 ? (
         <p className="flash" style={{ marginBottom: '0.75rem' }}>
