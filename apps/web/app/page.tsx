@@ -44,6 +44,28 @@ export default function HomePage() {
           </p>
         </section>
       </div>
+
+      <section className="panel" style={{ marginTop: '1rem' }}>
+        <h2>About · egitim.today Content Studio</h2>
+        <p className="muted">
+          Internal publishing tool for{' '}
+          <a href="https://www.egitim.today" rel="noopener noreferrer">
+            egitim.today
+          </a>
+          . Administrators connect owned social accounts (Facebook, Instagram, LinkedIn, TikTok,
+          X, YouTube) and publish pre-approved educational content. We do not access third-party
+          user accounts.
+        </p>
+        <p className="muted" style={{ marginTop: '0.75rem' }}>
+          <Link href="/legal/privacy">Privacy Policy</Link>
+          {' · '}
+          <Link href="/legal/terms">Terms of Service</Link>
+          {' · '}
+          <a href="https://www.egitim.today/privacy#sosyal-medya" rel="noopener noreferrer">
+            egitim.today privacy (social integration)
+          </a>
+        </p>
+      </section>
     </div>
   )
 }

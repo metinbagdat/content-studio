@@ -28,6 +28,8 @@
     "discovery:scan": "tsx --env-file=.env scripts/run-content-discovery.ts",
     "pipeline:zaman": "tsx --env-file=.env scripts/run-zaman-pipeline.ts",
     "env:parity": "tsx --env-file=.env scripts/print-db-fingerprint.ts",
+    "meta:record-review": "tsx scripts/record-meta-review-playwright.ts",
+    "tiktok:record-review": "tsx scripts/record-tiktok-review-playwright.ts",
     "postinstall": "prisma generate"
   },
   "prisma": {
@@ -53,6 +55,7 @@
     "@types/node": "^22.15.30",
     "@types/react": "^19.1.6",
     "@types/react-dom": "^19.1.5",
+    "playwright": "^1.62.1",
     "prisma": "^6.9.0",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3"
