@@ -14,6 +14,7 @@ export async function GET(req: NextRequest) {
   }
   const derivedContentId = req.nextUrl.searchParams.get('derivedContentId') || undefined
   const needsAudio = req.nextUrl.searchParams.get('needsAudio') === '1'
+  const includeFailed = req.nextUrl.searchParams.get('includeFailed') === '1'
 
   if (needsAudio) {
     const rows = await prisma.derivedContent.findMany({

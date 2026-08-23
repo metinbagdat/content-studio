@@ -7,9 +7,12 @@ export async function getMediaFile(id: string) {
   })
 }
 
-export async function listMedia(derivedContentId?: string) {
+export async function listMedia(derivedContentId?: string, opts?: { includeFailed?: boolean }) {
   return prisma.mediaFile.findMany({
-    where: derivedContentId ? { derivedContentId } : undefined,
+    where: {
+      ...(derivedContentId ? { derivedContentId } : {}),
+      ...(opts?.includeFailed ? {} : { processingStatus: { not: 'FAILED' } }),
+    },
     orderBy: { createdAt: 'desc' },
     take: 50,
     include: {
