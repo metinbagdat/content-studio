@@ -1,6 +1,7 @@
 /**
- * TikTok app review demo MP4 — end-to-end flow walkthrough for studio.egitim.today
- * Usage: npx tsx scripts/generate-tiktok-demo-video.ts
+ * TikTok app review STORYBOARD video — NOT for submission (SVG slides, not real capture).
+ * Real demo: screen-record OAuth + upload flow per docs/META_APP_REVIEW_RECORDING.md
+ * Usage (internal preview only): npx tsx scripts/generate-tiktok-demo-video.ts
  */
 import ffmpegPath from 'ffmpeg-static'
 import ffmpeg from 'fluent-ffmpeg'

@@ -37,8 +37,9 @@ Developers → **Review** → **Uygulama İncelemesi** → submission wizard:
 4. Data handling → **Next**
 5. **Reviewer instructions** ← burası
    - Metin kutusuna aşağıdaki **English** bloğu yapıştır
-   - **Upload screencast / video** → `public/meta-app-review-pages-manage-posts.mp4`  
-     (üretim: `npx tsx scripts/generate-meta-app-review-video.ts`)
+   - **Upload screencast / video** → **gerçek ekran kaydı** MP4 (2–4 dk)  
+     Storyboard: `docs/META_APP_REVIEW_RECORDING.md` (adım sırası)  
+     **Göndermeyin:** `generate-meta-app-review-video.ts` çıktısı (SVG mock OAuth — red riski)
 6. Checklist 1–5 yeşil → **Submit for review**
 
 Sadece **`pages_manage_posts`** isteyin. Messaging / comments / WhatsApp / ads eklemeyin.
@@ -103,13 +104,17 @@ posts on Pages the user administers (text and optional image/video) via the Page
 
 ---
 
-## Gerçek ekran kaydı (Meta tercih eder)
+## Gerçek ekran kaydı (Meta zorunlu — mock değil)
 
-Slide video yetersiz kalırsa Windows:
+SVG/ffmpeg storyboard (`generate-meta-app-review-video.ts`) **App Review'a yüklenmez**. Özellikle OAuth adımı gerçek `facebook.com/.../dialog/oauth` olmalı; reviewer kendi hesabıyla tekrar edebilmeli.
+
+Tam storyboard + checklist: **`docs/META_APP_REVIEW_RECORDING.md`**
+
+Windows hızlı kayıt:
 
 1. `Win + G` → Capture → **Record**
-2. `http://localhost:3100/admin/social` veya prod
-3. OAuth bağla → Yayınla → facebook.com/Egitim.today post
-4. 2–4 dk MP4 → aynı **Reviewer instructions** upload alanına
+2. `https://studio.egitim.today/admin/social` (prod ADMIN_API_KEY)
+3. OAuth bağla → **gerçek** Facebook izin ekranı → Yayınla → facebook.com/Egitim.today post
+4. 2–4 dk MP4 → Reviewer instructions upload
 
-Spam limiti varsa tek **Yayınla** (toplu değil).
+Spam limiti varsa tek **Yayınla** (toplu değil). IG / başka izinler **ayrı video**.

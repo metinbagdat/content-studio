@@ -1,6 +1,12 @@
 /**
- * Meta App Review screencast (pages_manage_posts) — 1920x1080 walkthrough.
- * Usage: npx tsx scripts/generate-meta-app-review-video.ts
+ * Meta App Review STORYBOARD video — NOT for App Review submission.
+ *
+ * Output: public/meta-app-review-pages-manage-posts.mp4 (SVG slides + ffmpeg zoompan).
+ * Meta requires a REAL screen recording the reviewer can replicate — especially the
+ * facebook.com OAuth dialog (slide 3 here is a mock, not facebook.com).
+ *
+ * For submission: record real browser flow per docs/META_APP_REVIEW_RECORDING.md
+ * Usage (internal preview only): npx tsx scripts/generate-meta-app-review-video.ts
  */
 import ffmpegPath from 'ffmpeg-static'
 import ffmpeg from 'fluent-ffmpeg'
@@ -189,8 +195,9 @@ async function main() {
     console.log(`Slide ${i + 1}/${SLIDES.length}`)
   }
   await concatClips(clipPaths, OUT)
-  console.log(`\nScreencast: ${OUT}`)
-  console.log(`Duration ~${SLIDES.length * secPerSlide}s — upload on Reviewer instructions step`)
+  console.log(`\nStoryboard preview (DO NOT submit to Meta): ${OUT}`)
+  console.log(`Real screencast: docs/META_APP_REVIEW_RECORDING.md`)
+  console.log(`Duration ~${SLIDES.length * secPerSlide}s`)
 }
 
 main().catch((err) => {
