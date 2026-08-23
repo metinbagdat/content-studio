@@ -1,5 +1,5 @@
 import ffmpeg from 'fluent-ffmpeg'
-import { configureFfmpeg } from '@/lib/media/ffmpegPaths'
+import { configureFfmpeg, getFfmpegBinaryPath } from '@/lib/media/ffmpegPaths'
 import path from 'path'
 import { prisma } from '../prisma'
 import { synthesizeSpeech } from './tts'
@@ -10,6 +10,13 @@ import { fetchBackgroundMusic } from '../video/pixabayMusic'
 configureFfmpeg()
 
 function mixVoiceAndMusic(voicePath: string, musicPath: string, outputPath: string): Promise<void> {
+  configureFfmpeg()
+  const bin = getFfmpegBinaryPath()
+  if (!bin) {
+    throw new Error(
+      'Cannot find ffmpeg — monorepo kökünde `npm i ffmpeg-static` veya FFMPEG_PATH ortam değişkeni',
+    )
+  }
   return new Promise((resolve, reject) => {
     ffmpeg()
       .input(voicePath)

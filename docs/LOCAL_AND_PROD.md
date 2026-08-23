@@ -24,6 +24,19 @@
 
 **Egress:** Sürekli `DATABASE_URL=Supabase` ile `npm run dev` Hobby kotasını yer. Günlük UI için Docker; prod kuyruğunu yerelden işlemek için kısa session (Supabase URL + bitince Docker’a dön). Worker: `CS_ALLOW_SUPABASE_WORKER=1` yalnız one-shot.
 
+## Ses Drenajı (local audio drain)
+
+Yerelde onaylanmış podcast / marş / şarkı için MP3 üretme turu. Vercel’de ffmpeg/uzun TTS güvenilir değil; **Docker + `npm run dev`**.
+
+| Adım | Ne |
+|------|-----|
+| 1 | `.env` → `localhost:5434` (egress yok) |
+| 2 | `/admin/review` — temiz onay; Arı’dakileri medya kapalı döndür+onayla veya yerelde video üret |
+| 3 | `/admin/media` — **Sesi olmayan** listesi → satırda MP3 veya **Hepsini üret** |
+| 4 | Yayın / OAuth → `studio.egitim.today` |
+
+Otomatik: Medya sayfası `needsAudio=1` ile listeyi doldurur. Workflow «Sıradaki» eksik podcast sayısını gösterir. Toplu onayda «Otomatik medya» açıkken de ses üretilir (yavaş; tercihen Ses Drenajı).
+
 ## Env nerede?
 
 | Ortam | Dosya / yer | Kim okur |

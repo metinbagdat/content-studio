@@ -295,7 +295,9 @@ export async function getWorkflowSnapshot(): Promise<WorkflowSnapshot> {
   if (reviewPending > 0)
     nextActions.push(`${reviewPending} türev onay bekliyor → Onay ekranında toplu onayla`)
   if (podcastScripts > podcastMedia)
-    nextActions.push(`${podcastScripts - podcastMedia} podcast için Medya’da ses üret (veya toplu onayda otomatik)`)
+    nextActions.push(
+      `Ses Drenajı: ${podcastScripts - podcastMedia} podcast MP3 eksik → /admin/media (Hepsini üret)`,
+    )
   if (linkedAccounts === 0 && accountHealth.slots.some((s) => s.status === 'dry_run'))
     nextActions.push('Dry-run hesaplar bağlı — gerçek yayın için Sosyal’de OAuth bağla')
   else if (linkedAccounts === 0)

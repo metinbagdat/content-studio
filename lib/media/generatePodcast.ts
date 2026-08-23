@@ -2,13 +2,22 @@ import { unlink, mkdtemp, writeFile, rm, readFile } from 'fs/promises'
 import { tmpdir } from 'os'
 import path from 'path'
 import ffmpeg from 'fluent-ffmpeg'
-import { configureFfmpeg } from '@/lib/media/ffmpegPaths'
+import { configureFfmpeg, getFfmpegBinaryPath } from '@/lib/media/ffmpegPaths'
 import { prisma } from '../prisma'
 import { extractPodcastSpeechParts, estimateSpeechDurationSec } from './podcastText'
 import { synthesizeSpeech, writeAudioFile, ttsModeLabel, audioDiskPath, audioStorageDir } from './tts'
 import { fetchBackgroundMusic } from '../video/pixabayMusic'
 
 configureFfmpeg()
+
+function ensureFfmpeg() {
+  configureFfmpeg()
+  if (!getFfmpegBinaryPath()) {
+    throw new Error(
+      'Cannot find ffmpeg — monorepo kökünde `npm i ffmpeg-static` veya FFMPEG_PATH ortam değişkeni (Next cwd genelde apps/web)',
+    )
+  }
+}
 
 export { getMediaFile, listMedia } from './mediaDb'
 
@@ -22,6 +31,7 @@ function renderJingle(
   durationSec: number,
   mode: 'intro' | 'mid' | 'outro',
 ): Promise<void> {
+  ensureFfmpeg()
   let chain = `[0:a]atrim=0:${durationSec}`
   if (mode === 'intro') {
     chain += `,afade=t=out:st=${Math.max(0, durationSec - 1)}:d=1`
@@ -45,6 +55,7 @@ function renderJingle(
 }
 
 function concatAudioFiles(inputPaths: string[], outputPath: string): Promise<void> {
+  ensureFfmpeg()
   const listContent = inputPaths.map((p) => `file '${p.replace(/'/g, "'\\''")}'`).join('\n')
   const listPath = `${outputPath}.concat.txt`
 

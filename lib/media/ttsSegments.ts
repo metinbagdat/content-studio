@@ -1,13 +1,22 @@
 import { mkdir, writeFile, rm, readFile } from 'fs/promises'
 import path from 'path'
 import ffmpeg from 'fluent-ffmpeg'
-import { configureFfmpeg } from '@/lib/media/ffmpegPaths'
+import { configureFfmpeg, getFfmpegBinaryPath } from '@/lib/media/ffmpegPaths'
 import { storageSubdir } from '../storage/writableRoot'
 import { synthesizeSpeech, audioDiskPath } from './tts'
 import { sanitizeSpeechText } from './speechText'
 import { getAudioDurationSec } from '../video/audioDuration'
 
 configureFfmpeg()
+
+function ensureFfmpeg() {
+  configureFfmpeg()
+  if (!getFfmpegBinaryPath()) {
+    throw new Error(
+      'Cannot find ffmpeg — monorepo kökünde `npm i ffmpeg-static` veya FFMPEG_PATH',
+    )
+  }
+}
 
 const DEFAULT_PAUSE_SEC = 1.2
 const DEFAULT_OUTRO_PAD_SEC = 3
@@ -20,6 +29,7 @@ export type SpeechAssemblyResult = {
 }
 
 function makeSilence(outputPath: string, durationSec: number): Promise<void> {
+  ensureFfmpeg()
   return new Promise((resolve, reject) => {
     ffmpeg()
       .input('anullsrc=r=24000:cl=mono')
@@ -33,6 +43,7 @@ function makeSilence(outputPath: string, durationSec: number): Promise<void> {
 }
 
 function concatMp3Files(inputPaths: string[], outputPath: string): Promise<void> {
+  ensureFfmpeg()
   const listPath = `${outputPath}.txt`
   const listContent = inputPaths.map((p) => `file '${p.replace(/'/g, "'\\''")}'`).join('\n')
   return writeFile(listPath, listContent, 'utf8').then(
