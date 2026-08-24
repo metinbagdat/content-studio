@@ -57,7 +57,11 @@ const SOCIAL_BULK_TYPES = [
   'INFOGRAPHIC_TEXT',
 ] as const
 
+/** Per-tick client timeout (must stay under typical Vercel/proxy limits). */
 const BULK_FETCH_TIMEOUT_MS = 280_000
+/** Network / 5xx retries before pausing the DB job. */
+const BULK_TICK_MAX_RETRIES = 3
+const BULK_TICK_RETRY_MS = 2_000
 
 type DbBulkJob = {
   id: string
@@ -765,22 +769,36 @@ export default function ReviewPage() {
     bulkAbortRef.current = new AbortController()
     let lastJob: DbBulkJob | null = null
     let cancelled = false
+    let userStop = false
+    let retryAttempt = 0
 
     while (!bulkAbortRef.current.signal.aborted) {
-      const timeout = setTimeout(() => bulkAbortRef.current?.abort(), BULK_FETCH_TIMEOUT_MS)
+      // Per-tick timeout must NOT abort the shared controller — that used to kill the whole loop.
+      const tickCtrl = new AbortController()
+      const onUserAbort = () => tickCtrl.abort()
+      bulkAbortRef.current.signal.addEventListener('abort', onUserAbort)
+      const timeout = setTimeout(() => tickCtrl.abort(), BULK_FETCH_TIMEOUT_MS)
       try {
         const res = await fetch('/api/review/bulk-job', {
           method: 'POST',
           headers: adminHeaders(adminKey, true),
           body: JSON.stringify({ action: 'tick', id: jobId }),
-          signal: bulkAbortRef.current.signal,
+          signal: tickCtrl.signal,
         })
         const data = await res.json().catch(() => ({}))
         if (!res.ok) {
+          const retryable = res.status === 408 || res.status === 429 || res.status >= 500
+          if (retryable && retryAttempt < BULK_TICK_MAX_RETRIES) {
+            retryAttempt += 1
+            setMsg(`Tick ${res.status} — yeniden deneme ${retryAttempt}/${BULK_TICK_MAX_RETRIES}…`)
+            await new Promise((r) => setTimeout(r, BULK_TICK_RETRY_MS * retryAttempt))
+            continue
+          }
           setMsg(data.error || `Tick başarısız (${res.status})`)
           cancelled = true
           break
         }
+        retryAttempt = 0
         const job = data.job as DbBulkJob
         lastJob = job
         applyJobToProgress(job, startedAt)
@@ -790,15 +808,32 @@ export default function ReviewPage() {
           break
         }
       } catch (err) {
-        if (err instanceof DOMException && err.name === 'AbortError') {
+        if (bulkAbortRef.current?.signal.aborted) {
+          userStop = true
           cancelled = true
           break
         }
-        setMsg(err instanceof Error ? err.message : 'Tick hatası')
+        const isAbort = err instanceof DOMException && err.name === 'AbortError'
+        if (retryAttempt < BULK_TICK_MAX_RETRIES) {
+          retryAttempt += 1
+          setMsg(
+            `${isAbort ? 'Tick zaman aşımı' : 'Ağ hatası'} — yeniden deneme ${retryAttempt}/${BULK_TICK_MAX_RETRIES}…`,
+          )
+          await new Promise((r) => setTimeout(r, BULK_TICK_RETRY_MS * retryAttempt))
+          continue
+        }
+        setMsg(
+          isAbort
+            ? 'Tick zaman aşımı — Vercel limiti veya ağır medya/WP. Medya kapalı onayla veya yerelde devam.'
+            : err instanceof Error
+              ? err.message
+              : 'Tick hatası',
+        )
         cancelled = true
         break
       } finally {
         clearTimeout(timeout)
+        bulkAbortRef.current?.signal.removeEventListener('abort', onUserAbort)
       }
     }
 
@@ -820,9 +855,20 @@ export default function ReviewPage() {
       const data = await res.json().catch(() => ({}))
       if (data.job) setPendingBulkResume(data.job as DbBulkJob)
       setMsg(
-        `Duraklatıldı: ${lastJob.cursor}/${lastJob.total}` +
-          (lastJob.errors?.length ? ` · hata: ${lastJob.errors.length}` : ''),
+        `${userStop ? 'Durduruldu' : 'Duraklatıldı'}: ${lastJob.cursor}/${lastJob.total}` +
+          (lastJob.errors?.length ? ` · hata: ${lastJob.errors.length}` : '') +
+          ' — «Kaldığı yerden devam»',
       )
+    } else if (cancelled && !lastJob) {
+      const res = await fetch(`/api/review/bulk-job?id=${encodeURIComponent(jobId)}`, {
+        headers: adminHeaders(adminKey),
+        cache: 'no-store',
+      }).catch(() => null)
+      const data = res ? await res.json().catch(() => ({})) : {}
+      if (data.job && data.job.cursor < data.job.total) {
+        setPendingBulkResume(data.job as DbBulkJob)
+        setMsg(`İlk tick tamamlanamadı (0/${data.job.total}) — medyayı kapatıp devam edin veya yerelde tick`)
+      }
     } else if (lastJob) {
       const faultFromErrors = [
         ...new Set(
@@ -1244,8 +1290,10 @@ export default function ReviewPage() {
             Onay + WP draft
           </label>
           <p className="muted" style={{ flexBasis: '100%', margin: 0, fontSize: '0.78rem' }}>
-            İlerleme DB’de (ReviewBulkJob) — sekme kapanırsa veya yerelde aynı Supabase’e bağlanınca
-            75/127 kaldığı yerden devam eder. Medya/WP açıkken tick=1; kapalıyken paket.
+            İlerleme DB’de (ReviewBulkJob). Prod’da <strong>Otomatik medya</strong> / ağır WP açıkken
+            Vercel tick kopabilir — önce medyayı kapatıp onayla; video için «Hepsini Arı&apos;ya al»;
+            medya/WP için yerelde <code>npm run dev</code> (aynı Supabase). Tick hata verirse 3 kez
+            yeniden dener, sonra «Kaldığı yerden devam».
           </p>
           <button
             type="button"
