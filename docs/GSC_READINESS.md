@@ -54,3 +54,4 @@
 | Date | Impressions (28d) | Top query | Notes |
 |------|-------------------|-----------|-------|
 | 2026-08-20 | **0** (Last 3 months also 0) | _(empty)_ | GSC UI confirmed empty. Rank Math meta+links+categories for 8 posts done. **Next manual:** URL Inspection on #28 + one TYT post. |
+| 2026-08-24 | _(check UI)_ | — | Indexing report triage: see `docs/GSC_INDEXING_FIX.md`. Soft-404 stubs for sample-page/hello-world; sitemap OK; author/wp-admin noindex|disallow intentional. |
