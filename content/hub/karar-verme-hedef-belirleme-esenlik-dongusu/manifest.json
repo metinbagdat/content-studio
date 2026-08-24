@@ -14,6 +14,7 @@
     "ogrenci-ogreticiligi",
     "esenlik"
   ],
+  "focusKeyword": "karar verme",
   "skillTags": [
     "Karar Verme",
     "Hedef Belirleme",
@@ -21,6 +22,11 @@
     "Öğrenci Koçluğu",
     "Pozitif Psikoloji"
   ],
+  "wp": {
+    "articleId": 54,
+    "podcastId": 55,
+    "anthemId": 56
+  },
   "internalLinks": ["/ai-coach", "/study-plan", "/skillup", "/community", "/career-insights"],
   "hkmt": {
     "hkmt_hazir_durum": "YKS/LGS adayları, üniversite ve kariyer planlaması yapan gençler",
