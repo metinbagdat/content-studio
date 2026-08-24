@@ -16,8 +16,11 @@ import { hubSlugFromArgv, loadHubBundle } from '../lib/hub/loadHubBundle'
 import { ingestWordpressPublished } from '../lib/wordpress/ingestPublished'
 import { fetchWpPostBySlug } from '../lib/wordpress/fetchWpPost'
 import {
+  ensureWpTerms,
   sendDraftToWordPress,
   sendViaCoreRest,
+  updateRankMathMeta,
+  updateViaCoreRest,
   wordpressConfigured,
 } from '../lib/wordpress/publisher'
 
@@ -41,42 +44,102 @@ async function main() {
   if (!pipelineOnly) {
     if (wordpressConfigured()) {
       const articleHtml = markdownToWpHtml(bundle.articleMarkdown)
-      const articleRes = await sendDraftToWordPress({
+      const podHtml = markdownToWpHtml(bundle.podcastScriptMarkdown)
+      const anthemHtml = markdownToWpHtml(bundle.songLyricsMarkdown)
+      const focus = manifest.focusKeyword || 'karar verme'
+
+      let catIds: number[] = []
+      let tagIds: number[] = []
+      try {
+        catIds = await ensureWpTerms('categories', manifest.wpCategories)
+        tagIds = await ensureWpTerms('tags', manifest.wpTags)
+        console.log('WP terms', { categories: catIds, tags: tagIds })
+      } catch (err) {
+        console.warn('WP terms skipped:', err instanceof Error ? err.message : err)
+      }
+
+      const articlePayload = {
         title: manifest.title,
         content: articleHtml,
         excerpt: manifest.excerpt,
-        post_type: 'article',
+        slug,
+        post_type: 'article' as const,
         acf: manifest.hkmt,
-        meta: {
-          script: manifest.seoTitle,
-        },
-      })
-      console.log('WP article draft:', articleRes)
+        meta: { script: manifest.seoTitle },
+      }
+      const articleId = manifest.wp?.articleId
+      const articleRes = articleId
+        ? await updateViaCoreRest(articleId, articlePayload, {
+            slug,
+            categories: catIds,
+            tags: tagIds,
+          })
+        : await sendDraftToWordPress(articlePayload)
+      console.log('WP article:', articleRes)
+      const savedArticleId = articleRes.wpPostId || articleId
+      if (savedArticleId) {
+        const seo = await updateRankMathMeta(savedArticleId, {
+          focusKeyword: focus,
+          title: manifest.seoTitle,
+          description: manifest.excerpt,
+        })
+        console.log('Rank Math article:', seo)
+      }
 
-      const podHtml = markdownToWpHtml(bundle.podcastScriptMarkdown)
-      const podRes = await sendDraftToWordPress({
+      const podPayload = {
         title: manifest.podcast.title,
         content: podHtml,
         excerpt: `Podcast bölüm ${manifest.podcast.episodeNumber} · ~${manifest.podcast.durationMinutes} dk`,
-        post_type: 'podcast',
+        slug: manifest.podcast.slug,
+        post_type: 'podcast' as const,
         acf: manifest.hkmt,
         meta: {
           script: bundle.podcastScriptMarkdown,
           podcast_duration: manifest.podcast.durationMinutes,
         },
-      })
-      console.log('WP podcast draft:', podRes)
+      }
+      const podId = manifest.wp?.podcastId
+      const podRes = podId
+        ? await updateViaCoreRest(podId, podPayload, { slug: manifest.podcast.slug })
+        : await sendDraftToWordPress(podPayload)
+      console.log('WP podcast:', podRes)
+      const savedPodId = podRes.wpPostId || podId
+      if (savedPodId) {
+        console.log(
+          'Rank Math podcast:',
+          await updateRankMathMeta(savedPodId, {
+            focusKeyword: 'karar alma sanatı',
+            title: `${manifest.podcast.title} | Eğitim.Today Podcast`,
+            description: `Karar verme ve hedef belirleme üzerine ${manifest.podcast.durationMinutes} dakikalık bölüm.`,
+          }),
+        )
+      }
 
-      const anthemHtml = markdownToWpHtml(bundle.songLyricsMarkdown)
-      const anthemRes = await sendDraftToWordPress({
+      const anthemPayload = {
         title: manifest.anthem.title,
         content: anthemHtml,
-        excerpt: 'Motivasyonel marş · Karar verme teması',
-        post_type: 'anthem',
+        excerpt: 'Motivasyonel marş · karar verme ve hedef belirleme',
+        slug: manifest.anthem.slug,
+        post_type: 'anthem' as const,
         acf: manifest.hkmt,
         meta: { lyrics: bundle.songLyricsMarkdown },
-      })
-      console.log('WP anthem draft:', anthemRes)
+      }
+      const anthemId = manifest.wp?.anthemId
+      const anthemRes = anthemId
+        ? await updateViaCoreRest(anthemId, anthemPayload, { slug: manifest.anthem.slug })
+        : await sendDraftToWordPress(anthemPayload)
+      console.log('WP anthem:', anthemRes)
+      const savedAnthemId = anthemRes.wpPostId || anthemId
+      if (savedAnthemId) {
+        console.log(
+          'Rank Math anthem:',
+          await updateRankMathMeta(savedAnthemId, {
+            focusKeyword: 'karar alma sanatı',
+            title: `${manifest.anthem.title} | Eğitim.Today`,
+            description: 'Karar verme ve hedef belirleme temalı motivasyonel marş.',
+          }),
+        )
+      }
     } else {
       console.warn('WP not configured — skip WP drafts (set WP_BASE_URL + CONNECT_STUDIO_API_KEY)')
     }

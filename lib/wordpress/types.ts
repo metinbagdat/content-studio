@@ -6,6 +6,8 @@ export type WpContentPayload = {
   title: string
   content: string
   excerpt?: string
+  slug?: string
+  wpPostId?: number
   post_type: WpPostType
   categories?: number[]
   tags?: number[]

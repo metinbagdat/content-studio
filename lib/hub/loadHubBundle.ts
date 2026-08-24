@@ -34,6 +34,12 @@ export type HubManifest = {
     title: string
     slug: string
   }
+  focusKeyword?: string
+  wp?: {
+    articleId?: number
+    podcastId?: number
+    anthemId?: number
+  }
   pipeline?: {
     includeMarchSong?: boolean
     marchStyle?: string
