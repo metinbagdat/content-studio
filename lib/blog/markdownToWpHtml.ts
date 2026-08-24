@@ -43,10 +43,11 @@ function inline(text: string, productCtaUrl: string): string {
   let s = escapeHtml(text)
   s = s.replace(/\[([^\]]+)\]\((https?:[^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
   s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-  s = s.replace(
-    /(?<![:/\w])egitim\.today\b/g,
-    `<a href="${productCtaUrl}" target="_blank" rel="noopener">egitim.today</a>`,
-  )
+  // Auto-link bare egitim.today only outside existing <a>…</a> (avoids nested anchors).
+  s = s.replace(/(<a\b[^>]*>[\s\S]*?<\/a>)|(?<![:/\w])egitim\.today\b/g, (m, anchor) => {
+    if (anchor) return anchor
+    return `<a href="${productCtaUrl}" target="_blank" rel="noopener">egitim.today</a>`
+  })
   return s
 }
 

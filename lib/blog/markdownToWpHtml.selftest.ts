@@ -9,6 +9,10 @@ assert.doesNotMatch(html, /href="<a /)
 assert.doesNotMatch(html, /<!-- wp:/)
 assert.doesNotMatch(html, /checklist|lead magnet/i)
 
+const nested = markdownToWpHtml('## X\n\n[egitim.today](https://egitim.today) üzerinde plan.')
+assert.doesNotMatch(nested, /<a href="[^"]+"><a /)
+assert.match(nested, /<a href="https:\/\/egitim\.today"[^>]*>egitim\.today<\/a>/)
+
 const crlf = markdownToWpHtml('# Başlık\r\n\r\nKarar verme birinci cümle.\r\n\r\n## Alt\r\n\r\nİkinci paragraf.')
 assert.match(crlf, /Karar verme birinci cümle/)
 assert.match(crlf, /<h2>Alt<\/h2>/)
