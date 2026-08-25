@@ -98,14 +98,26 @@ function postgresHealthy(): Promise<boolean> {
   })
 }
 
+function supabaseLocalAllowed(): boolean {
+  return (
+    process.env.CS_ALLOW_SUPABASE_WORKER === '1' || process.env.CS_ALLOW_SUPABASE === '1'
+  )
+}
+
 async function main() {
   if (process.env.VERCEL || process.env.SKIP_LOCAL_DOCKER === 'true') return
 
   const url = databaseUrl()
   if (!isLocalDockerUrl(url)) {
     if (/supabase/i.test(url)) {
+      if (!supabaseLocalAllowed()) {
+        console.error(
+          '[db:up] Refused: DATABASE_URL is Supabase (Hobby egress). Point .env at localhost:5434, or set CS_ALLOW_SUPABASE_WORKER=1 for a one-shot only.',
+        )
+        process.exit(1)
+      }
       console.warn(
-        '[db:up] DATABASE_URL is Supabase — Docker skipped. Local Hobby egress still counts. Use localhost:5434.',
+        '[db:up] CS_ALLOW_SUPABASE*=1 — skipping Docker; local process will hit Supabase egress.',
       )
     }
     return

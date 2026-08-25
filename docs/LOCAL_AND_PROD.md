@@ -142,7 +142,17 @@ Detay: [OAUTH_CALLBACKS_PRODUCTION.md](./OAUTH_CALLBACKS_PRODUCTION.md), [TIKTOK
 
 ## Local-first üretim (Supabase kota)
 
-**Egress = Supabase’ten çıkan trafik.** `npm run dev` / `npm run worker` `DATABASE_URL` Supabase ise her Prisma sorgusu (admin sayfası, 15s worker tick, analytics) Hobby 5 GB kotasına yazılır. Disk/MAU değil — senin 15 GB bu.
+**Egress = Supabase’ten çıkan trafik.** Local `DATABASE_URL=Supabase` ile `npm run dev` / worker her Prisma sorgusunda Hobby 5 GB kotasına yazar.
+
+**2026-09-01’e kadar:** Free plan + spend cap kilitli; yeni dönem için kota sıfırlanana kadar Supabase’e local bağlanma. Günlük iş **yalnızca Docker `localhost:5434`**.
+
+**Sert engel (kod):** Local süreçlerde Supabase URL → `predev` exit 1 + Prisma throw. Açmak için yalnız one-shot:
+
+```env
+CS_ALLOW_SUPABASE_WORKER=1
+```
+
+Bitince **kaldır**. Prod Vercel (`VERCEL=1`) bu engelden muaf; yine de Production’da autopilot/discovery/cron kapalı kalsın.
 
 **14 Aug 2026 sonrası 402 olmaması için:**
 

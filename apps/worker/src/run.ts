@@ -1,7 +1,7 @@
 import { startWorkers } from '../../../lib/queue'
 import { startDiscoveryCron } from '../../../lib/discovery/discoveryCron'
 import { startAnalyticsSyncCron } from '../../../lib/social/analyticsCron'
-import { isSupabaseDatabaseUrl } from '../../../lib/prisma'
+import { assertLocalSupabaseEgressAllowed } from '../../../lib/prisma'
 import { runWorkerTick } from '../../../lib/worker/runWorkerTick'
 
 function wantsDrain(): boolean {
@@ -9,17 +9,12 @@ function wantsDrain(): boolean {
 }
 
 async function refuseSupabaseIfNeeded(): Promise<void> {
-  if (!isSupabaseDatabaseUrl() || process.env.VERCEL) return
-  const allow = process.env.CS_ALLOW_SUPABASE_WORKER === '1'
-  if (!allow) {
-    console.error(
-      '[egress] Worker refused: DATABASE_URL is Supabase (Hobby egress). Use localhost:5434, or set CS_ALLOW_SUPABASE_WORKER=1 for a one-shot prod drain.',
-    )
+  try {
+    assertLocalSupabaseEgressAllowed()
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : err)
     process.exit(1)
   }
-  console.warn(
-    '[egress] CS_ALLOW_SUPABASE_WORKER=1 — Worker → Supabase. Prefer localhost:5434 for daily work.',
-  )
 }
 
 async function drainUntilIdle(): Promise<void> {

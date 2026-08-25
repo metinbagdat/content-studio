@@ -50,6 +50,39 @@ function databaseUrl(): string {
   return out
 }
 
+/** True when Prisma talks to hosted Supabase (billed egress). Local Docker is not billed. */
+export function isSupabaseDatabaseUrl(raw = process.env.DATABASE_URL): boolean {
+  if (!raw?.trim()) return false
+  return /supabase\.(co|com)|pooler\.supabase/i.test(normalizeDatabaseUrl(raw))
+}
+
+/** One-shot local → Supabase only (never leave set during daily Docker work). */
+export function isSupabaseLocalAllowlisted(): boolean {
+  return (
+    process.env.CS_ALLOW_SUPABASE_WORKER === '1' || process.env.CS_ALLOW_SUPABASE === '1'
+  )
+}
+
+/**
+ * Block local Next/worker/scripts from Supabase unless explicitly allowlisted.
+ * Vercel Production may use Supabase; local daily work must use localhost:5434.
+ */
+export function assertLocalSupabaseEgressAllowed(): void {
+  if (process.env.VERCEL || isNextBuildPhase()) return
+  if (!isSupabaseDatabaseUrl()) return
+  if (isSupabaseLocalAllowlisted()) {
+    console.warn(
+      '[egress] CS_ALLOW_SUPABASE*=1 — local process → Supabase (Hobby egress). Prefer localhost:5434; unset the flag after the one-shot.',
+    )
+    return
+  }
+  throw new Error(
+    '[egress] Refused: local DATABASE_URL points at Supabase (Hobby 5GB egress). Use Docker localhost:5434 for daily work. One-shot only: CS_ALLOW_SUPABASE_WORKER=1. See docs/LOCAL_AND_PROD.md',
+  )
+}
+
+assertLocalSupabaseEgressAllowed()
+
 export const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({
@@ -58,18 +91,6 @@ export const prisma =
   })
 
 globalForPrisma.prisma = prisma
-
-/** True when Prisma talks to hosted Supabase (billed egress). Local Docker is not billed. */
-export function isSupabaseDatabaseUrl(raw = process.env.DATABASE_URL): boolean {
-  if (!raw?.trim()) return false
-  return /supabase\.(co|com)|pooler\.supabase/i.test(normalizeDatabaseUrl(raw))
-}
-
-if (isSupabaseDatabaseUrl() && !process.env.VERCEL) {
-  console.warn(
-    '[egress] DATABASE_URL is Supabase. Local `npm run dev` / `npm run worker` count toward Hobby 5GB egress. Use docker compose Postgres (localhost:5434) for daily work — see docs/LOCAL_AND_PROD.md',
-  )
-}
 
 export function isPrismaConnectionError(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err)

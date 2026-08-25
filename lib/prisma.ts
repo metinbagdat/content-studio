@@ -1,6 +1,8 @@
 export {
   prisma,
   isSupabaseDatabaseUrl,
+  isSupabaseLocalAllowlisted,
+  assertLocalSupabaseEgressAllowed,
   isPrismaConnectionError,
   ensurePrismaConnected,
   withPrismaRetry,
