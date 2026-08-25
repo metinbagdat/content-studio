@@ -6,6 +6,14 @@ import { connectMetaPlatform } from '@/lib/social/metaApi'
 import { pkceCookieName } from '@/lib/social/pkce'
 import { syncSocialDraftsFromApprovedCaptions } from '@/lib/pipeline'
 import { exchangeTikTokCode, fetchTikTokUser, tiktokCallbackUrl } from '@/lib/social/tiktokApi'
+import {
+  exchangePinterestCode,
+  fetchPinterestUserAccount,
+  fetchPinterestBoards,
+  createPinterestBoard,
+  pinterestCallbackUrl,
+  pinterestConfigured,
+} from '@/lib/social/pinterestApi'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,6 +24,7 @@ const PLATFORM_MAP: Record<string, SocialPlatform> = {
   facebook: 'FACEBOOK',
   instagram: 'INSTAGRAM',
   tiktok: 'TIKTOK',
+  pinterest: 'PINTEREST',
 }
 
 function redirectWithMessage(appUrl: string, query: string) {
@@ -213,6 +222,39 @@ export async function GET(
         tokenExpiry: tokens.expires_in ? new Date(Date.now() + tokens.expires_in * 1000) : undefined,
         config: { oauth: true, openId: user.open_id, displayName: user.display_name },
       })
+    } else if (platform === 'PINTEREST' && pinterestConfigured()) {
+      const redirect = pinterestCallbackUrl(appUrl)
+      const tokens = await exchangePinterestCode(code, redirect)
+      const account = await fetchPinterestUserAccount(tokens.access_token)
+
+      const preferredBoardId = process.env.PINTEREST_BOARD_ID?.trim()
+      const boards = await fetchPinterestBoards(tokens.access_token)
+      let board = preferredBoardId ? boards.find((b) => b.id === preferredBoardId) : boards[0]
+      if (!board) {
+        board = await createPinterestBoard(
+          tokens.access_token,
+          'egitim.today',
+          "Blog içeriklerinden otomatik oluşturulan Pin'ler",
+        )
+      }
+
+      const accountId = account.id || account.username || `pin_${Date.now()}`
+      await upsertOAuthAccount({
+        platform: 'PINTEREST',
+        accountId,
+        accountName: account.username ? `@${account.username}` : 'Pinterest',
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token,
+        tokenExpiry: tokens.expires_in
+          ? new Date(Date.now() + tokens.expires_in * 1000)
+          : undefined,
+        config: {
+          oauth: true,
+          username: account.username,
+          boardId: board.id,
+          boardName: board.name,
+        },
+      })
     } else if (
       (platform === 'FACEBOOK' || platform === 'INSTAGRAM') &&
       (process.env.META_APP_ID || process.env.FACEBOOK_CLIENT_ID) &&
@@ -232,7 +274,12 @@ export async function GET(
       await upsertDryRunAccount(platform, `Dry-run ${platform}`)
       return redirectWithMessage(appUrl, 'connected=dry')
     }
-    if (platform !== 'YOUTUBE' && platform !== 'FACEBOOK' && platform !== 'INSTAGRAM' && platform !== 'TIKTOK') {
+    if (
+      platform !== 'YOUTUBE' &&
+      platform !== 'FACEBOOK' &&
+      platform !== 'INSTAGRAM' &&
+      platform !== 'TIKTOK'
+    ) {
       await syncSocialDraftsFromApprovedCaptions({ skipImages: true })
     }
   } catch (err) {

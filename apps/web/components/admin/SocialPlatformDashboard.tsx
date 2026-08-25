@@ -59,13 +59,15 @@ type EnvCheck = {
   META_APP_SECRET: boolean
   TIKTOK_CLIENT_KEY?: boolean
   TIKTOK_CLIENT_SECRET?: boolean
+  PINTEREST_APP_ID?: boolean
+  PINTEREST_APP_SECRET?: boolean
   ready: boolean
 }
 
 type PipelinePlatformDef = {
   id: string
   note: string
-  oauthKey?: 'youtube' | 'facebook' | 'instagram' | 'tiktok'
+  oauthKey?: 'youtube' | 'facebook' | 'instagram' | 'tiktok' | 'pinterest'
 }
 
 const PIPELINE_PLATFORMS: PipelinePlatformDef[] = [
@@ -89,6 +91,12 @@ const PIPELINE_PLATFORMS: PipelinePlatformDef[] = [
     oauthKey: 'tiktok',
     note:
       'OAuth bağla → kısa video script MP4 yüklenir. Onaysız uygulamada video TikTok gelen kutusuna düşer (uygulamadan onayla).',
+  },
+  {
+    id: 'PINTEREST',
+    oauthKey: 'pinterest',
+    note:
+      'OAuth bağla → Pin (görsel URL + board). Prod’da herkese açık image URL gerekir; localhost Pin yayınlanmaz.',
   },
 ]
 
@@ -327,12 +335,22 @@ export function SocialPlatformDashboard({
   onMetaTest,
 }: {
   accounts: PlatformCardAccount[]
-  oauth: { twitter: OAuthSlot; linkedin: OAuthSlot; youtube?: OAuthSlot; facebook?: OAuthSlot; instagram?: OAuthSlot; tiktok?: OAuthSlot } | null
+  oauth: {
+    twitter: OAuthSlot
+    linkedin: OAuthSlot
+    youtube?: OAuthSlot
+    facebook?: OAuthSlot
+    instagram?: OAuthSlot
+    tiktok?: OAuthSlot
+    pinterest?: OAuthSlot
+  } | null
   envCheck: EnvCheck | null
   busyId: string | null
   readyDraftsByPlatform: Record<string, ReadyDraft[]>
   recentPublishedByPlatform: Record<string, RecentPublished[]>
-  onOAuthConnect: (p: 'TWITTER' | 'LINKEDIN' | 'YOUTUBE' | 'FACEBOOK' | 'INSTAGRAM' | 'TIKTOK') => void
+  onOAuthConnect: (
+    p: 'TWITTER' | 'LINKEDIN' | 'YOUTUBE' | 'FACEBOOK' | 'INSTAGRAM' | 'TIKTOK' | 'PINTEREST',
+  ) => void
   onDryConnect: (p: string) => void
   onDisconnect: (id: string) => void
   onSyncStats: () => void
@@ -542,6 +560,8 @@ export function SocialPlatformDashboard({
             <EnvRow label="META_APP_SECRET" ok={envCheck.META_APP_SECRET} />
             <EnvRow label="TIKTOK_CLIENT_KEY" ok={Boolean(envCheck.TIKTOK_CLIENT_KEY)} />
             <EnvRow label="TIKTOK_CLIENT_SECRET" ok={Boolean(envCheck.TIKTOK_CLIENT_SECRET)} />
+            <EnvRow label="PINTEREST_APP_ID" ok={Boolean(envCheck.PINTEREST_APP_ID)} />
+            <EnvRow label="PINTEREST_APP_SECRET" ok={Boolean(envCheck.PINTEREST_APP_SECRET)} />
             <p className="row" style={{ marginTop: '0.65rem' }}>
               {envCheck.ready ? (
                 <span className="badge ok">OAuth env tamam — kartlardan OAuth bağla</span>
@@ -596,7 +616,9 @@ export function SocialPlatformDashboard({
                   ? oauth?.instagram
                   : p.oauthKey === 'tiktok'
                     ? oauth?.tiktok
-                    : undefined
+                    : p.oauthKey === 'pinterest'
+                      ? oauth?.pinterest
+                      : undefined
           const oauthPlatform =
             p.id === 'YOUTUBE'
               ? 'YOUTUBE'
@@ -606,7 +628,9 @@ export function SocialPlatformDashboard({
                   ? 'INSTAGRAM'
                   : p.id === 'TIKTOK'
                     ? 'TIKTOK'
-                    : null
+                    : p.id === 'PINTEREST'
+                      ? 'PINTEREST'
+                      : null
           const connState = oauthConnectionState(account, Boolean(oauthSlot?.configured))
           const pipelineDim = connState !== 'connected'
           return (

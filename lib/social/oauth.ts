@@ -4,11 +4,19 @@ import { encryptSecret } from '../crypto'
 import { linkedinOAuthScopes, youtubeOAuthScopes } from './config'
 import { metaConfigured, metaAuthUrl } from './metaApi'
 import { tiktokConfigured, tiktokAuthUrl } from './tiktokApi'
+import { pinterestConfigured, pinterestAuthUrl } from './pinterestApi'
 
-export type OAuthConnectPlatform = 'TWITTER' | 'LINKEDIN' | 'YOUTUBE' | 'FACEBOOK' | 'INSTAGRAM' | 'TIKTOK'
+export type OAuthConnectPlatform =
+  | 'TWITTER'
+  | 'LINKEDIN'
+  | 'YOUTUBE'
+  | 'FACEBOOK'
+  | 'INSTAGRAM'
+  | 'TIKTOK'
+  | 'PINTEREST'
 
 /**
- * OAuth helpers for X + LinkedIn + YouTube + Meta + TikTok.
+ * OAuth helpers for X + LinkedIn + YouTube + Meta + TikTok + Pinterest.
  * Without client credentials, connectAccount stores a dry-run account for local testing.
  */
 
@@ -78,6 +86,13 @@ export function getAuthUrl(
       return `${appUrl}/admin/social?dryRun=tiktok&state=${state}`
     }
     return tiktokAuthUrl(state, appUrl, codeChallenge)
+  }
+
+  if (platform === 'PINTEREST') {
+    if (!pinterestConfigured()) {
+      return `${appUrl}/admin/social?dryRun=pinterest&state=${state}`
+    }
+    return pinterestAuthUrl(state, appUrl)
   }
 
   return `${appUrl}/admin/social?connected=error&reason=unsupported_platform`

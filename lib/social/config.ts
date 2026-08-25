@@ -8,6 +8,12 @@ import {
   tiktokOAuthRedirectMode,
   tiktokLocalhostSetupHint,
 } from './tiktokApi'
+import {
+  pinterestConfigured,
+  pinterestCallbackUrl,
+  pinterestOAuthScopes,
+  pinterestAppId,
+} from './pinterestApi'
 
 export function oauthPlatformStatus() {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3100'
@@ -48,7 +54,7 @@ export function oauthPlatformStatus() {
       clientSecretSet: metaConfigured(),
       scopes: metaOAuthScopes(),
     },
-    tiktok: {  // YENİ
+    tiktok: {
       configured: tiktokConfigured(),
       callbackUrl: tiktokCallbackUrl(appUrl),
       redirectMode: tiktokOAuthRedirectMode(tiktokCallbackUrl(appUrl)),
@@ -57,6 +63,13 @@ export function oauthPlatformStatus() {
       clientSecretSet: tiktokConfigured(),
       scopes: tiktokOAuthScopes(),
       audited: process.env.TIKTOK_AUDITED === 'true',
+    },
+    pinterest: {
+      configured: pinterestConfigured(),
+      callbackUrl: pinterestCallbackUrl(appUrl),
+      clientIdSet: Boolean(pinterestAppId()),
+      clientSecretSet: pinterestConfigured(),
+      scopes: pinterestOAuthScopes(),
     },
   }
 }
@@ -85,8 +98,10 @@ export function oauthEnvCheck() {
     YOUTUBE_CLIENT_SECRET: Boolean(process.env.YOUTUBE_CLIENT_SECRET?.trim()),
     META_APP_ID: Boolean(metaAppId()),
     META_APP_SECRET: metaConfigured(),
-    TIKTOK_CLIENT_KEY: Boolean(tiktokClientKey()),  // YENİ
-    TIKTOK_CLIENT_SECRET: tiktokConfigured(),  // YENİ
+    TIKTOK_CLIENT_KEY: Boolean(tiktokClientKey()),
+    TIKTOK_CLIENT_SECRET: tiktokConfigured(),
+    PINTEREST_APP_ID: Boolean(pinterestAppId()),
+    PINTEREST_APP_SECRET: pinterestConfigured(),
     ready:
       Boolean(process.env.X_CLIENT_ID?.trim() && process.env.X_CLIENT_SECRET?.trim()) &&
       Boolean(process.env.LINKEDIN_CLIENT_ID?.trim() && process.env.LINKEDIN_CLIENT_SECRET?.trim()),

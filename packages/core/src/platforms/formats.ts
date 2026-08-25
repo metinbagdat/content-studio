@@ -58,16 +58,18 @@ export const PLATFORM_FORMATS: Record<SocialPlatform, PlatformFormat> = {
     hashtagStyle: 'moderate',
     tone: 'SEO description',
   },
+  PINTEREST: {
+    maxChars: 500,
+    supportsThreads: false,
+    supportsCarousel: false,
+    supportsVideo: true,
+    hashtagStyle: 'heavy',
+    tone: 'keyword-rich pin description',
+  },
 }
 
-export const PINTEREST_FORMAT: PlatformFormat = {
-  maxChars: 500,
-  supportsThreads: false,
-  supportsCarousel: false,
-  supportsVideo: true,
-  hashtagStyle: 'heavy',
-  tone: 'keyword-rich pin description',
-}
+/** @deprecated use PLATFORM_FORMATS.PINTEREST */
+export const PINTEREST_FORMAT: PlatformFormat = PLATFORM_FORMATS.PINTEREST
 
 /** Trim text to platform limit with ellipsis. */
 export function formatForPlatform(text: string, platform: SocialPlatform): string {

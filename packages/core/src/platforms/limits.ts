@@ -14,13 +14,11 @@ export const PLATFORM_LIMITS: Record<SocialPlatform, PlatformRateLimit> = {
   TIKTOK: { daily: 15, perRequest: 100, window: 'hour' },
   YOUTUBE: { daily: 5, perRequest: 1000, window: 'day' },
   FACEBOOK: { daily: 10, perRequest: 200, window: 'hour' },
+  PINTEREST: { daily: 50, perRequest: 1000, window: 'day' },
 }
 
-export const PINTEREST_LIMITS: PlatformRateLimit = {
-  daily: 50,
-  perRequest: 1000,
-  window: 'day',
-}
+/** @deprecated use PLATFORM_LIMITS.PINTEREST */
+export const PINTEREST_LIMITS: PlatformRateLimit = PLATFORM_LIMITS.PINTEREST
 
 /** Max posts per platform per calendar day (conservative). Halved on weekends ("hafta sonu daha az paylaşım"). */
 export function maxPostsPerDay(platform: SocialPlatform, isWeekend = false): number {

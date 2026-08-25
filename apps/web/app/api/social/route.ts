@@ -264,10 +264,18 @@ async function handleAction(action: string, body: Record<string, unknown>) {
 
   if (action === 'connect-url') {
     const platform = String(body.platform || '').toUpperCase()
-    const OAUTH_PLATFORMS = ['TWITTER', 'LINKEDIN', 'YOUTUBE', 'FACEBOOK', 'INSTAGRAM', 'TIKTOK'] as const
+    const OAUTH_PLATFORMS = [
+      'TWITTER',
+      'LINKEDIN',
+      'YOUTUBE',
+      'FACEBOOK',
+      'INSTAGRAM',
+      'TIKTOK',
+      'PINTEREST',
+    ] as const
     if (!OAUTH_PLATFORMS.includes(platform as (typeof OAUTH_PLATFORMS)[number])) {
       return NextResponse.json(
-        { error: 'platform TWITTER|LINKEDIN|YOUTUBE|FACEBOOK|INSTAGRAM|TIKTOK' },
+        { error: 'platform TWITTER|LINKEDIN|YOUTUBE|FACEBOOK|INSTAGRAM|TIKTOK|PINTEREST' },
         { status: 400 },
       )
     }
@@ -283,7 +291,9 @@ async function handleAction(action: string, body: Record<string, unknown>) {
               ? 'facebook'
               : platform === 'INSTAGRAM'
                 ? 'instagram'
-                : 'tiktok'
+                : platform === 'PINTEREST'
+                  ? 'pinterest'
+                  : 'tiktok'
     let url: string
     let pkceVerifier: string | undefined
     if (platform === 'TWITTER' && process.env.X_CLIENT_ID) {
@@ -300,7 +310,14 @@ async function handleAction(action: string, body: Record<string, unknown>) {
       url = getAuthUrl('TIKTOK', state, pkce.challenge)
     } else {
       url = getAuthUrl(
-        platform as 'TWITTER' | 'LINKEDIN' | 'YOUTUBE' | 'FACEBOOK' | 'INSTAGRAM' | 'TIKTOK',
+        platform as
+          | 'TWITTER'
+          | 'LINKEDIN'
+          | 'YOUTUBE'
+          | 'FACEBOOK'
+          | 'INSTAGRAM'
+          | 'TIKTOK'
+          | 'PINTEREST',
         state,
       )
     }
@@ -332,7 +349,15 @@ async function handleAction(action: string, body: Record<string, unknown>) {
 
   if (action === 'dry-run-connect') {
     const platform = String(body.platform || '').toUpperCase()
-    const ALL_PLATFORMS = ['TWITTER', 'LINKEDIN', 'YOUTUBE', 'INSTAGRAM', 'TIKTOK', 'FACEBOOK']
+    const ALL_PLATFORMS = [
+      'TWITTER',
+      'LINKEDIN',
+      'YOUTUBE',
+      'INSTAGRAM',
+      'TIKTOK',
+      'FACEBOOK',
+      'PINTEREST',
+    ]
     if (!ALL_PLATFORMS.includes(platform)) {
       return NextResponse.json({ error: `platform ${ALL_PLATFORMS.join('|')}` }, { status: 400 })
     }
