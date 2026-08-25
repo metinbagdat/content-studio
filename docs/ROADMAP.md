@@ -35,7 +35,7 @@ Status legend: `todo` · `doing` · `done` · `blocked` · `learncon` (tracked i
 | CS-SM-01 | Audience segments (TYT/AYT/LGS/veli) | done | CS-SM-EPIC | Core done (tags, hashtags, platform order, Onay filter, LLM-on-genel). Sosyal panel polish → [#56](https://github.com/metinbagdat/content-studio/issues/56) (CS-SM-01b) |
 | CS-WP | WordPress SEO hub bridge | doing | wp-seo-hub repo | **Foundation done:** 8 live posts, Rank Math, categories, GSC properties + indexing requested. LC pillars (#1338). **Gate:** wait GSC impressions before OAuth/Reach. SM: #28 atomizing in Studio |
 | CS-WP-03b | GSC OAuth refresh (durable token) | todo | GSC shows **impressions** (not “posts exist”) | Store refresh token like X/LI; stop pasting `GSC_ACCESS_TOKEN`. Published ≠ indexed ≠ queries |
-| CS-WP-04 | WP publish → SM webhook | doing | CS-WP | `POST /api/webhooks/wordpress-published` live |
+| CS-WP-04 | WP publish → SM webhook | done | CS-WP | [#37](https://github.com/metinbagdat/content-studio/issues/37) closed 2026-08-25; live smoke OK |
 | CS-WP-05 | Canonical blog is WordPress | doing | WP live | Discovery = WP sitemap; 5 LearnCon long-forms on WP; LC 301s **merged** [#1328](https://github.com/metinbagdat/learncon/pull/1328) |
 | CS-EM-01 | Hostinger Reach contact API | doing | Reach token **after GSC impressions** (corpus OK; wait on search signal) | `lib/email/hostingerReach.ts` + `POST /api/email/reach`; live sync needs `HOSTINGER_API_TOKEN` |
 | CS-EM-02 | Admin e-posta sayfası | doing | CS-EM-01 | `/admin/email` kişi ekle / liste |
