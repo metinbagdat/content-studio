@@ -104,8 +104,15 @@ async function main() {
   const url = databaseUrl()
   if (!isLocalDockerUrl(url)) {
     if (/supabase/i.test(url)) {
+      const allow = process.env.CS_ALLOW_SUPABASE_WORKER === '1'
+      if (!allow) {
+        console.error(
+          '[db:up] REFUSED: DATABASE_URL is Supabase (Hobby egress). Set localhost:5434 for daily work, or CS_ALLOW_SUPABASE_WORKER=1 for a one-shot.',
+        )
+        process.exit(1)
+      }
       console.warn(
-        '[db:up] DATABASE_URL is Supabase — Docker skipped. Local Hobby egress still counts. Use localhost:5434.',
+        '[db:up] CS_ALLOW_SUPABASE_WORKER=1 — Docker skipped; local process hits Supabase egress.',
       )
     }
     return
