@@ -127,6 +127,15 @@ async function refreshAccessToken(account: SocialMediaAccount): Promise<string |
     return tokens.access_token
   }
 
+  if (account.platform === 'PINTEREST') {
+    const { refreshPinterestToken, pinterestConfigured } = await import('./pinterestApi')
+    if (!pinterestConfigured()) return null
+    const tokens = await refreshPinterestToken(refresh)
+    if (!tokens) return null
+    await persistTokens(account.id, tokens.access_token, tokens.refresh_token, tokens.expires_in)
+    return tokens.access_token
+  }
+
   if (
     (account.platform === 'FACEBOOK' || account.platform === 'INSTAGRAM') &&
     account.refreshToken &&

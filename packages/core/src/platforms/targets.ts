@@ -5,6 +5,7 @@ export type PlatformId =
   | 'INSTAGRAM'
   | 'TIKTOK'
   | 'FACEBOOK'
+  | 'PINTEREST'
 
 export type PlatformTarget = {
   id: PlatformId
@@ -24,6 +25,7 @@ export const PLATFORM_TARGETS: PlatformTarget[] = [
   { id: 'INSTAGRAM', label: 'Instagram', short: 'IG', priority: 4 },
   { id: 'TIKTOK', label: 'TikTok', short: 'TT', priority: 5 },
   { id: 'FACEBOOK', label: 'Facebook', short: 'FB', priority: 6 },
+  { id: 'PINTEREST', label: 'Pinterest', short: 'Pin', priority: 7 },
 ]
 
 export const DEFAULT_PIPELINE_PLATFORMS: PlatformId[] = [
@@ -33,6 +35,7 @@ export const DEFAULT_PIPELINE_PLATFORMS: PlatformId[] = [
   'FACEBOOK',
   'INSTAGRAM',
   'TIKTOK',
+  'PINTEREST',
 ]
 
 /**

@@ -15,6 +15,10 @@ export function platformProfileUrl(
   if (platform === 'YOUTUBE') return 'https://www.youtube.com'
   if (platform === 'INSTAGRAM') return 'https://www.instagram.com'
   if (platform === 'TIKTOK') return 'https://www.tiktok.com'
+  if (platform === 'PINTEREST' && u && u !== 'dry-run') {
+    return `https://www.pinterest.com/${encodeURIComponent(u)}/`
+  }
+  if (platform === 'PINTEREST') return 'https://www.pinterest.com'
   return null
 }
 
@@ -32,6 +36,8 @@ export function platformLabel(platform: string): string {
       return 'TikTok'
     case 'FACEBOOK':
       return 'Facebook'
+    case 'PINTEREST':
+      return 'Pinterest'
     default:
       return platform
   }

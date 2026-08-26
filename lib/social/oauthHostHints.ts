@@ -49,6 +49,13 @@ export const OAUTH_HOST_HINTS: Record<string, OauthHostHint> = {
       'Aynı Meta kısıtı. Ayrıca Meta localhost görsel URL’sine erişemez — IG yayını yalnızca prod’dan.',
     prod: 'Bu ortamda bağlanır. Localhost’tan OAuth / yayın deneme.',
   },
+  PINTEREST: {
+    kind: 'local_limited',
+    badge: 'Local OAuth: evet · Pin: prod URL',
+    local:
+      'OAuth localhost callback ile bağlanır. Pin için herkese açık HTTPS image URL gerekir — gerçek yayın genelde prod.',
+    prod: 'Bu ortamda OAuth + Pin (studio.egitim.today image URL). Board OAuth sırasında seçilir/oluşturulur.',
+  },
 }
 
 export function isLocalOauthHost(callbackUrl?: string | null): boolean {

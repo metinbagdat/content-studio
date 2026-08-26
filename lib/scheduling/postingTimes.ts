@@ -11,6 +11,7 @@ export const OPTIMAL_POSTING_IST: Record<SocialPlatform, string[]> = {
   TIKTOK: ['19:00', '21:00', '23:00'],
   YOUTUBE: ['14:00', '18:00'],
   FACEBOOK: ['13:00', '15:00'],
+  PINTEREST: ['20:00', '21:00', '23:00'],
 }
 
 /** Weekend windows — fewer slots, later start (matches "hafta sonu daha az paylaşım"). */
@@ -21,10 +22,13 @@ export const OPTIMAL_POSTING_WEEKEND_IST: Record<SocialPlatform, string[]> = {
   TIKTOK: ['20:00', '22:00'],
   YOUTUBE: ['15:00'],
   FACEBOOK: ['14:00'],
+  PINTEREST: ['21:00'],
 }
 
-export const PINTEREST_POSTING_IST = ['20:00', '21:00', '23:00']
-export const PINTEREST_POSTING_WEEKEND_IST = ['21:00']
+/** @deprecated use OPTIMAL_POSTING_IST.PINTEREST */
+export const PINTEREST_POSTING_IST = OPTIMAL_POSTING_IST.PINTEREST
+/** @deprecated use OPTIMAL_POSTING_WEEKEND_IST.PINTEREST */
+export const PINTEREST_POSTING_WEEKEND_IST = OPTIMAL_POSTING_WEEKEND_IST.PINTEREST
 
 /** IST (UTC+3) day-of-week (0=Sun..6=Sat) for base date + dayOffset, without mutating `from`. */
 export function istDayOfWeek(dayOffset: number, from = new Date()): number {
