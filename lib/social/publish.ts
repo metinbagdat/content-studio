@@ -14,6 +14,7 @@ import { canonicalArticleUrl } from '../content/canonicalUrl'
 import { uploadYouTubeVideo, setYouTubeThumbnail } from './youtubeApi'
 import { publishFacebookPost, publishInstagramPost, publishInstagramReel, publishFacebookVideoPost } from './publishMeta'
 import { uploadTikTokVideo } from './tiktokApi'
+import { pinterestConfigured } from './pinterestApi'
 import { prisma } from '../prisma'
 
 export type PublishOptions = {
@@ -157,6 +158,11 @@ export async function publishPost(postId: string, options: PublishOptions = {}):
       platformPostId = tt.platformPostId
       videoAttached = tt.videoAttached
       videoError = tt.videoError
+    } else if (post.platform === 'PINTEREST') {
+      const pin = await publishPinterest(post, accessToken, requireImage, mediaUrls)
+      platformPostId = pin.platformPostId
+      imageAttached = pin.imageAttached ?? false
+      imageError = pin.imageError
     } else {
       throw new Error(
         `${post.platform} için gerçek yayın API'si Faz 2'de eklenecek — altyapı (hesap, taslak, otomasyon) hazır, ` +
@@ -555,6 +561,59 @@ async function publishTikTok(
   }
 }
 
+/** Pinterest Pins require a board and a publicly reachable image URL — no video yet. */
+async function publishPinterest(
+  post: { postContent: string; derivedContentId: string; account: { config: unknown } },
+  accessToken: string,
+  requireImage: boolean,
+  mediaUrls: string[],
+): Promise<MetaFlowOutcome> {
+  if (!accessToken || accessToken === 'dry-run' || !pinterestConfigured()) {
+    return { platformPostId: `mock_pin_${Date.now()}`, imageAttached: false }
+  }
+  const cfg = readAccountConfig(post.account.config)
+  const boardId = String(cfg.boardId || process.env.PINTEREST_BOARD_ID || '')
+  if (!boardId) throw new Error('Pinterest boardId eksik — hesabı yeniden bağlayın')
+
+  const imageUrl = mediaUrls.find(
+    (u) => u.startsWith('http') && (u.includes('/image') || !u.includes('/video')),
+  )
+  if (!imageUrl) {
+    const message = 'Pinterest görsel gerektirir — herkese açık bir URL bulunamadı'
+    if (requireImage) throw new Error(message)
+    return { platformPostId: `mock_pin_${Date.now()}`, imageAttached: false, imageError: message }
+  }
+
+  const { publishPinterestPin } = await import('./pinterestApi')
+  const { canonicalArticleUrl } = await import('../content/canonicalUrl')
+  const derived = await prisma.derivedContent.findUnique({
+    where: { id: post.derivedContentId },
+    include: { source: { select: { tags: true, title: true } } },
+  })
+  const link =
+    (derived?.metadata &&
+      typeof derived.metadata === 'object' &&
+      typeof (derived.metadata as Record<string, unknown>).articleUrl === 'string' &&
+      String((derived.metadata as Record<string, unknown>).articleUrl)) ||
+    (derived ? canonicalArticleUrl(derived.source.tags) : undefined) ||
+    undefined
+
+  try {
+    const out = await publishPinterestPin(accessToken, boardId, {
+      title: (derived?.title || post.postContent).slice(0, 100),
+      description: post.postContent,
+      link,
+      imageUrl,
+    })
+    return { platformPostId: out.platformPostId, imageAttached: true }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    if (requireImage) throw err
+    console.warn('[publishPinterest] failed', message)
+    return { platformPostId: `mock_pin_${Date.now()}`, imageAttached: false, imageError: message }
+  }
+}
+
 /** Process due SCHEDULED posts (DB poll fallback). */
 export async function drainDuePosts(limit = 10) {
   await recoverStuckPublishing()
@@ -578,7 +637,8 @@ export async function drainDuePosts(limit = 10) {
     try {
       await preparePostForPublish(p.id)
       await publishPost(p.id, {
-        requireImage: p.platform === 'LINKEDIN',
+        requireImage:
+          p.platform === 'LINKEDIN' || p.platform === 'INSTAGRAM' || p.platform === 'PINTEREST',
         requireVideo: p.platform === 'YOUTUBE',
       })
       processed += 1

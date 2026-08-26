@@ -316,7 +316,7 @@ export async function createSocialDraftsForDerived(
     derived.metadata && typeof derived.metadata === 'object'
       ? (derived.metadata as Record<string, unknown>)
       : {}
-  const targetPlatform = meta.platform as SocialPlatform | 'PINTEREST' | undefined
+  const targetPlatform = meta.platform as SocialPlatform | undefined
 
   let platforms: SocialPlatform[] = ['TWITTER', 'LINKEDIN', 'FACEBOOK']
   if (derived.contentType === 'TWITTER_THREAD') platforms = ['TWITTER']
@@ -324,7 +324,9 @@ export async function createSocialDraftsForDerived(
   if (derived.contentType === 'VIDEO_SCRIPT' || derived.contentType === 'SHORT_VIDEO_SCRIPT') {
     platforms = ['YOUTUBE']
   }
-  if (targetPlatform && targetPlatform !== 'PINTEREST') {
+  if (targetPlatform === 'PINTEREST') {
+    platforms = ['PINTEREST']
+  } else if (targetPlatform) {
     platforms = [targetPlatform]
   }
 

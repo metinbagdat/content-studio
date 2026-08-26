@@ -69,6 +69,8 @@ type EnvCheck = {
   META_APP_SECRET: boolean
   TIKTOK_CLIENT_KEY?: boolean
   TIKTOK_CLIENT_SECRET?: boolean
+  PINTEREST_APP_ID?: boolean
+  PINTEREST_APP_SECRET?: boolean
   ready: boolean
 }
 
@@ -579,7 +581,9 @@ export default function SocialPage() {
     }
   }
 
-  async function oauthConnect(platform: 'TWITTER' | 'LINKEDIN' | 'YOUTUBE' | 'FACEBOOK' | 'INSTAGRAM' | 'TIKTOK') {
+  async function oauthConnect(
+    platform: 'TWITTER' | 'LINKEDIN' | 'YOUTUBE' | 'FACEBOOK' | 'INSTAGRAM' | 'TIKTOK' | 'PINTEREST',
+  ) {
     setBusyId(platform)
     try {
       const res = await fetch('/api/social', {

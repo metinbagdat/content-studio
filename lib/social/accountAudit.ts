@@ -7,7 +7,13 @@ import { upsertDryRunAccount } from './oauth'
 export const PUBLISH_PLATFORMS: SocialPlatform[] = ['TWITTER', 'LINKEDIN']
 
 /** Pipeline-only platforms — dry-run for draft/calendar infra until OAuth (Faz 2). */
-export const FAZ2_DRY_RUN_PLATFORMS: SocialPlatform[] = ['YOUTUBE', 'INSTAGRAM', 'TIKTOK', 'FACEBOOK']
+export const FAZ2_DRY_RUN_PLATFORMS: SocialPlatform[] = [
+  'YOUTUBE',
+  'INSTAGRAM',
+  'TIKTOK',
+  'FACEBOOK',
+  'PINTEREST',
+]
 
 export type AccountSlotStatus = 'ok' | 'missing' | 'dry_run' | 'expired' | 'oauth_ok' | 'failed_posts'
 
