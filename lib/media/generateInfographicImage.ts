@@ -2,7 +2,7 @@ import React from 'react'
 import { ImageResponse } from 'next/og'
 import { prisma } from '../prisma'
 import type { Prisma } from '@prisma/client'
-import { publicMediaImageUrl, writeImageFile } from './imageStorage'
+import { publicMediaImageUrl, persistGeneratedImage } from './imageStorage'
 import { getImageSpec } from '../image/platformSizes'
 
 export type InfographicPoint = {
@@ -331,7 +331,7 @@ export async function generateInfographicImage(derivedContentId: string) {
     return {
       media: existing,
       reused: true,
-      publicUrl: publicMediaImageUrl(existing.id),
+      publicUrl: existing.fileUrl || publicMediaImageUrl(existing.id),
     }
   }
 
@@ -354,8 +354,7 @@ export async function generateInfographicImage(derivedContentId: string) {
   })
 
   try {
-    await writeImageFile(`${media.id}.png`, png)
-    const publicUrl = publicMediaImageUrl(media.id)
+    const publicUrl = await persistGeneratedImage(media.id, png, 'png')
     const updated = await prisma.mediaFile.update({
       where: { id: media.id },
       data: {
