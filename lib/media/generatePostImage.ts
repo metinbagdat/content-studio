@@ -3,7 +3,7 @@ import { ImageResponse } from 'next/og'
 import { prisma } from '../prisma'
 import type { Prisma } from '@prisma/client'
 import { extractPostImageDesign, type PostImageDesign } from './postImageDesign'
-import { publicMediaImageUrl, writeImageFile, readImageFile } from './imageStorage'
+import { publicMediaImageUrl, persistGeneratedImage, readImageFile } from './imageStorage'
 import { getImageSpec, pickImageSpecKey, type ImageSpec } from '../image/platformSizes'
 
 export { getMediaFile, listMedia } from './mediaDb'
@@ -229,7 +229,7 @@ export async function generatePostImage(derivedContentId: string) {
     return {
       media: existing,
       reused: true,
-      publicUrl: publicMediaImageUrl(existing.id),
+      publicUrl: existing.fileUrl || publicMediaImageUrl(existing.id),
     }
   }
 
@@ -251,8 +251,7 @@ export async function generatePostImage(derivedContentId: string) {
   })
 
   try {
-    await writeImageFile(`${media.id}.png`, png)
-    const publicUrl = publicMediaImageUrl(media.id)
+    const publicUrl = await persistGeneratedImage(media.id, png, 'png')
     const updated = await prisma.mediaFile.update({
       where: { id: media.id },
       data: {
@@ -305,6 +304,20 @@ export async function readPostImageBuffer(
 
   const ext = row.format === 'jpeg' ? 'jpg' : 'png'
   const contentType = row.format === 'jpeg' ? 'image/jpeg' : 'image/png'
+
+  // On Vercel the image lives in Blob storage (persistent CDN), not local
+  // disk — row.fileUrl is the real Blob URL, safe to fetch directly.
+  if (row.fileUrl?.startsWith('http')) {
+    try {
+      const res = await fetch(row.fileUrl)
+      if (res.ok) {
+        return { buffer: Buffer.from(await res.arrayBuffer()), contentType }
+      }
+    } catch {
+      /* fall through to local disk attempt below */
+    }
+  }
+
   try {
     return { buffer: await readImageFile(`${row.id}.${ext}`), contentType }
   } catch {
