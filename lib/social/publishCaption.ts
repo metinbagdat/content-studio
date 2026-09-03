@@ -10,6 +10,11 @@ function isCustomUrl(url: string): boolean {
 /** Auto-generate Ken Burns MP4 clip for caption (after PNG exists). */
 export async function ensureGeneratedPostClip(derivedContentId: string): Promise<string | null> {
   if (!socialAnimationEnabled()) return null
+  const derived = await prisma.derivedContent.findUnique({
+    where: { id: derivedContentId },
+    select: { contentType: true },
+  })
+  if (derived?.contentType !== 'SOCIAL_CAPTION') return null
   try {
     const result = await generatePostClip(derivedContentId)
     return result.publicUrl

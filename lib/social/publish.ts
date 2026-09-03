@@ -1,5 +1,32 @@
 import { linkedinUploadImageFromUrl, linkedinUploadImageFromBuffer } from './linkedinMedia'
 import { linkedinAuthorUrn } from './config'
+import { generateLinkedInCarouselImages } from '../media/generateLinkedInCarouselImages'
+
+// LinkedIn's hard limit is 4000 chars (see issue #76 — a raw 8-slide carousel
+// dump measured 11338 chars and got rejected). Stay well under it.
+const LINKEDIN_COMMENTARY_MAX = 3000
+
+/**
+ * Never send raw multi-slide carousel text (or anything else) over LinkedIn's
+ * ShareCommentary limit. Recognizes the "Slide 1/N\n**title**..." shape
+ * produced by generateLinkedInCarousels() and reduces it to a short hook +
+ * CTA; otherwise falls back to a safe, word-boundary truncation.
+ *
+ * This is the crash-prevention fix — it does not attach carousel slides as
+ * images yet (see issue #76 follow-up for that).
+ */
+function shortLinkedInCommentary(text: string): string {
+  const carouselMatch = text.match(/^Slide 1\/\d+\s*\n\*\*(.+?)\*\*/)
+  if (carouselMatch) {
+    const hook = carouselMatch[1].trim()
+    const short = `${hook}\n\nDetaylar için görsellere göz atın 👉`
+    return short.length <= LINKEDIN_COMMENTARY_MAX ? short : short.slice(0, LINKEDIN_COMMENTARY_MAX)
+  }
+  if (text.length <= LINKEDIN_COMMENTARY_MAX) return text
+  const cut = text.slice(0, LINKEDIN_COMMENTARY_MAX)
+  const lastSpace = cut.lastIndexOf(' ')
+  return `${cut.slice(0, lastSpace > 0 ? lastSpace : LINKEDIN_COMMENTARY_MAX)}…`
+}
 import { getValidAccessToken } from './tokenRefresh'
 import { resolvePostMediaUrls, readPostImageBuffer } from './brandImage'
 import { deletePlatformPost } from './platformDelete'
@@ -281,6 +308,60 @@ async function publishLinkedIn(
 
   const imageUrl = mediaUrls.find((u) => u.startsWith('http'))
   const localImage = derivedContentId ? await readPostImageBuffer(derivedContentId) : null
+  const commentary = shortLinkedInCommentary(text)
+
+  // Carousel content gets its own path: multiple slide images instead of one.
+  // Self-healing — generates the slide images now if a draft predates this
+  // fix and hasn't had them rendered yet.
+  const looksLikeCarousel = /^Slide 1\/\d+/.test(text)
+  if (looksLikeCarousel && derivedContentId) {
+    try {
+      const { slideImageUrls } = await generateLinkedInCarouselImages(derivedContentId)
+      if (slideImageUrls.length) {
+        const assets: string[] = []
+        for (const url of slideImageUrls) {
+          assets.push(await linkedinUploadImageFromUrl(accessToken, author, url))
+        }
+        const shareContent = {
+          shareCommentary: { text: commentary },
+          shareMediaCategory: 'IMAGE',
+          media: assets.map((asset) => ({
+            status: 'READY',
+            description: { text: 'egitim.today' },
+            media: asset,
+            title: { text: 'egitim.today' },
+          })),
+        }
+        const res = await fetch('https://api.linkedin.com/v2/ugcPosts', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+            'X-Restli-Protocol-Version': '2.0.0',
+          },
+          body: JSON.stringify({
+            author,
+            lifecycleState: 'PUBLISHED',
+            specificContent: { 'com.linkedin.ugc.ShareContent': shareContent },
+            visibility: { 'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC' },
+          }),
+        })
+        if (!res.ok) throw new Error(`LinkedIn API ${res.status}: ${await res.text()}`)
+        return {
+          platformPostId: res.headers.get('x-restli-id') || `li_${Date.now()}`,
+          imageAttached: true,
+        }
+      }
+    } catch (err) {
+      console.warn(
+        '[publishLinkedIn] carousel image publish failed, falling back to short text-only post',
+        err instanceof Error ? err.message : String(err),
+      )
+      // fall through to the normal single-image / text-only path below with
+      // the already-shortened commentary — never re-attempt the raw dump.
+    }
+  }
+
   const wantsImage = Boolean(localImage || imageUrl)
 
   let shareContent: Record<string, unknown>
@@ -304,7 +385,7 @@ async function publishLinkedIn(
       }
       imageAttached = true
       shareContent = {
-        shareCommentary: { text },
+        shareCommentary: { text: commentary },
         shareMediaCategory: 'IMAGE',
         media: [
           {
@@ -319,13 +400,13 @@ async function publishLinkedIn(
       imageError = `Görsel yüklenemedi: ${err instanceof Error ? err.message : String(err)}`
       console.warn('[publishLinkedIn] image upload failed, posting text-only', imageError)
       shareContent = {
-        shareCommentary: { text },
+        shareCommentary: { text: commentary },
         shareMediaCategory: 'NONE',
       }
     }
   } else {
     shareContent = {
-      shareCommentary: { text },
+      shareCommentary: { text: commentary },
       shareMediaCategory: 'NONE',
     }
   }

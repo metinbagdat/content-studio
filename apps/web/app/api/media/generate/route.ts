@@ -6,6 +6,7 @@ import { generateAiImageVariations } from '@/lib/image/generateAiImage'
 import { generateVideoVariants } from '@/lib/video/generateVideo'
 import { generateSongAudio } from '@/lib/media/generateSong'
 import { batchExportFromMasterMedia } from '@/lib/image/batchExportFromMaster'
+import { clearReviewFault } from '@/lib/review/fault'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -31,10 +32,12 @@ export async function POST(req: NextRequest) {
       if (derived?.contentType === 'INFOGRAPHIC_TEXT' || kind === 'infographic') {
         const { generateInfographicImage } = await import('@/lib/media/generateInfographicImage')
         const result = await generateInfographicImage(derivedContentId)
+        await clearReviewFault(derivedContentId).catch(() => {})
         return NextResponse.json(result, { status: result.reused ? 200 : 201 })
       }
       const { generatePostImage } = await import('@/lib/media/generatePostImage')
       const result = await generatePostImage(derivedContentId)
+      await clearReviewFault(derivedContentId).catch(() => {})
       return NextResponse.json(result, { status: result.reused ? 200 : 201 })
     }
 
@@ -43,6 +46,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'derivedContentId required' }, { status: 400 })
       }
       const result = await generatePostClip(derivedContentId)
+      await clearReviewFault(derivedContentId).catch(() => {})
       return NextResponse.json(result, { status: result.reused ? 200 : 201 })
     }
 
@@ -52,6 +56,7 @@ export async function POST(req: NextRequest) {
       }
       const count = Number(body.count) || 2
       const variations = await generateAiImageVariations(derivedContentId, count)
+      if (variations.length) await clearReviewFault(derivedContentId).catch(() => {})
       return NextResponse.json({ variations }, { status: variations.length ? 201 : 400 })
     }
 
@@ -61,6 +66,7 @@ export async function POST(req: NextRequest) {
       }
       const aspects = Array.isArray(body.aspects) ? body.aspects : ['16:9', '9:16']
       const variants = await generateVideoVariants(derivedContentId, aspects)
+      if (variants.length) await clearReviewFault(derivedContentId).catch(() => {})
       return NextResponse.json({ variants }, { status: variants.length ? 201 : 400 })
     }
 
@@ -81,6 +87,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'derivedContentId required' }, { status: 400 })
       }
       const result = await generateSongAudio(derivedContentId)
+      await clearReviewFault(derivedContentId).catch(() => {})
       return NextResponse.json(result, { status: result.reused ? 200 : 201 })
     }
 
@@ -88,6 +95,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'derivedContentId required' }, { status: 400 })
     }
     const result = await generatePodcastAudio(derivedContentId, { force: body.force === true })
+    await clearReviewFault(derivedContentId).catch(() => {})
     return NextResponse.json(result, { status: result.reused ? 200 : 201 })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
