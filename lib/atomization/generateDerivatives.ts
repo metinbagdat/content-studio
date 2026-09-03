@@ -196,6 +196,7 @@ async function generateLinkedInCarousels(
         partIndex: c + 1,
         partTotal: count,
         slideTotal: slides.length,
+        slides,
       }),
     })
   }
