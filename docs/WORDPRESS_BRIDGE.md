@@ -47,6 +47,21 @@ POST /api/wordpress
 
 Always **draft** via `POST /wp-json/egitimtoday/v1/publish` + `X-API-Key`.
 
+Supported `post_type` values: `article` | `podcast` | `anthem` | `video` | `career_insight`.
+
+WP plugins (canonical: `metinbagdat/wp-seo-hub`):
+
+- `wp-content/plugins/egitim-today-cpt/` — CPTs + ingest route
+- `wp-content/plugins/safe-samurai-protocol/` — human approve gate + publish webhook
+
+**Do not** paste plugin code into theme `functions.php`. Auth key lives in `wp-config.php`:
+
+```php
+define('CONNECT_STUDIO_API_KEY', '...'); // same as Vercel / CS CONNECT_STUDIO_API_KEY
+```
+
+Never hardcode keys inside plugin PHP.
+
 HPV gate: HPV ≥ 75 **and** search volume ≥ 500 → WP adayı; aksi halde yalnız SM. API yoksa `FALLBACK_KEYWORDS` kullanılır. `HPV_GATE_ENABLED=false` ile atlanır.
 
 ### Publish webhook (WordPress → Content Studio)

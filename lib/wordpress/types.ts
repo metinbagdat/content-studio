@@ -1,6 +1,6 @@
 /** WordPress (wp-seo-hub) draft payload — never status=publish from Content Studio. */
 
-export type WpPostType = 'article' | 'podcast' | 'anthem' | 'video'
+export type WpPostType = 'article' | 'podcast' | 'anthem' | 'video' | 'career_insight'
 
 export type WpContentPayload = {
   title: string
@@ -26,6 +26,7 @@ export type WpContentPayload = {
     hkmt_takip_transformasyon?: string
     hkmt_search_value_score?: number
     hkmt_hpv_score?: number
+    skill_tags?: string[]
   }
 }
 

@@ -38,6 +38,8 @@ export async function sendDraftToWordPress(payload: WpContentPayload): Promise<W
     post_type: payload.post_type,
     ...(payload.slug ? { slug: payload.slug } : {}),
     ...(payload.wpPostId ? { post_id: payload.wpPostId } : {}),
+    ...(payload.categories?.length ? { categories: payload.categories } : {}),
+    ...(payload.tags?.length ? { tags: payload.tags } : {}),
     meta: {
       ...(payload.meta || {}),
       // CS Safe Samurai gate passed before send — WP stores on draft for publish webhook.
@@ -103,6 +105,7 @@ export async function sendViaCoreRest(
     podcast: 'podcast',
     anthem: 'anthem',
     video: 'video',
+    career_insight: 'career-insight',
   }
   const restBase = typeMap[payload.post_type] || 'posts'
   const auth = Buffer.from(`${username}:${appPassword}`).toString('base64')
@@ -160,6 +163,7 @@ const REST_BASE: Record<string, string> = {
   podcast: 'podcast',
   anthem: 'anthem',
   video: 'video',
+  career_insight: 'career-insight',
 }
 
 function coreAuth(): { baseUrl: string; auth: string } | null {
