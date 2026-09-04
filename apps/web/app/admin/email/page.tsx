@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { DEFAULT_ADMIN_API_KEY } from '@content-studio/core/adminKey'
-import { HoverExpandList, HoverExpandRow } from '@/components/admin/HoverExpandList'
 
 type ReachContact = {
   uuid?: string
@@ -14,12 +13,20 @@ type ReachContact = {
 
 type ReachGroup = { uuid: string; title: string }
 
+type ReachReminder = {
+  sourceId: string
+  title: string
+  link: string | null
+  createdAt: string
+}
+
 type ReachInfo = {
   configured: boolean
   profileScoped: boolean
   contacts: ReachContact[]
   groups: ReachGroup[]
   total: number | null
+  reminders: ReachReminder[]
   error?: string | null
   contactsError?: string | null
   groupsError?: string | null
@@ -40,6 +47,7 @@ export default function EmailReachPage() {
   const [name, setName] = useState('')
   const [surname, setSurname] = useState('')
   const [note, setNote] = useState('content-studio admin')
+  const [copiedId, setCopiedId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     if (!adminKey) return
@@ -59,7 +67,9 @@ export default function EmailReachPage() {
   }, [])
 
   useEffect(() => {
-    if (adminKey) load()
+    if (!adminKey) return
+    localStorage.setItem('cs_admin_key', adminKey)
+    load()
   }, [adminKey, load])
 
   async function addContact() {
@@ -78,6 +88,34 @@ export default function EmailReachPage() {
       await load()
     } catch (e) {
       setMsg(e instanceof Error ? e.message : 'Kişi eklenemedi')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function copyReminderText(r: ReachReminder) {
+    const text = r.link ? `${r.title} — ${r.link}` : r.title
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopiedId(r.sourceId)
+      setTimeout(() => setCopiedId((cur) => (cur === r.sourceId ? null : cur)), 2000)
+    } catch {
+      setMsg('Panoya kopyalanamadı — metni elle seçip kopyala.')
+    }
+  }
+
+  async function dismissReminder(sourceId: string) {
+    setBusy(true)
+    try {
+      const res = await fetch('/api/email/reach', {
+        method: 'POST',
+        headers: headers(adminKey, true),
+        body: JSON.stringify({ action: 'dismiss-reminder', sourceId }),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      await load()
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : 'İşaretlenemedi')
     } finally {
       setBusy(false)
     }
@@ -106,6 +144,42 @@ export default function EmailReachPage() {
         </button>
       </div>
       {msg ? <p className="muted">{msg}</p> : null}
+      {info?.error ? <p className="muted">Reach: {info.error}</p> : null}
+      {info?.contactsError ? <p className="muted">Kişiler: {info.contactsError}</p> : null}
+      {info?.groupsError ? <p className="muted">Gruplar: {info.groupsError}</p> : null}
+
+      {info?.reminders?.length ? (
+        <section className="panel" style={{ marginTop: '1rem', borderColor: '#f59e0b' }}>
+          <h2>📬 Bülten hatırlatması ({info.reminders.length})</h2>
+          <p className="muted">
+            Bu yazılar WP’de yayınlandı. Reach panelinden bülten gönderdiysen “Gönderildi” ile işaretle —
+            otomatik gönderim yapılmaz, bu sadece bir hatırlatma listesi.
+          </p>
+          <ul className="list">
+            {info.reminders.map((r) => (
+              <li key={r.sourceId} style={{ marginBottom: '0.75rem' }}>
+                <strong>{r.title}</strong>
+                {r.link ? (
+                  <>
+                    {' — '}
+                    <a href={r.link} target="_blank" rel="noreferrer">
+                      {r.link}
+                    </a>
+                  </>
+                ) : null}
+                <div style={{ marginTop: '0.25rem' }}>
+                  <button type="button" className="secondary" onClick={() => copyReminderText(r)}>
+                    {copiedId === r.sourceId ? 'Kopyalandı ✓' : 'Metni kopyala'}
+                  </button>{' '}
+                  <button type="button" disabled={busy} onClick={() => dismissReminder(r.sourceId)}>
+                    Gönderildi, işaretle
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <div className="grid two">
         <section className="panel">
@@ -114,27 +188,10 @@ export default function EmailReachPage() {
             API: {info?.configured ? 'token var' : 'HOSTINGER_API_TOKEN yok'}
             {info?.profileScoped ? ' · profil UUID bağlı' : ''}
           </p>
-          {info?.error || info?.contactsError ? (
-            <p style={{ color: '#b91c1c', fontWeight: 600 }}>
-              Reach API hata: {info.error || info.contactsError}
-              {String(info.error || info.contactsError || '')
-                .toLowerCase()
-                .includes('unauth')
-                ? ' — Token geçersiz. hPanel → API’den Bearer token üret.'
-                : ''}
-            </p>
-          ) : null}
-          {info?.groupsError ? (
-            <p className="muted">
-              Gruplar alınamadı ({info.groupsError}) — kişi listesi etkilenmez; Reach paneli grupları kullanır.
-            </p>
-          ) : null}
           <p className="muted">Kişi sayısı: {info?.total ?? info?.contacts?.length ?? '—'}</p>
           <p className="muted">
-            Token: <strong>hPanel → API</strong> (Account Bearer). Vercel / <code>.env</code> →{' '}
-            <code>HOSTINGER_API_TOKEN</code>
-            {', '}
-            isteğe bağlı <code>HOSTINGER_REACH_PROFILE_UUID</code>.
+            Token: Hostinger Reach → <strong>Integrations → Public API</strong>. Vercel / `.env` içine{' '}
+            <code>HOSTINGER_API_TOKEN</code> (isteğe bağlı <code>HOSTINGER_REACH_PROFILE_UUID</code>).
           </p>
           <p>
             <a href="https://hpanel.hostinger.com" target="_blank" rel="noreferrer">
@@ -165,22 +222,14 @@ export default function EmailReachPage() {
 
       <section className="panel" style={{ marginTop: '1.5rem' }}>
         <h2>Gruplar</h2>
-        <HoverExpandList>
+        <ul className="list">
           {(info?.groups || []).map((g) => (
-            <HoverExpandRow
-              key={g.uuid}
-              summary={
-                <>
-                  <strong className="hover-row-title">{g.title}</strong>
-                  <span className="muted hover-row-chip">{g.uuid}</span>
-                </>
-              }
-            />
+            <li key={g.uuid}>
+              {g.title} <span className="muted">{g.uuid}</span>
+            </li>
           ))}
-          {!info?.groups?.length ? (
-            <li className="muted hover-row" style={{ border: 'none', boxShadow: 'none' }}>Grup yok veya API grupları döndürmedi</li>
-          ) : null}
-        </HoverExpandList>
+          {!info?.groups?.length ? <li className="muted">Grup yok veya API grupları döndürmedi</li> : null}
+        </ul>
       </section>
 
       <section className="panel" style={{ marginTop: '1.5rem' }}>
