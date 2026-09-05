@@ -68,6 +68,15 @@ export function buildYouTubeMetadata(input: {
   const tags = ['egitim', 'education', 'learnconnect', 'egitimtoday']
   if (isShort) tags.push('Shorts')
   if (input.contentType === 'PODCAST_SCRIPT') tags.push('podcast')
+  const topic = (input.sourceTitle || baseTitle)
+    .toLocaleLowerCase('tr-TR')
+    .replace(/[^a-z0-9çğıöşü\s]/gi, ' ')
+    .split(/\s+/)
+    .filter((w) => w.length >= 4)
+    .slice(0, 3)
+  for (const w of topic) {
+    if (!tags.includes(w)) tags.push(w)
+  }
 
   const raw = unfenceJson(input.content)
   try {

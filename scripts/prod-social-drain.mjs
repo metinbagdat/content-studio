@@ -6,6 +6,7 @@
  *   ADMIN_API_KEY=... node scripts/prod-social-drain.mjs bulk:FACEBOOK
  *   ADMIN_API_KEY=... node scripts/prod-social-drain.mjs bulk:TWITTER   # X credits restored
  *   ADMIN_API_KEY=... node scripts/prod-social-drain.mjs bulk:LINKEDIN
+ *   ADMIN_API_KEY=... node scripts/prod-social-drain.mjs youtube-seo     # 1 long-form if Blob URL exists
  */
 const key = process.env.ADMIN_API_KEY || ''
 const base = process.env.PROD_URL || 'https://studio.egitim.today'
@@ -40,7 +41,8 @@ async function main() {
       console.log(`Usage: ADMIN_API_KEY=... node scripts/prod-social-drain.mjs <cmd>
   status       diagnostics JSON
   sync-drafts  create social drafts from approved captions
-  bulk:PLATFORM  publish DRAFT+FAILED (FACEBOOK|INSTAGRAM|LINKEDIN|TWITTER|YOUTUBE|TIKTOK)`)
+  bulk:PLATFORM  publish DRAFT+FAILED (FACEBOOK|INSTAGRAM|LINKEDIN|TWITTER|YOUTUBE|TIKTOK)
+  youtube-seo  publish at most 1 long-form YouTube when Blob MP4 exists (no regenerate)`)
       return
     }
     const j = await getDiag()
@@ -50,6 +52,20 @@ async function main() {
   }
   if (cmd === 'sync-drafts') {
     const j = await api({ action: 'sync-drafts' })
+    console.log(JSON.stringify(j, null, 2))
+    return
+  }
+  if (cmd === 'youtube-seo') {
+    const j = await api({
+      action: 'youtube-sync',
+      limit: 5,
+      maxPublish: 1,
+      preferLongForm: true,
+      generateVideo: false,
+      requireDurableVideo: true,
+      schedule: true,
+      publishNow: true,
+    })
     console.log(JSON.stringify(j, null, 2))
     return
   }
