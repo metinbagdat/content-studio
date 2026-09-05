@@ -18,7 +18,10 @@ export type YouTubeTestResult = {
 
 export type YouTubeUploadInput = {
   accessToken: string
-  videoPath: string
+  /** Local path when operator machine has the MP4. */
+  videoPath?: string
+  /** Prefer when publishing from Blob on prod (or after readVideoBufferForPublish). */
+  videoBuffer?: Buffer
   title: string
   description: string
   tags?: string[]
@@ -80,6 +83,7 @@ export async function uploadYouTubeVideo(input: YouTubeUploadInput): Promise<You
   const {
     accessToken,
     videoPath,
+    videoBuffer: providedBuffer,
     title,
     description,
     tags = [],
@@ -130,7 +134,12 @@ export async function uploadYouTubeVideo(input: YouTubeUploadInput): Promise<You
   const uploadUrl = initRes.headers.get('location')
   if (!uploadUrl) throw new Error('YouTube upload URL alınamadı')
 
-  const videoBuffer = await readFile(videoPath)
+  const videoBuffer =
+    providedBuffer ||
+    (videoPath ? await readFile(videoPath) : null)
+  if (!videoBuffer?.length) {
+    throw new Error('YouTube upload: videoBuffer veya videoPath gerekli')
+  }
   const uploadRes = await fetch(uploadUrl, {
     method: 'PUT',
     headers: {

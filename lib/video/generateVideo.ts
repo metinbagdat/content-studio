@@ -6,7 +6,7 @@ import { toImagePrompt } from './visualPrompt'
 import { translateSegmentsToEnglish } from './translateSegments'
 import { buildSubtitleCues, cuesToSrt, subtitleMaxChars, type SubtitleCue } from './subtitles'
 import { renderVideo, type AspectRatio, type VideoScene } from './renderVideo'
-import { writeVideoFile, publicMediaVideoUrl } from './videoStorage'
+import { persistGeneratedVideo, writeVideoFile } from './videoStorage'
 import { writeImageFile, imageDiskPath } from '../media/imageStorage'
 import { assembleSpeechVoiceover } from '../media/ttsSegments'
 import { parseVideoScript, expandVisualSlides, type VisualSlide } from '../media/videoScriptSchema'
@@ -149,10 +149,8 @@ export async function generateVideoVariants(
         srtContent: srtForAspect,
         aspect,
       })
-      const filename = `${media.id}.mp4`
-      await writeVideoFile(filename, videoBuffer)
       await writeVideoFile(`${media.id}.srt`, Buffer.from(srtForAspect, 'utf-8'))
-      const publicUrl = publicMediaVideoUrl(media.id)
+      const publicUrl = await persistGeneratedVideo(media.id, videoBuffer)
       await prisma.mediaFile.update({
         where: { id: media.id },
         data: {

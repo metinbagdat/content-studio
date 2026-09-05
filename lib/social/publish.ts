@@ -481,9 +481,12 @@ async function publishYouTube(
     const privacy =
       (process.env.YOUTUBE_PRIVACY as 'public' | 'unlisted' | 'private' | undefined) || 'public'
 
+    const { readVideoBufferForPublish } = await import('../video/videoStorage')
+    const videoBuffer = await readVideoBufferForPublish(video)
+
     const { videoId } = await uploadYouTubeVideo({
       accessToken,
-      videoPath: video.diskPath,
+      videoBuffer,
       title: ytMeta.title,
       description: ytMeta.description,
       tags: ytMeta.tags,
@@ -629,8 +632,8 @@ async function publishTikTok(
   }
   try {
     const video = await ensureGeneratedVideo(post.derivedContentId)
-    const { readFile } = await import('fs/promises')
-    const buffer = await readFile(video.diskPath)
+    const { readVideoBufferForPublish } = await import('../video/videoStorage')
+    const buffer = await readVideoBufferForPublish(video)
     const result = await uploadTikTokVideo(accessToken, buffer, post.postContent)
     const suffix = result.isDraft ? ' (taslak — TikTok uygulamasından onaylanmalı)' : ''
     return { platformPostId: `${result.publishId}${suffix}`, videoAttached: true }

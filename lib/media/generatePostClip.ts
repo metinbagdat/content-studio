@@ -5,7 +5,7 @@ import { prisma } from '../prisma'
 import { generatePostImage } from './generatePostImage'
 import { imageDiskPath } from './imageStorage'
 import { aspectFromDimensions, renderKenBurnsClip, socialAnimationEnabled } from './animateImageClip'
-import { publicMediaVideoUrl, videoDiskPath, writeVideoFile } from '../video/videoStorage'
+import { isDurableMediaUrl, persistGeneratedVideo, publicMediaVideoUrl, videoDiskPath } from '../video/videoStorage'
 import { getImageSpec, pickImageSpecKey } from '../image/platformSizes'
 
 export { socialAnimationEnabled } from './animateImageClip'
@@ -38,14 +38,15 @@ export async function generatePostClip(derivedContentId: string) {
 
   const existingClipUrl = typeof meta.clipUrl === 'string' ? meta.clipUrl.trim() : ''
   const existing = derived.mediaFiles[0]
-  if (existing && existingClipUrl.includes('/api/media/') && existingClipUrl.endsWith('/video')) {
+  if (existing && isDurableMediaUrl(existing.fileUrl || existingClipUrl)) {
     return {
       media: existing,
       reused: true,
-      publicUrl: publicMediaVideoUrl(existing.id),
+      publicUrl: existing.fileUrl || existingClipUrl,
       skipped: false as const,
     }
   }
+  // Ephemeral /api/media/.../video — do not reuse on Vercel; fall through to regenerate + Blob.
 
   const imageResult = await generatePostImage(derivedContentId)
   if (!imageResult.media) {
@@ -87,8 +88,7 @@ export async function generatePostClip(derivedContentId: string) {
     })
 
     const buffer = await readFile(outputPath)
-    await writeVideoFile(`${media.id}.mp4`, buffer)
-    const publicUrl = publicMediaVideoUrl(media.id)
+    const publicUrl = await persistGeneratedVideo(media.id, buffer)
 
     const updated = await prisma.mediaFile.update({
       where: { id: media.id },
@@ -136,13 +136,20 @@ export async function readPostClipBuffer(
     const buffer = await readFile(diskPath)
     return { buffer, contentType: 'video/mp4', diskPath }
   } catch {
+    if (isDurableMediaUrl(row.fileUrl)) {
+      const res = await fetch(row.fileUrl, { signal: AbortSignal.timeout(120_000) })
+      if (!res.ok) return null
+      const buffer = Buffer.from(await res.arrayBuffer())
+      return { buffer, contentType: 'video/mp4', diskPath }
+    }
     return null
   }
 }
 
 export function publicClipUrlFromMeta(meta: Record<string, unknown>): string | null {
   const url = typeof meta.clipUrl === 'string' ? meta.clipUrl.trim() : ''
-  if (url.startsWith('http')) return url
+  if (isDurableMediaUrl(url)) return url
+  if (url.startsWith('http') && !url.includes('/api/media/')) return url
   const id = typeof meta.clipMediaId === 'string' ? meta.clipMediaId : ''
   if (id) return publicMediaVideoUrl(id)
   return null
