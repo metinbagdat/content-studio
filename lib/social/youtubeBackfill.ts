@@ -4,7 +4,7 @@ import { pickPostingSlot } from '../scheduling/postingTimes'
 import { canonicalArticleUrl } from '../content/canonicalUrl'
 import { isDurableMediaUrl } from '../video/videoStorage'
 import { ensureGeneratedVideo, buildYouTubePostContent, isShortFormVideo } from './publishVideo'
-import { preparePostForPublish, isDryRunAccount } from './preparePublish'
+import { preparePostForPublish, isDryRunAccount, recoverStuckPublishing } from './preparePublish'
 import { publishPost } from './publish'
 import { getValidAccessToken } from './tokenRefresh'
 import { testYouTubeConnection } from './youtubeApi'
@@ -90,6 +90,9 @@ export async function syncYouTubeFromApprovedVideos(
     result.errors.push(`YouTube token: ${err instanceof Error ? err.message : String(err)}`)
     return result
   }
+
+  // Free drafts stuck mid-publish (incl. failed dry-run publish-now).
+  await recoverStuckPublishing(0)
 
   const typeOrder = preferLongForm
     ? (['VIDEO_SCRIPT', 'PODCAST_SCRIPT', 'SHORT_VIDEO_SCRIPT'] as const)
@@ -198,7 +201,7 @@ export async function syncYouTubeFromApprovedVideos(
               derivedContentId: script.id,
               platform: 'YOUTUBE',
               accountId: dryYt.id,
-              status: { in: ['DRAFT', 'FAILED', 'SCHEDULED'] },
+              status: { in: ['DRAFT', 'FAILED', 'SCHEDULED', 'PUBLISHING'] },
             },
             data: {
               accountId: realYt.id,
@@ -206,20 +209,32 @@ export async function syncYouTubeFromApprovedVideos(
               status: 'DRAFT',
               error: null,
               scheduledAt: null,
+              platformPostId: null,
+              publishedAt: null,
             },
           })
         }
 
-        let onReal = await prisma.socialMediaPost.findFirst({
+        const onRealPosts = await prisma.socialMediaPost.findMany({
           where: { derivedContentId: script.id, accountId: realYt.id, platform: 'YOUTUBE' },
           orderBy: { createdAt: 'desc' },
         })
-        // Mock / stuck rows should not block a real upload.
+        let onReal = onRealPosts[0] ?? null
+
+        // Prefer an already-live YouTube id (do not re-upload).
+        const live = onRealPosts.find((p) => isLiveYouTubeVideoId(p.platformPostId))
+        if (live && options.publishNow && result.published < maxPublish) {
+          result.published += 1
+          result.publishedIds.push(live.platformPostId!)
+          result.skipped += Math.max(0, onRealPosts.length - 1)
+          continue
+        }
+
+        // Mock / stuck / empty-id PUBLISHED rows should not block a real upload.
         if (
           onReal &&
           (onReal.status === 'PUBLISHING' ||
-            (onReal.status === 'PUBLISHED' &&
-              (!onReal.platformPostId || onReal.platformPostId.startsWith('mock_'))))
+            (onReal.status === 'PUBLISHED' && !isLiveYouTubeVideoId(onReal.platformPostId)))
         ) {
           onReal = await prisma.socialMediaPost.update({
             where: { id: onReal.id },
@@ -335,4 +350,10 @@ function hashSlot(id: string): number {
   let h = 0
   for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0
   return Math.abs(h) % 3
+}
+
+/** Real Data API video ids are ~11 chars; mock_/empty must not count as live. */
+function isLiveYouTubeVideoId(id: string | null | undefined): boolean {
+  if (!id || id.startsWith('mock_') || id.startsWith('dryrun_')) return false
+  return /^[\w-]{8,}$/.test(id)
 }
