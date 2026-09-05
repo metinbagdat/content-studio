@@ -71,7 +71,7 @@ export async function syncYouTubeFromApprovedVideos(
     where: {
       platform: 'YOUTUBE',
       isActive: true,
-      accountId: { not: { startsWith: 'dryrun_' } },
+      NOT: { accountId: { startsWith: 'dryrun_' } },
     },
   })
   if (!ytAccount) {
@@ -188,34 +188,61 @@ export async function syncYouTubeFromApprovedVideos(
       if (!realYt) {
         result.errors.push(`${script.title.slice(0, 40)}: aktif YouTube OAuth hesabı yok`)
       } else {
-        let onReal = await prisma.socialMediaPost.findFirst({
-          where: { derivedContentId: script.id, accountId: realYt.id },
+        const dryYt = await prisma.socialMediaAccount.findFirst({
+          where: { platform: 'YOUTUBE', accountId: { startsWith: 'dryrun_' } },
         })
-        if (!onReal) {
-          const dryPost = await prisma.socialMediaPost.findFirst({
+        // Move by account UUID (avoids nested relation filter misses).
+        if (dryYt) {
+          await prisma.socialMediaPost.updateMany({
             where: {
               derivedContentId: script.id,
               platform: 'YOUTUBE',
-              account: { accountId: { startsWith: 'dryrun_' } },
+              accountId: dryYt.id,
+              status: { in: ['DRAFT', 'FAILED', 'SCHEDULED'] },
+            },
+            data: {
+              accountId: realYt.id,
+              postContent,
+              status: 'DRAFT',
+              error: null,
+              scheduledAt: null,
             },
           })
-          if (dryPost) {
-            onReal = await prisma.socialMediaPost.update({
-              where: { id: dryPost.id },
-              data: { accountId: realYt.id, postContent, status: 'DRAFT', error: null },
-            })
-          } else {
-            onReal = await prisma.socialMediaPost.create({
-              data: {
-                derivedContentId: script.id,
-                accountId: realYt.id,
-                platform: 'YOUTUBE',
-                postContent,
-                mediaUrls: [],
-                status: 'DRAFT',
-              },
-            })
-          }
+        }
+
+        let onReal = await prisma.socialMediaPost.findFirst({
+          where: { derivedContentId: script.id, accountId: realYt.id, platform: 'YOUTUBE' },
+          orderBy: { createdAt: 'desc' },
+        })
+        // Mock / stuck rows should not block a real upload.
+        if (
+          onReal &&
+          (onReal.status === 'PUBLISHING' ||
+            (onReal.status === 'PUBLISHED' &&
+              (!onReal.platformPostId || onReal.platformPostId.startsWith('mock_'))))
+        ) {
+          onReal = await prisma.socialMediaPost.update({
+            where: { id: onReal.id },
+            data: {
+              postContent,
+              status: 'DRAFT',
+              error: null,
+              platformPostId: null,
+              publishedAt: null,
+              scheduledAt: null,
+            },
+          })
+        } else if (!onReal) {
+          onReal = await prisma.socialMediaPost.create({
+            data: {
+              derivedContentId: script.id,
+              accountId: realYt.id,
+              platform: 'YOUTUBE',
+              postContent,
+              mediaUrls: [],
+              status: 'DRAFT',
+            },
+          })
         } else if (onReal.status === 'DRAFT' || onReal.status === 'FAILED') {
           onReal = await prisma.socialMediaPost.update({
             where: { id: onReal.id },
@@ -230,7 +257,15 @@ export async function syncYouTubeFromApprovedVideos(
       const posts = await prisma.socialMediaPost.findMany({
         where: { derivedContentId: script.id, platform: 'YOUTUBE' },
         include: { account: true },
+        orderBy: { createdAt: 'desc' },
       })
+
+      const publishable = posts.filter((p) => p.account.isActive && !isDryRunAccount(p.account))
+      if (options.publishNow && publishable.length === 0) {
+        result.errors.push(
+          `${script.title.slice(0, 40)}: gerçek YT taslağı yok (dry-run=${posts.length})`,
+        )
+      }
 
       for (const post of posts) {
         if (!post.account.isActive || isDryRunAccount(post.account)) continue
@@ -248,6 +283,7 @@ export async function syncYouTubeFromApprovedVideos(
           const scheduleAt = when.getTime() <= Date.now() ? new Date(Date.now() + 10 * 60_000) : when
           await schedulePost(post.id, scheduleAt)
           result.scheduled += 1
+          post.status = 'SCHEDULED'
         }
 
         if (
@@ -277,6 +313,14 @@ export async function syncYouTubeFromApprovedVideos(
               `publish ${script.title.slice(0, 30)}: ${err instanceof Error ? err.message : String(err)}`,
             )
           }
+        } else if (
+          options.publishNow &&
+          result.published < maxPublish &&
+          publishable.some((p) => p.id === post.id)
+        ) {
+          result.errors.push(
+            `${script.title.slice(0, 40)}: YT post ${post.status} (id=${post.id.slice(0, 8)}) — yeniden yayınlanmadı`,
+          )
         }
       }
     } catch (err) {
