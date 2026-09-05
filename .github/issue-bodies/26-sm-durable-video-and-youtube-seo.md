@@ -27,16 +27,20 @@ TikTok has the same media problem **plus** dry-run OAuth (CS-06 / #2).
 
 Depends on CS-SM-SEO-01 (canonical URL) + 02 (file).
 
-- [ ] One-shot or admin: drain **scheduled** YouTube rows for a WP source when MP4 exists
-- [ ] Description: WP canonical + `egitim.today` CTA + tags (`egitim`, topic, Shorts if 9:16)
-- [ ] Privacy: public for SEO (or unlisted until review — env `YOUTUBE_PRIVACY`)
-- [ ] Do not auto-upload 11 shorts in one burst (quota / spam)
+- [x] One-shot: `scripts/drain-youtube-seo.ts` + `prod-social-drain.mjs youtube-seo` (max 1, long-form first)
+- [x] Description: WP canonical + `egitim.today` CTA + tags (`egitim`, topic, Shorts if 9:16)
+- [x] Privacy: `YOUTUBE_PRIVACY` (default public)
+- [x] Do not auto-upload 11 shorts in one burst (`maxPublish` default 1; Shorts skipped when long-form exists)
+- [x] Require durable Blob `fileUrl` before publish (no Vercel ffmpeg regenerate)
 
 ## Done when
 
 - A WP article can result in ≥1 public YouTube video whose description links `blog.egitim.today/...` without needing that laptop’s disk
 - TikTok remains out of scope until #2 real OAuth
 
-## Start when
+## Operator checklist
 
-After CS-SM-SEO-01; object storage decision (or accept “operator runs YouTube upload locally with `CS_ALLOW_SUPABASE_WORKER=1`” as a documented stopgap).
+1. Vercel Blob connected (`BLOB_READ_WRITE_TOKEN` in local `.env` for generate/upload)
+2. Local: generate video → Blob `videos/{id}.mp4` (or `upload-videos-to-blob.ts`)
+3. `npx tsx --env-file=.env scripts/drain-youtube-seo.ts --wp=blog.egitim.today --publish`
+4. Confirm live URL + description has Yazı: `https://blog.egitim.today/...`

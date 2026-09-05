@@ -252,10 +252,18 @@ async function handleAction(action: string, body: Record<string, unknown>) {
   if (action === 'youtube-sync') {
     const limit = Number(body.limit) || 5
     const publishNow = Boolean(body.publishNow)
+    const maxPublish = body.maxPublish != null ? Number(body.maxPublish) : publishNow ? 1 : 0
     const result = await syncYouTubeFromApprovedVideos({
       limit,
-      generateVideo: true,
-      schedule: true,
+      maxPublish,
+      preferLongForm: body.preferLongForm !== false,
+      sourceId: typeof body.sourceId === 'string' ? body.sourceId : undefined,
+      derivedId: typeof body.derivedId === 'string' ? body.derivedId : undefined,
+      wpLinkContains: typeof body.wpLinkContains === 'string' ? body.wpLinkContains : undefined,
+      // Prod must not ffmpeg-regenerate; use Blob URLs from local generate.
+      generateVideo: body.generateVideo === true,
+      requireDurableVideo: body.requireDurableVideo !== false,
+      schedule: body.schedule !== false,
       publishNow,
     })
     const diagnostics = await getDraftDiagnostics()
