@@ -10,7 +10,7 @@ import { preparePostForPublish } from '@/lib/social/preparePublish'
 import { toImagePreviewPath } from '@/lib/social/imagePreview'
 import { readPublishMetrics } from '@/lib/social/publishFingerprint'
 import { auditSocialAccounts, repairMissingSocialAccounts } from '@/lib/social/accountAudit'
-import { getAuthUrl, upsertDryRunAccount, deactivateAccount } from '@/lib/social/oauth'
+import { getAuthUrl, upsertDryRunAccount, deactivateAccount, reactivateAccount } from '@/lib/social/oauth'
 import { oauthEnvCheck, oauthPlatformStatus } from '@/lib/social/config'
 import { metaReviewStatus, metaBulkPublishLimit } from '@/lib/social/metaReview'
 import {
@@ -352,6 +352,13 @@ async function handleAction(action: string, body: Record<string, unknown>) {
     const accountId = String(body.accountId || '')
     if (!accountId) return NextResponse.json({ error: 'accountId required' }, { status: 400 })
     const account = await deactivateAccount(accountId)
+    return NextResponse.json({ account })
+  }
+
+  if (action === 'reactivate') {
+    const accountId = String(body.accountId || '')
+    if (!accountId) return NextResponse.json({ error: 'accountId required' }, { status: 400 })
+    const account = await reactivateAccount(accountId)
     return NextResponse.json({ account })
   }
 

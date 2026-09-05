@@ -172,3 +172,24 @@ export async function deactivateAccount(accountId: string) {
   })
   return prisma.socialMediaAccount.findUnique({ where: { id: accountId } })
 }
+
+/** Re-enable a real OAuth account (and keep dry-run off for that platform). */
+export async function reactivateAccount(accountId: string) {
+  const current = await prisma.socialMediaAccount.findUnique({ where: { id: accountId } })
+  if (!current) throw new Error('Account not found')
+  if (current.accountId.startsWith('dryrun_')) {
+    throw new Error('Dry-run hesap yeniden açılamaz — gerçek OAuth bağla')
+  }
+  await prisma.socialMediaAccount.updateMany({
+    where: {
+      platform: current.platform,
+      isActive: true,
+      accountId: { startsWith: 'dryrun_' },
+    },
+    data: { isActive: false },
+  })
+  return prisma.socialMediaAccount.update({
+    where: { id: accountId },
+    data: { isActive: true },
+  })
+}
