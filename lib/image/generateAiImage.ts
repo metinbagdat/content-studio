@@ -2,7 +2,7 @@ import sharp from 'sharp'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '../prisma'
 import { extractPostImageDesign, type PostImageDesign } from '../media/postImageDesign'
-import { publicMediaImageUrl, writeImageFile } from '../media/imageStorage'
+import { persistGeneratedImage } from '../media/imageStorage'
 import { getImageSpec, pickImageSpecKey, type ImageSpec, type PlatformImageKey } from './platformSizes'
 import { generateWithFallback } from './providers'
 
@@ -125,8 +125,7 @@ export async function generateAiImageVariations(
       const result = await generateWithFallback({ prompt, width: spec.width, height: spec.height, seed })
       const finalBuffer = await applyWatermark(result.buffer, spec)
 
-      await writeImageFile(`${media.id}.png`, finalBuffer)
-      const publicUrl = publicMediaImageUrl(media.id)
+      const publicUrl = await persistGeneratedImage(media.id, finalBuffer, 'png')
       await prisma.mediaFile.update({
         where: { id: media.id },
         data: { fileUrl: publicUrl, fileSize: finalBuffer.length, processingStatus: 'COMPLETED' },

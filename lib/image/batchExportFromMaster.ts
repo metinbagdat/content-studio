@@ -1,6 +1,10 @@
 import type { Prisma } from '@prisma/client'
 import { prisma } from '../prisma'
-import { publicMediaImageUrl, writeImageFile, readImageFile, imageDiskPath } from '../media/imageStorage'
+import {
+  persistGeneratedImage,
+  readImageFile,
+  imageDiskPath,
+} from '../media/imageStorage'
 import { readFile } from 'fs/promises'
 import {
   batchExportPlatformSizes,
@@ -85,7 +89,6 @@ async function createExportMediaFile(
   item: ResizedPlatformImage,
   masterMediaId: string,
 ): Promise<PlatformExportResult['exports'][number]> {
-  const ext = item.format === 'jpeg' ? 'jpg' : 'png'
   const media = await prisma.mediaFile.create({
     data: {
       derivedContentId,
@@ -97,8 +100,11 @@ async function createExportMediaFile(
   })
 
   try {
-    await writeImageFile(`${media.id}.${ext}`, item.buffer)
-    const publicUrl = publicMediaImageUrl(media.id)
+    const publicUrl = await persistGeneratedImage(
+      media.id,
+      item.buffer,
+      item.format === 'png' ? 'png' : 'jpeg',
+    )
     await prisma.mediaFile.update({
       where: { id: media.id },
       data: {
