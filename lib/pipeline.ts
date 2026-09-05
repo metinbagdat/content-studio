@@ -336,7 +336,7 @@ export async function createSocialDraftsForDerived(
     where: {
       isActive: true,
       platform: { in: platforms },
-      accountId: { not: { startsWith: 'dryrun_' } },
+      NOT: { accountId: { startsWith: 'dryrun_' } },
     },
   })
   if (!accounts.length) {
