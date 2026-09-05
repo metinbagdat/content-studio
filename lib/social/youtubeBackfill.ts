@@ -226,6 +226,34 @@ export async function syncYouTubeFromApprovedVideos(
         if (live && options.publishNow && result.published < maxPublish) {
           result.published += 1
           result.publishedIds.push(live.platformPostId!)
+          // Align sibling drafts on the same account so admin UI matches reality.
+          await prisma.socialMediaPost.updateMany({
+            where: {
+              derivedContentId: script.id,
+              platform: 'YOUTUBE',
+              accountId: realYt.id,
+              id: { not: live.id },
+              status: { in: ['DRAFT', 'FAILED', 'SCHEDULED', 'PUBLISHING'] },
+            },
+            data: {
+              status: 'PUBLISHED',
+              platformPostId: live.platformPostId,
+              publishedAt: live.publishedAt ?? new Date(),
+              error: null,
+              postContent,
+            },
+          })
+          if (live.status !== 'PUBLISHED' || live.postContent !== postContent) {
+            await prisma.socialMediaPost.update({
+              where: { id: live.id },
+              data: {
+                status: 'PUBLISHED',
+                publishedAt: live.publishedAt ?? new Date(),
+                postContent,
+                error: null,
+              },
+            })
+          }
           result.skipped += Math.max(0, onRealPosts.length - 1)
           continue
         }
