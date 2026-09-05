@@ -564,22 +564,32 @@ export async function bulkSetDerivedStatus(
 
         if (options.autoMedia) {
           if (derived.contentType === 'PODCAST_SCRIPT') {
-            const { generatePodcastAudio } = await import('./media/generatePodcast')
-            await generatePodcastAudio(id)
-            result.mediaGenerated += 1
-            await clearReviewFault(id).catch(() => {})
+            try {
+              const { generatePodcastAudio } = await import('./media/generatePodcast')
+              await generatePodcastAudio(id)
+              result.mediaGenerated += 1
+            } catch (err) {
+              const msg = `Podcast sesi - ${err instanceof Error ? err.message : String(err)}`
+              await markReviewFault(id, msg)
+              result.errors.push(`${id}: ${msg}`)
+            }
           }
           if (derived.contentType === 'SOCIAL_CAPTION') {
-            await ensureGeneratedPostMedia(id)
-            result.mediaGenerated += 1
-            await clearReviewFault(id).catch(() => {})
             try {
-              const { generateAiImageVariations } = await import('./image/generateAiImage')
-              await generateAiImageVariations(id, 2)
+              await ensureGeneratedPostMedia(id)
               result.mediaGenerated += 1
-              await clearReviewFault(id).catch(() => {})
+              try {
+                const { generateAiImageVariations } = await import('./image/generateAiImage')
+                await generateAiImageVariations(id, 2)
+                result.mediaGenerated += 1
+                await clearReviewFault(id).catch(() => {})
+              } catch (err) {
+                const msg = `AI gorsel - ${err instanceof Error ? err.message : String(err)}`
+                await markReviewFault(id, msg)
+                result.errors.push(`${id}: ${msg}`)
+              }
             } catch (err) {
-              const msg = `AI gorsel - ${err instanceof Error ? err.message : String(err)}`
+              const msg = `Sosyal medya - ${err instanceof Error ? err.message : String(err)}`
               await markReviewFault(id, msg)
               result.errors.push(`${id}: ${msg}`)
             }
@@ -589,7 +599,6 @@ export async function bulkSetDerivedStatus(
               const { generateSongAudio } = await import('./media/generateSong')
               await generateSongAudio(id)
               result.mediaGenerated += 1
-              await clearReviewFault(id).catch(() => {})
             } catch (err) {
               const msg = `Sarki sesi - ${err instanceof Error ? err.message : String(err)}`
               await markReviewFault(id, msg)
@@ -607,7 +616,6 @@ export async function bulkSetDerivedStatus(
                 const { ensureGeneratedVideo } = await import('./social/publishVideo')
                 await ensureGeneratedVideo(id)
                 result.mediaGenerated += 1
-                await clearReviewFault(id).catch(() => {})
               } catch (err) {
                 const msg = `Video - ${err instanceof Error ? err.message : String(err)}`
                 await reopenReviewWithFault(id, msg)

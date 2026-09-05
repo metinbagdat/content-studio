@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
+import { withFaqSchemaHtml } from '@/lib/seo/faqSchema'
 import { scoreTopicOpportunity } from '@/lib/seo/keywordOpportunity'
 import { sendDraftToWordPress, wordpressConfigured } from './publisher'
 import { validateWithSafeSamurai } from './safeSamurai'
@@ -38,11 +39,19 @@ export async function buildPayloadFromDerived(derivedId: string): Promise<WpCont
       ? (derived.metadata as Record<string, unknown>)
       : {}
 
+  const title = derived.title || derived.source.title
+  const postType = mapContentType(derived.contentType)
+  let content = toHtml(derived.content)
+  // Article stays Rank Math base schema; FAQPage JSON-LD is additive for Q&A posts.
+  if (postType === 'article') {
+    content = withFaqSchemaHtml(content, title, derived.content).html
+  }
+
   return {
-    title: derived.title || derived.source.title,
-    content: toHtml(derived.content),
+    title,
+    content,
     excerpt: typeof meta.excerpt === 'string' ? meta.excerpt : undefined,
-    post_type: mapContentType(derived.contentType),
+    post_type: postType,
     meta: {
       podcast_audio_url: typeof meta.podcastAudioUrl === 'string' ? meta.podcastAudioUrl : undefined,
       video_url: typeof meta.videoUrl === 'string' ? meta.videoUrl : undefined,

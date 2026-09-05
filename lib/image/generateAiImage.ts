@@ -140,17 +140,31 @@ export async function generateAiImageVariations(
   }
 
   if (variations.length) {
+    const fresh = await prisma.derivedContent.findUnique({
+      where: { id: derivedContentId },
+      select: { metadata: true },
+    })
+    const freshMeta =
+      fresh?.metadata && typeof fresh.metadata === 'object' && !Array.isArray(fresh.metadata)
+        ? { ...(fresh.metadata as Record<string, unknown>) }
+        : { ...meta }
+    // Don't resurrect quarantine flags from a stale metadata snapshot.
+    delete freshMeta.reviewFault
+    delete freshMeta.reviewFaultLast
+    delete freshMeta.reviewFaults
     await prisma.derivedContent.update({
       where: { id: derivedContentId },
       data: {
         metadata: {
-          ...meta,
+          ...freshMeta,
           aiImageVariations: variations,
           aiImagePrompt: prompt,
           aiImageSpecKey: specKey,
         } as Prisma.InputJsonValue,
       },
     })
+    const { clearReviewFault } = await import('../review/fault')
+    await clearReviewFault(derivedContentId).catch(() => {})
   }
 
   if (errors.length) {
