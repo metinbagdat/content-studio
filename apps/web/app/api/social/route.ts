@@ -359,7 +359,18 @@ async function handleAction(action: string, body: Record<string, unknown>) {
     const accountId = String(body.accountId || '')
     if (!accountId) return NextResponse.json({ error: 'accountId required' }, { status: 400 })
     const account = await reactivateAccount(accountId)
-    return NextResponse.json({ account })
+    return NextResponse.json({
+      account: account
+        ? {
+            id: account.id,
+            platform: account.platform,
+            accountName: account.accountName,
+            accountId: account.accountId,
+            isActive: account.isActive,
+            tokenExpiry: account.tokenExpiry,
+          }
+        : null,
+    })
   }
 
   if (action === 'dry-run-connect') {
