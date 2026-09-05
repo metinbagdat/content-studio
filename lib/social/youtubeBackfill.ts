@@ -96,13 +96,17 @@ export async function syncYouTubeFromApprovedVideos(
     : (['SHORT_VIDEO_SCRIPT', 'VIDEO_SCRIPT', 'PODCAST_SCRIPT'] as const)
 
   const scripts = await prisma.derivedContent.findMany({
-    where: {
-      ...(options.derivedId ? { id: options.derivedId } : {}),
-      ...(options.sourceId ? { sourceId: options.sourceId } : {}),
-      contentType: { in: [...typeOrder] },
-      status: { in: ['APPROVED', 'PUBLISHED'] },
-      metadata: { path: ['platform'], equals: 'YOUTUBE' },
-    },
+    where: options.derivedId
+      ? {
+          id: options.derivedId,
+          status: { in: ['APPROVED', 'PUBLISHED'] },
+        }
+      : {
+          ...(options.sourceId ? { sourceId: options.sourceId } : {}),
+          contentType: { in: [...typeOrder] },
+          status: { in: ['APPROVED', 'PUBLISHED'] },
+          metadata: { path: ['platform'], equals: 'YOUTUBE' },
+        },
     include: { source: { select: { id: true, title: true, tags: true } } },
     orderBy: { approvedAt: 'asc' },
     take: Math.max(limit * 3, 30),
