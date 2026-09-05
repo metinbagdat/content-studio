@@ -54,10 +54,15 @@ export async function ensureGeneratedPostImage(derivedContentId: string): Promis
       : {}
 
   const existingUrl = typeof meta.imageUrl === 'string' ? meta.imageUrl.trim() : ''
-  if (existingUrl && existingUrl.includes('/api/media/') && existingUrl.endsWith('/image')) {
-    return [existingUrl]
-  }
-  if (existingUrl && isCustomUrl(existingUrl) && !existingUrl.includes('opengraph-image')) {
+  // Self-referential /api/media/.../image URLs are ephemeral on Vercel (/tmp) — never treat as durable.
+  const isEphemeralSelfFetch =
+    existingUrl.includes('/api/media/') && existingUrl.endsWith('/image')
+  if (
+    existingUrl &&
+    !isEphemeralSelfFetch &&
+    isCustomUrl(existingUrl) &&
+    !existingUrl.includes('opengraph-image')
+  ) {
     return [existingUrl]
   }
 
