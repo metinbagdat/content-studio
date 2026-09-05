@@ -5,7 +5,7 @@ import { fetchBackgroundMusic } from './pixabayMusic'
 import { toImagePrompt } from './visualPrompt'
 import { buildSubtitleCues, cuesToSrt, subtitleMaxChars } from './subtitles'
 import { renderVideo, type AspectRatio, type VideoScene } from './renderVideo'
-import { writeVideoFile, publicMediaVideoUrl } from './videoStorage'
+import { persistGeneratedVideo, writeVideoFile } from './videoStorage'
 import { writeImageFile, imageDiskPath } from '../media/imageStorage'
 import { generatePodcastAudio } from '../media/generatePodcast'
 import { extractPodcastSpeechParts, estimateSpeechDurationSec } from '../media/podcastText'
@@ -116,10 +116,8 @@ export async function generatePodcastVideo(
         srtContent: srtForAspect,
         aspect,
       })
-      const filename = `${media.id}.mp4`
-      await writeVideoFile(filename, videoBuffer)
       await writeVideoFile(`${media.id}.srt`, Buffer.from(srtForAspect, 'utf-8'))
-      const publicUrl = publicMediaVideoUrl(media.id)
+      const publicUrl = await persistGeneratedVideo(media.id, videoBuffer)
       await prisma.mediaFile.update({
         where: { id: media.id },
         data: {

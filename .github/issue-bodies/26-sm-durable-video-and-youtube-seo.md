@@ -18,9 +18,10 @@ TikTok has the same media problem **plus** dry-run OAuth (CS-06 / #2).
 
 ## Scope — durable media (02)
 
-- [ ] Store completed MP4 (and podcast audio) where the **prod** publish path can read it (object storage or equivalent), not only `storage/` on one machine
-- [ ] `ensureGeneratedVideo` / YouTube upload use that URL or a fetchable `fileUrl`
-- [ ] Document: local generate → upload to store → `publishPost(YOUTUBE)`
+- [x] Store completed MP4 where the **prod** publish path can read it (Vercel Blob `videos/{id}.mp4`)
+- [x] `ensureGeneratedVideo` / YouTube·TikTok use durable `fileUrl` (disk first, else Blob fetch); no regenerate on Vercel
+- [x] Document: local generate → Blob (`BLOB_READ_WRITE_TOKEN`) → `publishPost(YOUTUBE)`; backfill `scripts/upload-videos-to-blob.ts`
+- [x] `/api/media/{id}/video` **302** to Blob (no function byte egress)
 
 ## Scope — YouTube SEO publish (03)
 

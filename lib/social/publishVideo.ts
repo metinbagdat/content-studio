@@ -5,7 +5,12 @@ import { youtubeDescriptionFooter } from '../content/canonicalUrl'
 import { generateVideoVariants, generateTikTokVideo } from '../video/generateVideo'
 import { generatePodcastVideo } from '../video/generatePodcastVideo'
 import type { AspectRatio } from '../video/renderVideo'
-import { publicMediaVideoUrl, videoDiskPath } from '../video/videoStorage'
+import { isServerlessRuntime } from '../storage/writableRoot'
+import {
+  isDurableMediaUrl,
+  publicMediaVideoUrl,
+  videoDiskPath,
+} from '../video/videoStorage'
 
 export type YouTubeMetadata = {
   title: string
@@ -144,7 +149,7 @@ async function findCompletedVideo(derivedContentId: string, aspect: AspectRatio)
   return files[0]
 }
 
-/** Ensure a watermarked MP4 exists on disk; generate if missing. */
+/** Ensure a watermarked MP4 exists (disk and/or durable Blob URL). */
 export async function ensureGeneratedVideo(derivedContentId: string): Promise<ResolvedVideoMedia> {
   const derived = await prisma.derivedContent.findUnique({
     where: { id: derivedContentId },
@@ -168,12 +173,24 @@ export async function ensureGeneratedVideo(derivedContentId: string): Promise<Re
   }
 
   if (existing?.fileUrl) {
+    const durable = isDurableMediaUrl(existing.fileUrl)
+    if (isServerlessRuntime() && !durable) {
+      throw new Error(
+        'Video Blob URL yok — yerelde ffmpeg ile üretip BLOB_READ_WRITE_TOKEN ile videos/ altına yükleyin (CS-SM-SEO-02)',
+      )
+    }
     return finish({
       mediaId: existing.id,
-      publicUrl: existing.fileUrl || publicMediaVideoUrl(existing.id),
+      publicUrl: durable ? existing.fileUrl : existing.fileUrl || publicMediaVideoUrl(existing.id),
       diskPath: videoDiskPath(`${existing.id}.mp4`),
       aspect,
     })
+  }
+
+  if (isServerlessRuntime()) {
+    throw new Error(
+      "Video üretimi Vercel'de yok — yerel npm run dev ile üretin; Blob URL oluşunca prod yayınlar",
+    )
   }
 
   if (isPodcast) {
