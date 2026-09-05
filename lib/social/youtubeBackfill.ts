@@ -176,6 +176,38 @@ export async function syncYouTubeFromApprovedVideos(
 
       const before = await prisma.socialMediaPost.count({ where: { derivedContentId: script.id } })
       await createSocialDraftsForDerived(script.id, postContent, { skipImages: true })
+
+      // Ensure a DRAFT on the real YouTube OAuth account (old rows often sit on dry-run).
+      const realYt = await prisma.socialMediaAccount.findFirst({
+        where: {
+          platform: 'YOUTUBE',
+          isActive: true,
+          accountId: { not: { startsWith: 'dryrun_' } },
+        },
+      })
+      if (realYt) {
+        const onReal = await prisma.socialMediaPost.findFirst({
+          where: { derivedContentId: script.id, accountId: realYt.id },
+        })
+        if (!onReal) {
+          await prisma.socialMediaPost.create({
+            data: {
+              derivedContentId: script.id,
+              accountId: realYt.id,
+              platform: 'YOUTUBE',
+              postContent,
+              mediaUrls: [],
+              status: 'DRAFT',
+            },
+          })
+        } else if (onReal.status === 'DRAFT' || onReal.status === 'FAILED') {
+          await prisma.socialMediaPost.update({
+            where: { id: onReal.id },
+            data: { postContent },
+          })
+        }
+      }
+
       const after = await prisma.socialMediaPost.count({ where: { derivedContentId: script.id } })
       result.draftsCreated += Math.max(0, after - before)
 
