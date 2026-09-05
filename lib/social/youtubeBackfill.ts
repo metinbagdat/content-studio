@@ -182,26 +182,42 @@ export async function syncYouTubeFromApprovedVideos(
         where: {
           platform: 'YOUTUBE',
           isActive: true,
-          accountId: { not: { startsWith: 'dryrun_' } },
+          NOT: { accountId: { startsWith: 'dryrun_' } },
         },
       })
-      if (realYt) {
-        const onReal = await prisma.socialMediaPost.findFirst({
+      if (!realYt) {
+        result.errors.push(`${script.title.slice(0, 40)}: aktif YouTube OAuth hesabı yok`)
+      } else {
+        let onReal = await prisma.socialMediaPost.findFirst({
           where: { derivedContentId: script.id, accountId: realYt.id },
         })
         if (!onReal) {
-          await prisma.socialMediaPost.create({
-            data: {
+          const dryPost = await prisma.socialMediaPost.findFirst({
+            where: {
               derivedContentId: script.id,
-              accountId: realYt.id,
               platform: 'YOUTUBE',
-              postContent,
-              mediaUrls: [],
-              status: 'DRAFT',
+              account: { accountId: { startsWith: 'dryrun_' } },
             },
           })
+          if (dryPost) {
+            onReal = await prisma.socialMediaPost.update({
+              where: { id: dryPost.id },
+              data: { accountId: realYt.id, postContent, status: 'DRAFT', error: null },
+            })
+          } else {
+            onReal = await prisma.socialMediaPost.create({
+              data: {
+                derivedContentId: script.id,
+                accountId: realYt.id,
+                platform: 'YOUTUBE',
+                postContent,
+                mediaUrls: [],
+                status: 'DRAFT',
+              },
+            })
+          }
         } else if (onReal.status === 'DRAFT' || onReal.status === 'FAILED') {
-          await prisma.socialMediaPost.update({
+          onReal = await prisma.socialMediaPost.update({
             where: { id: onReal.id },
             data: { postContent },
           })
