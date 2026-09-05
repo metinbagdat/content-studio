@@ -28,10 +28,13 @@ export async function ensureGeneratedPostClip(derivedContentId: string): Promise
 export async function ensureGeneratedPostMedia(derivedContentId: string): Promise<string[]> {
   const imageUrls = await ensureGeneratedPostImage(derivedContentId)
   const clipUrl = await ensureGeneratedPostClip(derivedContentId)
-  if (clipUrl && !imageUrls.includes(clipUrl)) {
-    return [...imageUrls, clipUrl]
+  const urls =
+    clipUrl && !imageUrls.includes(clipUrl) ? [...imageUrls, clipUrl] : imageUrls
+  if (urls.length) {
+    const { clearReviewFault } = await import('../review/fault')
+    await clearReviewFault(derivedContentId).catch(() => {})
   }
-  return imageUrls
+  return urls
 }
 
 /** Auto-generate branded PNG for caption or infographic if no custom image set. */

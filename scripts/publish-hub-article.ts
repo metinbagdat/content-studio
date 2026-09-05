@@ -12,6 +12,7 @@ import { prisma } from '../lib/prisma'
 import { createPipeline, processPipeline } from '../lib/pipeline'
 import { llmModeLabel } from '../lib/ai/llmClient'
 import { markdownToWpHtml } from '../lib/blog/markdownToWpHtml'
+import { withFaqSchemaHtml } from '../lib/seo/faqSchema'
 import { hubSlugFromArgv, loadHubBundle } from '../lib/hub/loadHubBundle'
 import { ingestWordpressPublished } from '../lib/wordpress/ingestPublished'
 import { fetchWpPostBySlug } from '../lib/wordpress/fetchWpPost'
@@ -43,7 +44,11 @@ async function main() {
 
   if (!pipelineOnly) {
     if (wordpressConfigured()) {
-      const articleHtml = markdownToWpHtml(bundle.articleMarkdown)
+      const articleHtml = withFaqSchemaHtml(
+        markdownToWpHtml(bundle.articleMarkdown),
+        manifest.title,
+        bundle.articleMarkdown,
+      ).html
       const podHtml = markdownToWpHtml(bundle.podcastScriptMarkdown)
       const anthemHtml = markdownToWpHtml(bundle.songLyricsMarkdown)
       const focus = manifest.focusKeyword || 'karar verme'
@@ -151,7 +156,11 @@ async function main() {
         wpLink = existing.link
         console.log('WP already published', wpLink)
       } else {
-        const html = markdownToWpHtml(bundle.articleMarkdown)
+        const html = withFaqSchemaHtml(
+          markdownToWpHtml(bundle.articleMarkdown),
+          manifest.title,
+          bundle.articleMarkdown,
+        ).html
         const pub = await sendViaCoreRest(
           {
             title: manifest.title,

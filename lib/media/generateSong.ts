@@ -49,7 +49,11 @@ export async function generateSongAudio(derivedContentId: string) {
   }
 
   const existing = derived.mediaFiles[0]
-  if (existing) return { media: existing, reused: true }
+  if (existing) {
+    const { clearReviewFault } = await import('../review/fault')
+    await clearReviewFault(derivedContentId).catch(() => {})
+    return { media: existing, reused: true }
+  }
 
   const isMarch = derived.contentType === 'MARCH_LYRICS'
   const mood = isMarch ? 'marching band anthem, uplifting, orchestral' : 'pop, uplifting, motivational'
@@ -87,6 +91,8 @@ export async function generateSongAudio(derivedContentId: string) {
         processingStatus: 'COMPLETED',
       },
     })
+    const { clearReviewFault } = await import('../review/fault')
+    await clearReviewFault(derivedContentId).catch(() => {})
     return { media: updated, reused: false, hasMusicBed: Boolean(musicPath) }
   } catch (err) {
     await prisma.mediaFile.update({ where: { id: media.id }, data: { processingStatus: 'FAILED' } })

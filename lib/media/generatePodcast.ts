@@ -151,6 +151,8 @@ export async function generatePodcastAudio(
 
   const existing = derived.mediaFiles[0]
   if (existing && !options.force) {
+    const { clearReviewFault } = await import('../review/fault')
+    await clearReviewFault(derivedContentId).catch(() => {})
     return { media: existing, reused: true, mode: ttsModeLabel() }
   }
   if (existing && options.force) {
@@ -220,6 +222,9 @@ export async function generatePodcastAudio(
     for (const p of tempPartPaths) {
       await unlink(p).catch(() => {})
     }
+
+    const { clearReviewFault } = await import('../review/fault')
+    await clearReviewFault(derivedContentId).catch(() => {})
 
     return {
       media: updated,

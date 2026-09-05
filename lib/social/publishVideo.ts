@@ -160,25 +160,32 @@ export async function ensureGeneratedVideo(derivedContentId: string): Promise<Re
 
   const aspect = isPodcast ? '16:9' : inferVideoAspect(derived.contentType, derived.metadata)
   const existing = await findCompletedVideo(derivedContentId, aspect)
+
+  const finish = async (result: ResolvedVideoMedia) => {
+    const { clearReviewFault } = await import('../review/fault')
+    await clearReviewFault(derivedContentId).catch(() => {})
+    return result
+  }
+
   if (existing?.fileUrl) {
-    return {
+    return finish({
       mediaId: existing.id,
       publicUrl: existing.fileUrl || publicMediaVideoUrl(existing.id),
       diskPath: videoDiskPath(`${existing.id}.mp4`),
       aspect,
-    }
+    })
   }
 
   if (isPodcast) {
     const variants = await generatePodcastVideo(derivedContentId, [aspect])
     const variant = variants[0]
     if (!variant) throw new Error('Podcast video üretilemedi')
-    return {
+    return finish({
       mediaId: variant.mediaId,
       publicUrl: variant.publicUrl,
       diskPath: videoDiskPath(`${variant.mediaId}.mp4`),
       aspect,
-    }
+    })
   }
 
   const variants =
@@ -189,12 +196,12 @@ export async function ensureGeneratedVideo(derivedContentId: string): Promise<Re
   const variant = variants.find((v) => v.aspect === aspect) || variants[0]
   if (!variant) throw new Error('Video üretilemedi — ffmpeg/provider hatası')
 
-  return {
+  return finish({
     mediaId: variant.mediaId,
     publicUrl: variant.publicUrl,
     diskPath: videoDiskPath(`${variant.mediaId}.mp4`),
     aspect,
-  }
+  })
 }
 
 export async function resolveVideoMediaUrls(derivedContentId: string): Promise<string[]> {
