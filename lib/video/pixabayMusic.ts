@@ -23,7 +23,7 @@ function resolveFolder(mood: string): string {
 }
 
 /** Generate a soft ambient bed when no local tracks exist — cached for reuse. */
-async function generateAmbientTrack(outputPath: string): Promise<string> {
+async function generateAmbientTrack(outputPath: string): Promise<string | null> {
   await mkdir(path.dirname(outputPath), { recursive: true })
   try {
     await access(outputPath)
@@ -32,20 +32,27 @@ async function generateAmbientTrack(outputPath: string): Promise<string> {
     /* generate */
   }
 
-  return new Promise((resolve, reject) => {
+  configureFfmpeg()
+  return new Promise((resolve) => {
     ffmpeg()
-      .input('anoisesrc=color=pink:duration=240:sample_rate=44100,lowpass=f=700,volume=0.2,afade=t=in:st=0:d=3,afade=t=out:st=237:d=3')
+      .input(
+        'anoisesrc=color=pink:duration=240:sample_rate=44100,lowpass=f=700,volume=0.2,afade=t=in:st=0:d=3,afade=t=out:st=237:d=3',
+      )
       .inputFormat('lavfi')
       .outputOptions(['-c:a', 'libmp3lame', '-b:a', '128k', '-t', '240'])
       .output(outputPath)
       .on('end', () => resolve(outputPath))
-      .on('error', reject)
+      .on('error', (err) => {
+        // Vercel/ffmpeg-static builds often omit lavfi — caller falls back to voice-only.
+        console.warn('[pixabayMusic] ambient lavfi failed', err instanceof Error ? err.message : err)
+        resolve(null)
+      })
       .run()
   })
 }
 
 /** Pick a random local royalty-free track by mood, or generate ambient fallback. */
-export async function fetchBackgroundMusic(mood = 'inspiring corporate'): Promise<string> {
+export async function fetchBackgroundMusic(mood = 'inspiring corporate'): Promise<string | null> {
   const folder = path.join(musicLibraryDir(), resolveFolder(mood))
   try {
     const files = (await readdir(folder)).filter((f) => f.toLowerCase().endsWith('.mp3'))

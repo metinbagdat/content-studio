@@ -189,19 +189,27 @@ export default function MediaPage() {
   async function generateAllPending() {
     if (!pendingAudio.length) return
     if (!confirm(`${pendingAudio.length} ses üretilecek (sırayla, uzun sürebilir). Devam?`)) return
-    const queue = [...pendingAudio]
+    // Podcast first — song/march need music bed / ffmpeg mix and fail more often on Hobby.
+    const queue = [...pendingAudio].sort((a, b) => {
+      const rank = (t: string) =>
+        t === 'PODCAST_SCRIPT' ? 0 : t === 'MARCH_LYRICS' || t === 'SONG_LYRICS' ? 1 : 2
+      return rank(a.contentType) - rank(b.contentType)
+    })
+    let okCount = 0
+    const fails: string[] = []
     for (let i = 0; i < queue.length; i++) {
       const row = queue[i]
       setMsg(`${i + 1}/${queue.length}: ${row.title.slice(0, 50)}…`)
       const ok = await generateFor(row.id, row.contentType, false)
-      if (!ok) {
-        setMsg(`Durdu (${i + 1}/${queue.length}): ${row.title.slice(0, 40)}`)
-        await load()
-        return
-      }
+      if (ok) okCount += 1
+      else fails.push(`${row.contentType.slice(0, 8)}:${row.title.slice(0, 28)}`)
     }
     await load()
-    setMsg(`${queue.length} ses üretildi`)
+    setMsg(
+      fails.length
+        ? `${okCount} OK · ${fails.length} hata (ilk: ${fails[0]}) — kalanlar listede`
+        : `${okCount} ses üretildi`,
+    )
   }
 
   async function batchResize(masterMediaId: string) {
@@ -239,7 +247,8 @@ export default function MediaPage() {
       </p>
       <p className="muted">
         Sesi olmayanlar otomatik listelenir (tek tık / hepsini üret). Elle ID veya{' '}
-        <Link href="/admin/review">/admin/review</Link>.
+        <Link href="/admin/review">/admin/review</Link>. Video (MP4) burada değil — yerelde{' '}
+        <code>ffmpeg-static</code> (npm) ile üretilir; VLC yalnızca oynatıcıdır.
       </p>
 
       <div className="keybar">
