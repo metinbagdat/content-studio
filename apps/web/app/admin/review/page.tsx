@@ -325,7 +325,9 @@ export default function ReviewPage() {
       setItems([])
       return
     }
-    const q = new URLSearchParams({ take: '300' })
+    const q = new URLSearchParams({ take: '500' })
+    // Default: only IN_REVIEW so Onay/Arı match funnel (not "latest 300 of all statuses").
+    if (!showAll) q.set('status', 'IN_REVIEW')
     if (platformFilter !== 'ALL') q.set('platform', platformFilter)
     if (segmentFilter !== 'ALL') q.set('segment', segmentFilter)
     const [cRes, sRes] = await Promise.all([
@@ -1045,6 +1047,10 @@ export default function ReviewPage() {
           <code>BLOG_POST</code>, <code>PODCAST_SCRIPT</code>, <code>VIDEO_SCRIPT</code> vb. — önce{' '}
           <strong>Onayla</strong>, sonra <strong>WP draft gönder</strong>. Facebook/LinkedIn caption (
           <code>SOCIAL_CAPTION</code>) → <a href="/admin/social">Sosyal</a> sayfası, WP değil.
+        </p>
+        <p className="muted" style={{ marginTop: '0.5rem' }}>
+          Funnel «Onay N» = temiz bekleyen; Arı ayrı. Local Docker ile prod Supabase sayıları
+          senkron değil — üstteki ortam bandına bak.
         </p>
         <div className="row">
           <span className="badge warn">{counts.pending} bekliyor</span>

@@ -11,7 +11,15 @@ import { DeployParityBanner } from '@/components/admin/DeployParityBanner'
 import { HoverExpandList, HoverExpandRow, hoverSnippet } from '@/components/admin/HoverExpandList'
 import { SEGMENT_LABELS, isAudienceSegment } from '@/lib/audience/segments'
 
-const NAV = [
+const NAV: Array<{
+  href: string
+  label: string
+  step?: string
+  highlight?: boolean
+  /** Gated / not ready — shown muted, not clickable. */
+  disabled?: boolean
+  disabledReason?: string
+}> = [
   { href: '/admin', label: 'Pipeline', step: 'pipeline' },
   { href: '/admin/review', label: 'Onay', step: 'review', highlight: true },
   { href: '/admin/media', label: 'Medya', step: 'media' },
@@ -19,8 +27,13 @@ const NAV = [
   { href: '/admin/comments', label: 'Yorumlar' },
   { href: '/admin/calendar', label: 'Takvim', step: 'calendar' },
   { href: '/admin/discovery', label: 'Discovery', step: 'discovery' },
-  { href: '/admin/analytics', label: 'Performans' },  // step yok — badge/workflow mant\u0131\u011f\u0131na hi\u00e7 girmiyor
-  { href: '/admin/email', label: 'E-posta' },
+  { href: '/admin/analytics', label: 'Performans' },
+  {
+    href: '/admin/email',
+    label: 'E-posta',
+    disabled: true,
+    disabledReason: 'GSC impressions + Hostinger Reach token sonrası (CS-EM)',
+  },
 ]
 
 function adminHeaders(key: string): HeadersInit {
@@ -102,6 +115,19 @@ export function AdminWorkflowChrome({ children }: { children: React.ReactNode })
             step?.count && (item.step === 'review' ? step.count > 0 : step.count > 0)
               ? step.count
               : null
+          if (item.disabled) {
+            return (
+              <span
+                key={item.href}
+                className="admin-nav-link muted-link nav-disabled"
+                title={item.disabledReason || 'Şimdilik kapalı'}
+                aria-disabled="true"
+              >
+                {item.label}
+                <span className="nav-pill muted">pasif</span>
+              </span>
+            )
+          }
           return (
             <Link
               key={item.href}
@@ -109,8 +135,8 @@ export function AdminWorkflowChrome({ children }: { children: React.ReactNode })
               className={`admin-nav-link ${active ? 'active' : ''} ${item.highlight ? 'emph' : ''}`}
             >
               {item.label}
-              {item.step === 'review' && workflow && workflow.counts.reviewPending > 0 ? (
-                <span className="nav-pill warn">{workflow.counts.reviewPending}</span>
+              {item.step === 'review' && workflow && workflow.counts.reviewClean > 0 ? (
+                <span className="nav-pill warn">{workflow.counts.reviewClean}</span>
               ) : badge && item.step !== 'review' ? (
                 <span className="nav-pill">{badge}</span>
               ) : null}

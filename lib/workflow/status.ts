@@ -48,7 +48,12 @@ export type WorkflowSnapshot = {
   counts: {
     sources: number
     pipelinesCompleted: number
+    /** All IN_REVIEW (clean + Arı). */
     reviewPending: number
+    /** IN_REVIEW without reviewFault — matches Onay tab. */
+    reviewClean: number
+    /** IN_REVIEW with reviewFault — matches Arı tab. */
+    reviewFault: number
     podcastScripts: number
     podcastMedia: number
     socialDrafts: number
@@ -74,6 +79,7 @@ export async function getWorkflowSnapshot(): Promise<WorkflowSnapshot> {
     sources,
     pipelinesCompleted,
     reviewPending,
+    reviewFault,
     podcastScripts,
     podcastMedia,
     socialDrafts,
@@ -86,6 +92,9 @@ export async function getWorkflowSnapshot(): Promise<WorkflowSnapshot> {
     prisma.contentSource.count(),
     prisma.contentPipeline.count({ where: { status: 'COMPLETED' } }),
     prisma.derivedContent.count({ where: { status: 'IN_REVIEW' } }),
+    prisma.derivedContent.count({
+      where: { status: 'IN_REVIEW', metadata: { path: ['reviewFault'], equals: true } },
+    }),
     prisma.derivedContent.count({ where: { contentType: 'PODCAST_SCRIPT', status: { in: ['IN_REVIEW', 'APPROVED'] } } }),
     prisma.mediaFile.count({
       where: {
@@ -123,6 +132,7 @@ export async function getWorkflowSnapshot(): Promise<WorkflowSnapshot> {
     }),
   ])
 
+  const reviewClean = Math.max(0, reviewPending - reviewFault)
   const previewRows =
     recentPublished.length === 0
       ? []
@@ -160,19 +170,6 @@ export async function getWorkflowSnapshot(): Promise<WorkflowSnapshot> {
     }
   })
 
-  const counts = {
-    sources,
-    pipelinesCompleted,
-    reviewPending,
-    podcastScripts,
-    podcastMedia,
-    socialDrafts,
-    scheduledPosts,
-    linkedAccounts,
-    publishedPosts,
-    failedPosts,
-  }
-
   const steps: WorkflowStep[] = [
     {
       id: 'discovery',
@@ -200,15 +197,19 @@ export async function getWorkflowSnapshot(): Promise<WorkflowSnapshot> {
       label: 'Onay',
       href: '/admin/review',
       state:
-        reviewPending > 0
+        reviewClean > 0
           ? 'warn'
-          : pipelinesCompleted > 0
-            ? 'done'
-            : sources > 0
-              ? 'active'
-              : 'pending',
-      detail: reviewPending ? `${reviewPending} bekliyor` : 'Onay kuyruğu',
-      count: reviewPending,
+          : reviewFault > 0
+            ? 'warn'
+            : pipelinesCompleted > 0
+              ? 'done'
+              : sources > 0
+                ? 'active'
+                : 'pending',
+      detail: reviewPending
+        ? `${reviewClean} onay · ${reviewFault} arı`
+        : 'Onay kuyruğu',
+      count: reviewClean,
     },
     {
       id: 'media',
@@ -292,8 +293,10 @@ export async function getWorkflowSnapshot(): Promise<WorkflowSnapshot> {
   if (sources === 0) nextActions.push('Discovery veya Pipeline ile ilk kaynak ekle')
   if (sources > 0 && pipelinesCompleted === 0)
     nextActions.push('Pipeline’da kaynak seç → Start Pipeline (podcast/video script otomatik üretilir)')
-  if (reviewPending > 0)
-    nextActions.push(`${reviewPending} türev onay bekliyor → Onay ekranında toplu onayla`)
+  if (reviewClean > 0)
+    nextActions.push(`${reviewClean} temiz onay bekliyor → Onay sekmesinde toplu onayla`)
+  if (reviewFault > 0)
+    nextActions.push(`${reviewFault} arı (video/storage) → Onay → Arı sekmesi; yerelde video üret`)
   if (podcastScripts > podcastMedia)
     nextActions.push(
       `Ses Drenajı: ${podcastScripts - podcastMedia} podcast MP3 eksik → /admin/media (Hepsini üret)`,
@@ -303,7 +306,9 @@ export async function getWorkflowSnapshot(): Promise<WorkflowSnapshot> {
   else if (linkedAccounts === 0)
     nextActions.push('Sosyal’de LinkedIn/X OAuth veya dry-run bağla — onay sonrası taslak oluşur')
   if (socialDrafts > 0 && scheduledPosts === 0)
-    nextActions.push('Takvim’de pipeline seç → Önizle → Takvime uygula')
+    nextActions.push('Takvim’de pipeline seç → Önizle → Takvime uygula (uygulandı rozetine bak)')
+  if (accountHealth.slots.some((s) => s.platform === 'TWITTER' && s.status === 'failed_posts'))
+    nextActions.push('X kredisi bitmiş olabilir (402) — console.x.com plan; Toplu yayınla X’i atlar')
   if (accountHealth.missingCount > 0)
     nextActions.push('Sosyal hesap eksik — dry-run otomatik eklendi veya OAuth bağla')
   if (accountHealth.brokenCount > 0)
@@ -320,5 +325,24 @@ export async function getWorkflowSnapshot(): Promise<WorkflowSnapshot> {
     nextActions.push(`${publishedPosts} yayınlandı — akış ağacında linkleri izle`)
   if (!nextActions.length) nextActions.push('Akış tamam — yayınlanan postları Takvim’de izle')
 
-  return { steps, nextActions, publishedFeed, accountHealth, counts }
+  return {
+    steps,
+    nextActions,
+    publishedFeed,
+    accountHealth,
+    counts: {
+      sources,
+      pipelinesCompleted,
+      reviewPending,
+      reviewClean,
+      reviewFault,
+      podcastScripts,
+      podcastMedia,
+      socialDrafts,
+      scheduledPosts,
+      linkedAccounts,
+      publishedPosts,
+      failedPosts,
+    },
+  }
 }
