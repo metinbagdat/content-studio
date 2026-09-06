@@ -26,8 +26,8 @@ const nextConfig = {
   // Include ffmpeg binaries when the platform can run them (large; Hobby may still omit).
   outputFileTracingIncludes: {
     '/api/media/generate': [
-      './node_modules/ffmpeg-static/**/*',
-      './node_modules/ffprobe-static/**/*',
+      '../../node_modules/ffmpeg-static/**/*',
+      '../../node_modules/ffprobe-static/**/*',
     ],
   },
   async rewrites() {
