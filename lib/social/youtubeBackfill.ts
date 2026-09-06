@@ -3,11 +3,11 @@ import { createSocialDraftsForDerived, schedulePost } from '../pipeline'
 import { pickPostingSlot } from '../scheduling/postingTimes'
 import { canonicalArticleUrl } from '../content/canonicalUrl'
 import { isDurableMediaUrl } from '../video/videoStorage'
-import { ensureGeneratedVideo, buildYouTubePostContent, isShortFormVideo } from './publishVideo'
+import { ensureGeneratedVideo, buildYouTubePostContent, buildYouTubeMetadata, isShortFormVideo } from './publishVideo'
 import { preparePostForPublish, isDryRunAccount, recoverStuckPublishing } from './preparePublish'
 import { publishPost } from './publish'
 import { getValidAccessToken } from './tokenRefresh'
-import { testYouTubeConnection } from './youtubeApi'
+import { testYouTubeConnection, updateYouTubeVideoSnippet } from './youtubeApi'
 
 export type YouTubeBackfillResult = {
   scanned: number
@@ -384,4 +384,73 @@ function hashSlot(id: string): number {
 function isLiveYouTubeVideoId(id: string | null | undefined): boolean {
   if (!id || id.startsWith('mock_') || id.startsWith('dryrun_')) return false
   return /^[\w-]{8,}$/.test(id)
+}
+
+/**
+ * Patch an already-uploaded YouTube video's snippet (description/title/tags)
+ * with the current SEO pack — no MP4 re-upload.
+ */
+export async function refreshPublishedYouTubeSeo(postId: string): Promise<{
+  videoId: string
+  articleUrl?: string
+  hasBlogLink: boolean
+  descriptionPreview: string
+}> {
+  const post = await prisma.socialMediaPost.findUnique({
+    where: { id: postId },
+    include: {
+      account: true,
+      derivedContent: { include: { source: { select: { title: true, tags: true } } } },
+    },
+  })
+  if (!post) throw new Error('Post not found')
+  if (post.platform !== 'YOUTUBE') throw new Error('Yalnızca YouTube')
+  if (!post.account.isActive || isDryRunAccount(post.account)) {
+    throw new Error('Aktif YouTube OAuth hesabı gerekli')
+  }
+  if (!isLiveYouTubeVideoId(post.platformPostId)) {
+    throw new Error('Canlı YouTube video id yok — önce yayınla')
+  }
+
+  const derived = post.derivedContent
+  if (!derived) throw new Error('Derived content missing')
+
+  const articleUrl = canonicalArticleUrl(derived.source.tags)
+  const ytMeta = buildYouTubeMetadata({
+    title: derived.title,
+    content: derived.content,
+    contentType: derived.contentType,
+    metadata: derived.metadata,
+    sourceTitle: derived.source.title,
+    articleUrl,
+  })
+  const postContent = buildYouTubePostContent({
+    title: derived.title,
+    content: derived.content,
+    contentType: derived.contentType,
+    metadata: derived.metadata,
+    sourceTitle: derived.source.title,
+    articleUrl,
+  })
+
+  const token = await getValidAccessToken(post.account)
+  await updateYouTubeVideoSnippet({
+    accessToken: token,
+    videoId: post.platformPostId!,
+    title: ytMeta.title,
+    description: ytMeta.description,
+    tags: ytMeta.tags,
+  })
+
+  await prisma.socialMediaPost.update({
+    where: { id: post.id },
+    data: { postContent, error: null },
+  })
+
+  return {
+    videoId: post.platformPostId!,
+    articleUrl,
+    hasBlogLink: /blog\.egitim\.today/i.test(ytMeta.description),
+    descriptionPreview: ytMeta.description.slice(0, 280),
+  }
 }

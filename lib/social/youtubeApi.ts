@@ -183,6 +183,38 @@ export async function setYouTubeThumbnail(
   }
 }
 
+/** Update title/description/tags without re-uploading the MP4 (quota-friendly SEO fix). */
+export async function updateYouTubeVideoSnippet(input: {
+  accessToken: string
+  videoId: string
+  title: string
+  description: string
+  tags?: string[]
+  categoryId?: string
+}): Promise<void> {
+  const res = await fetch('https://www.googleapis.com/youtube/v3/videos?part=snippet', {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${input.accessToken}`,
+      'Content-Type': 'application/json; charset=UTF-8',
+    },
+    body: JSON.stringify({
+      id: input.videoId,
+      snippet: {
+        title: input.title.slice(0, 100),
+        description: input.description.slice(0, 5000),
+        tags: (input.tags || []).slice(0, 30),
+        categoryId: input.categoryId || '27',
+        defaultLanguage: 'tr',
+      },
+    }),
+  })
+  if (!res.ok) {
+    const body = await res.text()
+    throw new Error(`YouTube videos.update ${res.status}: ${body.slice(0, 400)}`)
+  }
+}
+
 export function youtubeMetadataFromDerived(input: {
   title: string
   content: string
