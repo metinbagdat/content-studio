@@ -39,6 +39,11 @@ export async function GET(req: NextRequest) {
     const pending = rows
       .filter((r) => !r.mediaFiles.some((m) => m.processingStatus === 'COMPLETED'))
       .map(({ mediaFiles: _m, ...rest }) => rest)
+      .sort((a, b) => {
+        const rank = (t: string) =>
+          t === 'PODCAST_SCRIPT' ? 0 : t === 'MARCH_LYRICS' || t === 'SONG_LYRICS' ? 1 : 2
+        return rank(a.contentType) - rank(b.contentType)
+      })
     return NextResponse.json({
       pending,
       ttsMode: ttsModeLabel(),

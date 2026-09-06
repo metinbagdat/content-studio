@@ -74,9 +74,14 @@ export async function generateSongAudio(derivedContentId: string) {
     const finalPath = path.join(audioStorageDir(), finalFilename)
 
     if (musicPath) {
-      await mixVoiceAndMusic(voicePath, musicPath, finalPath)
+      try {
+        await mixVoiceAndMusic(voicePath, musicPath, finalPath)
+      } catch (err) {
+        console.warn('[generateSongAudio] mix failed, voice-only', err)
+        await writeAudioFile(finalFilename, voiceBuffer)
+      }
     } else {
-      // No local track available yet — fall back to voice-only rather than failing
+      // No local track / lavfi unavailable (Vercel) — voice-only
       await writeAudioFile(finalFilename, voiceBuffer)
     }
 
