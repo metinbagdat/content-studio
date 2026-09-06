@@ -78,12 +78,14 @@ export function youtubeOAuthScopes(): string {
   if (process.env.YOUTUBE_OAUTH_SCOPES?.trim()) {
     return process.env.YOUTUBE_OAUTH_SCOPES.trim()
   }
+  // youtube.upload alone cannot videos.update (SEO description patch).
   return [
     'openid',
     'email',
     'profile',
     'https://www.googleapis.com/auth/youtube.readonly',
     'https://www.googleapis.com/auth/youtube.upload',
+    'https://www.googleapis.com/auth/youtube',
   ].join(' ')
 }
 
