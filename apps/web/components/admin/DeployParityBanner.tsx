@@ -67,9 +67,13 @@ export function DeployParityBanner({ adminKey }: { adminKey: string }) {
         {!parity.isProduction ? (
           <span className="muted deploy-parity-hint">
             {parity.egressWarning ||
-              `Günlük iş: Docker :5434 (sıfır egress). Prod: ${parity.prodUrl}`}
+              `Local Docker ≠ prod Supabase — sayılar senkron değil. Günlük iş :5434; prod: ${parity.prodUrl}`}
           </span>
-        ) : null}
+        ) : (
+          <span className="muted deploy-parity-hint">
+            Production Supabase — local `npm run dev` ayrı DB; karıştırma.
+          </span>
+        )}
       </div>
     </section>
   )

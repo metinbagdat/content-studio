@@ -9,6 +9,8 @@ type PipelineRow = {
   name: string
   status: string
   source?: { id: string; title: string }
+  distributionAppliedAt?: string | null
+  distributionScheduledCount?: number | null
 }
 
 type PreviewSlot = {
@@ -206,17 +208,47 @@ export default function CalendarPage() {
 
       <section className="panel" style={{ marginBottom: '1.25rem' }}>
         <h2>Dağıtım takvimi uygula</h2>
+        <p className="muted" style={{ marginTop: 0 }}>
+          Uygulandı mı? Dropdown’da <strong>Uygulandı</strong> rozeti = daha önce «Takvime uygula»
+          çalıştı. Alttaki listede <code>SCHEDULED</code> / <code>PUBLISHED</code> gerçek
+          zamanlama. Tek checkbox yalnızca «sadece onaylı türev» filtresidir — slot seçimi yok.
+        </p>
         <label>COMPLETED pipeline (calendar’lı)</label>
         <select value={pipelineId} onChange={(e) => setPipelineId(e.target.value)}>
           <option value="">Seç…</option>
-          {pipelines.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.source?.title || p.name || p.id}
-            </option>
-          ))}
+          {pipelines.map((p) => {
+            const applied = Boolean(p.distributionAppliedAt)
+            const n = p.distributionScheduledCount
+            const stamp = p.distributionAppliedAt
+              ? new Date(p.distributionAppliedAt).toLocaleString('tr-TR')
+              : ''
+            return (
+              <option key={p.id} value={p.id}>
+                {applied ? `✓ Uygulandı (${n ?? '?'} slot · ${stamp}) — ` : '○ Uygulanmadı — '}
+                {p.source?.title || p.name || p.id}
+              </option>
+            )
+          })}
         </select>
         {!pipelines.length ? (
           <p className="muted">Calendar’lı tamamlanmış pipeline yok — önce Pipeline çalıştır.</p>
+        ) : null}
+        {pipelineId ? (
+          <p className="muted">
+            {(() => {
+              const p = pipelines.find((x) => x.id === pipelineId)
+              if (!p) return null
+              if (p.distributionAppliedAt) {
+                return (
+                  <span className="badge ok">
+                    Uygulandı · {p.distributionScheduledCount ?? '?'} slot ·{' '}
+                    {new Date(p.distributionAppliedAt).toLocaleString('tr-TR')}
+                  </span>
+                )
+              }
+              return <span className="badge warn">Henüz uygulanmadı — Önizle → Takvime uygula</span>
+            })()}
+          </p>
         ) : null}
         <label className="row" style={{ margin: '0.75rem 0' }}>
           <input

@@ -1007,6 +1007,14 @@ export default function SocialPage() {
           </a>
         </p>
       ) : null}
+      <p className="flash" style={{ marginTop: '0.5rem' }}>
+        <strong>X (Twitter):</strong> Toplu yayın 402 / credits depleted →{' '}
+        <a href="https://console.x.com" target="_blank" rel="noreferrer">
+          console.x.com
+        </a>{' '}
+        kredi yükle; FB/LI/YT ayrı kartlardan devam eder. Pinterest satırları dry-run ise platformda
+        görünmez.
+      </p>
       <div className="row btn-group-tabs sm-view-tabs" style={{ marginBottom: '1rem' }}>
         <button
           type="button"

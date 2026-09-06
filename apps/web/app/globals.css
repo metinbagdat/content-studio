@@ -634,6 +634,18 @@ button:disabled {
   color: var(--warn);
 }
 
+.nav-pill.muted {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--muted);
+  font-size: 0.62rem;
+}
+
+.admin-nav-link.nav-disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 .workflow-track {
   margin-bottom: 1.25rem;
   padding: 1rem 1.1rem;

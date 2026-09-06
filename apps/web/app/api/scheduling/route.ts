@@ -27,7 +27,22 @@ export async function GET(req: NextRequest) {
       return Boolean(cfg.distributionCalendar)
     })
     const adaptiveSlots = await getAdaptiveSlotReport()
-    return NextResponse.json({ pipelines: withCalendar, adaptiveSlots })
+    return NextResponse.json({
+      pipelines: withCalendar.map((p) => {
+        const cfg = p.config && typeof p.config === 'object' ? (p.config as Record<string, unknown>) : {}
+        return {
+          id: p.id,
+          name: p.name,
+          status: p.status,
+          source: p.source,
+          distributionAppliedAt:
+            typeof cfg.distributionAppliedAt === 'string' ? cfg.distributionAppliedAt : null,
+          distributionScheduledCount:
+            typeof cfg.distributionScheduledCount === 'number' ? cfg.distributionScheduledCount : null,
+        }
+      }),
+      adaptiveSlots,
+    })
   }
 
   const approvedOnly = req.nextUrl.searchParams.get('approvedOnly') === 'true'
