@@ -1,7 +1,7 @@
 ## Meta
 - **ID:** CS-SM-SEO
 - **Repo:** content-studio
-- **GitHub:** [#47](https://github.com/metinbagdat/content-studio/issues/47)
+- **GitHub:** [#47](https://github.com/metinbagdat/content-studio/issues/47) **closed**
 
 ## Summary
 
@@ -9,35 +9,27 @@ Social posts do **not** put `blog.egitim.today` into Rank Math / GSC by themselv
 
 ## What “SM entered SEO” actually means
 
-| Channel | SEO effect | Status 2026-08-19 |
+| Channel | SEO effect | Status 2026-09-06 |
 |---------|------------|-------------------|
-| WordPress article | Canonical page, Rank Math, GSC | Live (`#15`, `#20`) |
-| LinkedIn / X / IG / FB / TikTok | Traffic + branded search, **not** blog ranking | LI: 3 live; others scheduled/draft |
-| YouTube | Google/YouTube index **if uploaded** + description link to WP | 3 scheduled, **not uploaded** |
+| WordPress article | Canonical page, Rank Math, GSC | Live |
+| LinkedIn / X / IG / FB / TikTok | Traffic + branded search, **not** blog ranking | LI/FB live; X credits; Meta/TikTok gated |
+| YouTube | Google/YouTube index **if uploaded** + description link to WP | **Live** [ZSVB9d1Z0Ns](https://www.youtube.com/watch?v=ZSVB9d1Z0Ns) + Yazı blog link |
 | LearnCon `/blog` | Duplicate SEO — **do not** copy WP articles | Keep off |
-
-## Do now (ops — not this issue)
-
-- GSC property `https://blog.egitim.today/` + sitemap `https://blog.egitim.today/wp-sitemap.xml`
-- Every WP post CTA → `https://egitim.today` **and** unique URL on `blog.egitim.today`
-- Do not republish the same article on `www.egitim.today/blog/...`
-
-## Do **not** do immediately (this tracker)
-
-- [ ] Drain all X / IG / FB / TikTok queues (X credits; Meta App Review #32; TikTok dry-run; Hobby egress)
-- [ ] TikTok production OAuth (#2 / CS-06)
-- [ ] Meta Live + Advanced Access (#32)
-- [ ] Pinterest API
-- [ ] Hostinger Reach blast (CS-EM, after more posts)
 
 ## Code / infra follow-ups
 
-- [ ] CS-SM-SEO-01 — WP canonical URL on captions + YouTube descriptions (`wp-link:`)
-- [ ] CS-SM-SEO-02 — Durable video files so prod can upload YouTube/TikTok
-- [ ] CS-SM-SEO-03 — YouTube publish + SEO description pack (after 01+02)
+- [x] CS-SM-SEO-01 — WP canonical URL on captions + YouTube descriptions (`wp-link:`) → [#48](https://github.com/metinbagdat/content-studio/issues/48)
+- [x] CS-SM-SEO-02 — Durable video files so prod can publish YouTube/TikTok → [#49](https://github.com/metinbagdat/content-studio/issues/49)
+- [x] CS-SM-SEO-03 — YouTube publish + SEO description pack → [#49](https://github.com/metinbagdat/content-studio/issues/49)
+
+## Ops next (not this tracker)
+
+- Local ffmpeg → Blob → `youtube-seo` for more long-form (Arı video faults)
+- Podcast MP3 drain on `/admin/media`
+- X credits; Meta #32; TikTok OAuth; Pinterest; Reach after GSC impressions
 
 ## Done when
 
-- New WP articles produce SM copy that includes `https://blog.egitim.today/...`
-- At least one Short + one long YouTube video live with that URL in the description
-- Scheduled X/IG/FB only after credits / App Review — not a silent bulk fail
+- [x] New WP articles produce SM copy that includes `https://blog.egitim.today/...`
+- [x] At least one long YouTube video live with that URL in the description
+- [ ] Short optional later; X/IG/FB only after credits / App Review

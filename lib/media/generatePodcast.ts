@@ -80,11 +80,37 @@ function concatAudioFiles(inputPaths: string[], outputPath: string): Promise<voi
   )
 }
 
+/** Same-encoder Edge TTS parts — byte-append when ffmpeg is missing (Vercel Hobby). */
+async function concatMp3ByAppending(inputPaths: string[], outputPath: string): Promise<void> {
+  const chunks: Buffer[] = []
+  for (const p of inputPaths) {
+    chunks.push(await readFile(p))
+  }
+  await writeFile(outputPath, Buffer.concat(chunks))
+}
+
+async function concatAudioBestEffort(inputPaths: string[], outputPath: string): Promise<void> {
+  if (inputPaths.length === 1) {
+    await writeFile(outputPath, await readFile(inputPaths[0]))
+    return
+  }
+  configureFfmpeg()
+  if (getFfmpegBinaryPath()) {
+    await concatAudioFiles(inputPaths, outputPath)
+    return
+  }
+  console.warn('[generatePodcastAudio] ffmpeg missing — concatenating MP3 buffers')
+  await concatMp3ByAppending(inputPaths, outputPath)
+}
+
 /** intro jingle → part₁ → mid jingle → part₂ → … → outro jingle */
 async function assemblePodcastWithJingles(
   partPaths: string[],
   outputPath: string,
 ): Promise<{ ok: boolean; jingleCount: number }> {
+  configureFfmpeg()
+  if (!getFfmpegBinaryPath()) return { ok: false, jingleCount: 0 }
+
   const musicPath = await fetchBackgroundMusic('calm')
   if (!musicPath || !partPaths.length) return { ok: false, jingleCount: 0 }
 
@@ -197,12 +223,7 @@ export async function generatePodcastAudio(
     }
 
     if (!hasJingles) {
-      if (tempPartPaths.length === 1) {
-        const single = await readFile(tempPartPaths[0])
-        await writeAudioFile(finalFilename, single)
-      } else {
-        await concatAudioFiles(tempPartPaths, finalPath)
-      }
+      await concatAudioBestEffort(tempPartPaths, finalPath)
     }
 
     const finalBuffer = await readFile(finalPath)
