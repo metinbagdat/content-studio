@@ -23,7 +23,7 @@ import {
 import { loadAccountPublicRows } from '@/lib/social/accountPublic'
 import { getValidAccessToken } from '@/lib/social/tokenRefresh'
 import { testYouTubeConnection } from '@/lib/social/youtubeApi'
-import { syncYouTubeFromApprovedVideos } from '@/lib/social/youtubeBackfill'
+import { syncYouTubeFromApprovedVideos, refreshPublishedYouTubeSeo } from '@/lib/social/youtubeBackfill'
 import { generatePkce, generateTikTokPkce, pkceCookieName } from '@/lib/social/pkce'
 import {
   tiktokConfigured,
@@ -268,6 +268,18 @@ async function handleAction(action: string, body: Record<string, unknown>) {
     })
     const diagnostics = await getDraftDiagnostics()
     return NextResponse.json({ result, diagnostics })
+  }
+
+  if (action === 'youtube-refresh-seo') {
+    const postId = String(body.postId || '')
+    if (!postId) return NextResponse.json({ error: 'postId required' }, { status: 400 })
+    try {
+      const result = await refreshPublishedYouTubeSeo(postId)
+      return NextResponse.json({ result })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      return NextResponse.json({ error: message }, { status: 400 })
+    }
   }
 
   if (action === 'connect-url') {
