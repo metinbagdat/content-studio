@@ -91,7 +91,7 @@ Do **not** put LearnCon product code in this repo. LC-G6 still lands in `metinba
 | 5 | Topic engine (HPV) | code done; **blocked on GSC impressions** for live query overlay / OAuth |
 | 6 | Product-site clusters + OG | **done** LC-G6 + #1338 (manifesto on `/blog/konu/strateji`) |
 | 7 | Publish webhook → SM | ingest live; **#28 atomizing** (~47 derivatives). Drain other PENDING WP pipelines next |
-| 8 | SM → SEO wiring | captions/canonical — continue after Onay on #28 pack |
+| 8 | SM → SEO wiring | captions/canonical — **done** (#48/#49); live YT ZSVB9d1Z0Ns + Yazı blog link. Next: local ffmpeg→Blob for more long-form; Arı video fault drain |
 | 9 | Reach newsletter | wait **search signal** |
 | 10 | LearnCon `/blog` → WP | **done** |
 

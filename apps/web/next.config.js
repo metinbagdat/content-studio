@@ -23,6 +23,13 @@ const nextConfig = {
   // Keep Vercel/GHA `vercel build` from repo root: output still lands in root `.next`.
   distDir: '../../.next',
   outputFileTracingRoot: repoRoot,
+  // Include ffmpeg binaries when the platform can run them (large; Hobby may still omit).
+  outputFileTracingIncludes: {
+    '/api/media/generate': [
+      './node_modules/ffmpeg-static/**/*',
+      './node_modules/ffprobe-static/**/*',
+    ],
+  },
   async rewrites() {
     return tiktokVerificationRewrites
   },
