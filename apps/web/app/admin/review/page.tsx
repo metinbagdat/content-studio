@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { DEFAULT_ADMIN_API_KEY } from '@content-studio/core/adminKey'
 import { PodcastTimeline } from '@/components/admin/PodcastTimeline'
 import { CommentTopicBanner } from '@/components/admin/CommentTopicBanner'
+import { BtnInfoMark } from '@/components/admin/BtnInfoMark'
 import { AUDIENCE_SEGMENTS, SEGMENT_LABELS, isAudienceSegment, parseSegmentFromTags, type AudienceSegment } from '@/lib/audience/segments'
 import { readReviewFault, parseBulkErrorLine, isStorageOrVideoFault, VIDEO_FAULT_TYPES } from '@/lib/review/faultMeta'
 
@@ -1137,16 +1138,27 @@ export default function ReviewPage() {
           Yenile
         </button>
         {customOrder.length ? (
-          <button type="button" className="secondary" onClick={resetCustomOrder} title="Elle yapılan sıralamayı temizle">
+          <button
+            type="button"
+            className="secondary has-info"
+            onClick={resetCustomOrder}
+            title="Elle yapılan sıralamayı temizle"
+          >
             Sırayı sıfırla
+            <BtnInfoMark />
           </button>
         ) : null}
         <button type="button" className="secondary" onClick={() => setShowCreate((v) => !v)}>
           {showCreate ? 'İptal' : '+ Elle ekle'}
         </button>
-        <label className="row muted" style={{ marginBottom: 0 }} title="Kapalıyken sadece onay bekleyenler görünür">
+        <label
+          className="row muted has-info"
+          style={{ marginBottom: 0 }}
+          title="Kapalıyken sadece onay bekleyenler görünür"
+        >
           <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} />
           Tümünü göster
+          <BtnInfoMark />
         </label>
       </div>
       {msg ? <p className="flash">{msg}</p> : null}
@@ -1187,8 +1199,15 @@ export default function ReviewPage() {
       {!showAll && reviewTab === 'onay' && counts.pendingVideos > 0 ? (
         <p className="flash" style={{ marginBottom: '0.75rem' }}>
           {counts.pendingVideos} video scripti prod&apos;da üretilemez —{' '}
-          <button type="button" className="secondary" disabled={bulkBusy} onClick={quarantineAllVideos}>
+          <button
+            type="button"
+            className="secondary has-info"
+            disabled={bulkBusy}
+            onClick={quarantineAllVideos}
+            title="Video scriptlerini Arı sekmesine alır; toplu onaya girmez. Yerelde ffmpeg ile üretin."
+          >
             Hepsini Arı&apos;ya al
+            <BtnInfoMark />
           </button>{' '}
           (toplu onaya girmez; yerelde npm run dev)
         </p>
@@ -1271,7 +1290,11 @@ export default function ReviewPage() {
             Görünenleri seç ({visiblePendingIds.length})
           </label>
           <span className="muted">{selectedIds.size} seçili · kapsamda {scopedPendingCount} bekliyor</span>
-          <label className="row muted" style={{ marginBottom: 0 }} title="Podcast → MP3, caption → AI görsel. Yerelde çalıştır; prod'da video atlanır.">
+          <label
+            className="row muted has-info"
+            style={{ marginBottom: 0 }}
+            title="Podcast → MP3, caption → AI görsel. Yerelde çalıştır; prod'da video atlanır."
+          >
             <input
               type="checkbox"
               className="review-check"
@@ -1280,9 +1303,10 @@ export default function ReviewPage() {
               disabled={bulkBusy}
             />
             Otomatik medya
+            <BtnInfoMark />
           </label>
           <label
-            className="row muted"
+            className="row muted has-info"
             style={{ marginBottom: 0 }}
             title="Onay sonrası blog.egitim.today WP draft (BLOG_POST vb.)"
           >
@@ -1294,6 +1318,7 @@ export default function ReviewPage() {
               disabled={bulkBusy}
             />
             Onay + WP draft
+            <BtnInfoMark />
           </label>
           <p className="muted" style={{ flexBasis: '100%', margin: 0, fontSize: '0.78rem' }}>
             İlerleme DB’de (ReviewBulkJob). Prod’da <strong>Otomatik medya</strong> / ağır WP açıkken
@@ -1303,11 +1328,13 @@ export default function ReviewPage() {
           </p>
           <button
             type="button"
-            className="ok"
+            className="ok has-info"
             disabled={bulkBusy || selectedIds.size === 0}
             onClick={() => bulkAct('bulkApprove')}
+            title="Seçili temiz Onay öğelerini onaylar. Otomatik medya / WP draft açıksa onları da tetikler."
           >
             {bulkBusy ? 'İşleniyor…' : 'Toplu onayla'}
+            <BtnInfoMark />
           </button>
           {bulkBusy ? (
             <button type="button" className="danger" onClick={cancelBulk}>
@@ -1570,12 +1597,13 @@ export default function ReviewPage() {
                       </button>
                       <button
                         type="button"
-                        className="secondary"
+                        className="secondary has-info"
                         disabled={busyId === item.id || bulkBusy}
                         onClick={() => approveWithoutMedia(item.id)}
                         title="Yerelde video ürettikten sonra, medya olmadan onayla"
                       >
                         Medyasız onayla
+                        <BtnInfoMark />
                       </button>
                       <button type="button" className="danger" disabled={busyId === item.id} onClick={() => act(item.id, 'reject')}>
                         Reddet
@@ -1593,12 +1621,13 @@ export default function ReviewPage() {
                   ) ? (
                     <button
                       type="button"
-                      className="secondary"
+                      className="secondary has-info"
                       disabled={busyId === item.id}
                       onClick={() => sendToWordPress(item.id)}
                       title="Safe samurAI + WP draft (blog.egitim.today)"
                     >
                       WP draft gönder
+                      <BtnInfoMark />
                     </button>
                   ) : null}
                   {item.contentType === 'PODCAST_SCRIPT' ? (

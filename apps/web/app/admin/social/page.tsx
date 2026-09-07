@@ -9,6 +9,7 @@ import { DraftDiagnosticsPanel, type DraftDiagnostics } from '@/components/admin
 import { TopPerformersPanel, type TopPerformingPost } from '@/components/admin/TopPerformersPanel'
 import { EngagementDigestPanel } from '@/components/admin/EngagementDigestPanel'
 import { PlatformIconLink } from '@/components/admin/PlatformIconLink'
+import { BtnInfoMark } from '@/components/admin/BtnInfoMark'
 import { HoverExpandList, HoverExpandRow, hoverSnippet } from '@/components/admin/HoverExpandList'
 import { DEFAULT_ADMIN_API_KEY } from '@content-studio/core/adminKey'
 import type { EngagementDigest } from '@/lib/social/engagementDigest'
@@ -1033,14 +1034,35 @@ export default function SocialPage() {
         >
           Taslaklar
         </button>
-        <button type="button" className="btn secondary" disabled={busyId === 'sync-stats'} onClick={syncStats}>
+        <button
+          type="button"
+          className="btn secondary has-info"
+          disabled={busyId === 'sync-stats'}
+          onClick={syncStats}
+          title="Bağlı hesaplardan etkileşim / takipçi metriklerini çeker."
+        >
           Metrikleri yenile
+          <BtnInfoMark />
         </button>
-        <button type="button" className="btn secondary" disabled={busyId === 'repair'} onClick={repairAccounts}>
+        <button
+          type="button"
+          className="btn secondary has-info"
+          disabled={busyId === 'repair'}
+          onClick={repairAccounts}
+          title="Eksik dry-run / placeholder hesapları gerçek OAuth hesaplarıyla hizalar."
+        >
           Faz 2 dry-run tamamla
+          <BtnInfoMark />
         </button>
-        <button type="button" className="btn secondary" disabled={busyId === 'sync-drafts'} onClick={syncDrafts}>
+        <button
+          type="button"
+          className="btn secondary has-info"
+          disabled={busyId === 'sync-drafts'}
+          onClick={syncDrafts}
+          title="Onaylı caption’lardan eksik SM taslaklarını oluşturur (görsel atlanabilir)."
+        >
           Taslakları senkronize et
+          <BtnInfoMark />
         </button>
         <select
           value={segmentFilter}
@@ -1104,17 +1126,44 @@ export default function SocialPage() {
       ) : null}
 
       <div className="row" style={{ marginBottom: '1rem' }}>
-        <button type="button" className="secondary" onClick={syncDrafts}>
+        <button
+          type="button"
+          className="secondary has-info"
+          onClick={syncDrafts}
+          title="Onaylı caption’lardan eksik SM taslaklarını oluşturur."
+        >
           Taslakları senkronize et
+          <BtnInfoMark />
         </button>
-        <button type="button" className="secondary" disabled={busyId === 'sync-images'} onClick={syncImages}>
+        <button
+          type="button"
+          className="secondary has-info"
+          disabled={busyId === 'sync-images'}
+          onClick={syncImages}
+          title="Caption’lara bağlı AI görsellerini postlara bağlar."
+        >
           Görselleri senkronize et
+          <BtnInfoMark />
         </button>
-        <button type="button" className="secondary" disabled={busyId === 'youtube-sync'} onClick={() => youtubeSync(false)}>
+        <button
+          type="button"
+          className="secondary has-info"
+          disabled={busyId === 'youtube-sync'}
+          onClick={() => youtubeSync(false)}
+          title="YouTube video kimliklerini / SEO alanlarını senkronize eder."
+        >
           YouTube video senkronize
+          <BtnInfoMark />
         </button>
-        <button type="button" className="secondary" disabled={busyId === 'sync-stats'} onClick={syncStats}>
+        <button
+          type="button"
+          className="secondary has-info"
+          disabled={busyId === 'sync-stats'}
+          onClick={syncStats}
+          title="Platform istatistiklerini yeniler."
+        >
           İstatistikleri yenile
+          <BtnInfoMark />
         </button>
       </div>
 

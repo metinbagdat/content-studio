@@ -1,6 +1,7 @@
 'use client'
 
 import { PlatformIconLink } from '@/components/admin/PlatformIconLink'
+import { BtnInfoMark } from '@/components/admin/BtnInfoMark'
 import { platformLabel, platformProfileUrl } from '@/lib/social/platformLinks'
 import { isLocalOauthHost, OAUTH_HOST_HINTS } from '@/lib/social/oauthHostHints'
 
@@ -260,11 +261,17 @@ function ReadyDraftsList({
         {bulkCount >= 1 && onBulkPublish ? (
           <button
             type="button"
-            className="ok sm-mini-btn"
+            className="ok sm-mini-btn has-info"
             disabled={busyId === bulkKey}
             onClick={() => onBulkPublish(platform)}
+            title={
+              platform === 'TWITTER'
+                ? 'X kredisi bitmişse (402) atlanır — console.x.com. Diğer platformlar ayrı kartlardan.'
+                : 'Bu platformdaki hazır DRAFT/FAILED postları sırayla yayınlar (dry-run hariç).'
+            }
           >
             {busyId === bulkKey ? 'Yayınlanıyor…' : `Toplu yayınla (${bulkCount})`}
+            <BtnInfoMark />
           </button>
         ) : null}
       </div>
