@@ -11,6 +11,26 @@ type WorkerStatus = {
   appUrl?: string
 }
 
+async function readApiJson(res: Response): Promise<Record<string, unknown>> {
+  const text = await res.text()
+  if (!text) return {}
+  try {
+    return JSON.parse(text) as Record<string, unknown>
+  } catch {
+    const trimmed = text.replace(/\s+/g, ' ').trim()
+    if (/FUNCTION_INVOCATION_TIMEOUT/i.test(trimmed) || res.status === 504) {
+      return {
+        error:
+          'Zaman aşımı (Vercel ~60s) — «Zamanlanmışları yayınla» veya birkaç kez «Sıradaki adım»; günlük/discovery yerelde',
+      }
+    }
+    if (/An error occurred with your deployment/i.test(trimmed)) {
+      return { error: `Sunucu hatası (${res.status}): ${trimmed.slice(0, 160)}` }
+    }
+    return { error: `Yanıt JSON değil (${res.status}): ${trimmed.slice(0, 200)}` }
+  }
+}
+
 export function WorkerOpsPanel({
   adminKey,
   onDone,
@@ -51,7 +71,7 @@ export function WorkerOpsPanel({
         method: 'POST',
         headers: { 'x-admin-key': adminKey, 'Content-Type': 'application/json' },
       })
-      const data = await res.json()
+      const data = await readApiJson(res)
       if (!res.ok) {
         setMsgOk(false)
         setMsg(String(data.error || 'İşlem başarısız'))
@@ -89,7 +109,7 @@ export function WorkerOpsPanel({
         },
         body: JSON.stringify({ profile }),
       })
-      const data = await res.json()
+      const data = await readApiJson(res)
       if (!res.ok) {
         setMsgOk(false)
         setMsg(String(data.error || 'İşlem başarısız'))
@@ -112,6 +132,7 @@ export function WorkerOpsPanel({
       <p className="muted workflow-worker-lead">
         Senaryo A — worker sürekli açık değil. Akışı ilerletmek için{' '}
         <strong>Sıradaki adım</strong> (taslak sync + en dolu platformdan 10 yayın) — tekrarlayarak devam edin.
+        Arı (video) otomatik onayı engellemez.
       </p>
       {status ? (
         <p className="muted workflow-worker-meta">
