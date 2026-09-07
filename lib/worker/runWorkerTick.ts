@@ -48,12 +48,20 @@ export async function runWorkerTick(options: WorkerTickOptions = {}): Promise<Wo
   const drainPipeline = profile !== 'quick'
   const runDraftRepair = profile === 'daily' || profile === 'maintain'
   const runAutopilot = profile === 'full' || profile === 'maintain'
+  // Vercel Hobby ~60s + egress: daily/full must not run discovery/HPV/analytics here.
+  const vercelLight = Boolean(process.env.VERCEL) && (profile === 'daily' || profile === 'full')
   const runAnalytics =
-    (profile === 'daily' || profile === 'full') && process.env.ANALYTICS_SYNC_ENABLED !== 'false'
+    (profile === 'daily' || profile === 'full') &&
+    !vercelLight &&
+    process.env.ANALYTICS_SYNC_ENABLED !== 'false'
   const runDiscovery =
-    (profile === 'daily' || profile === 'full') && process.env.DISCOVERY_CRON_ENABLED !== 'false'
+    (profile === 'daily' || profile === 'full') &&
+    !vercelLight &&
+    process.env.DISCOVERY_CRON_ENABLED !== 'false'
   const runHpv =
-    (profile === 'daily' || profile === 'full') && process.env.HPV_CRON_ENABLED !== 'false'
+    (profile === 'daily' || profile === 'full') &&
+    !vercelLight &&
+    process.env.HPV_CRON_ENABLED !== 'false'
 
   try {
     publishJobs = await drainDbPublishJobs(profile === 'quick' ? 3 : profile === 'full' ? 5 : 3)
@@ -156,6 +164,15 @@ export function formatWorkerTickSummary(result: WorkerTickResult): string {
   }
   if (result.autopilot) {
     parts.push(`autopilot yayın: ${result.autopilot.published}, retry: ${result.autopilot.retried}`)
+  }
+  if (
+    Boolean(process.env.VERCEL) &&
+    (result.profile === 'daily' || result.profile === 'full') &&
+    !result.discovery &&
+    !result.hpv &&
+    !result.analytics
+  ) {
+    parts.push('Vercel: discovery/HPV/analytics atlandı')
   }
   parts.push(`${Math.round(result.durationMs / 1000)}s`)
   return parts.join(' · ')

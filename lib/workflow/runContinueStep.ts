@@ -53,16 +53,20 @@ export async function runWorkflowContinueStep(): Promise<ContinueStepResult> {
   const before = await getWorkflowSnapshot()
   const { counts, accountHealth } = before
 
-  if (counts.reviewPending > 0) {
+  if (counts.reviewClean > 0) {
     return {
       action: 'review',
-      summary: `${counts.reviewPending} onay bekliyor — otomatik onay yapılmadı`,
-      manual: 'Onay ekranında inceleyip toplu onayla',
+      summary: `${counts.reviewClean} temiz onay bekliyor — otomatik onay yapılmadı`,
+      manual:
+        counts.reviewFault > 0
+          ? `Onay sekmesi · ayrıca ${counts.reviewFault} arı (yerelde video)`
+          : 'Onay ekranında inceleyip toplu onayla',
       href: '/admin/review',
       snapshot: before,
     }
   }
 
+  // reviewFault (Arı / video) does not block SM drain — clear locally with ffmpeg.
   if (counts.podcastScripts > counts.podcastMedia) {
     return {
       action: 'media',
