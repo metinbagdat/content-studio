@@ -1,5 +1,7 @@
 'use client'
 
+import { BtnInfoMark } from '@/components/admin/BtnInfoMark'
+
 export type CaptionPlatformBreakdown = {
   platform: string
   approvedCount: number
@@ -104,8 +106,15 @@ export function DraftDiagnosticsPanel({
 
       {readyToPublish ? (
         <div className="row" style={{ marginTop: '0.85rem' }}>
-          <button type="button" className="ok" disabled={bulkBusy} onClick={() => onBulkPublish(false)}>
+          <button
+            type="button"
+            className="ok has-info"
+            disabled={bulkBusy}
+            onClick={() => onBulkPublish(false)}
+            title="Hazır DRAFT’ları (dry-run hesaplar hariç) toplu yayınlar. X 402 ise atlanır."
+          >
             {bulkBusy ? 'Yayınlanıyor…' : 'Hazır taslakları toplu yayınla'}
+            <BtnInfoMark />
           </button>
           <span className="muted" style={{ fontSize: '0.8rem' }}>Dry-run hesaplar hariç tutulur</span>
         </div>

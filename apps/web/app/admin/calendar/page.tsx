@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { DEFAULT_ADMIN_API_KEY } from '@content-studio/core/adminKey'
 import { HoverExpandList, HoverExpandRow } from '@/components/admin/HoverExpandList'
+import { BtnInfoMark } from '@/components/admin/BtnInfoMark'
 
 type PipelineRow = {
   id: string
@@ -259,11 +260,25 @@ export default function CalendarPage() {
           <span className="muted">Sadece onaylı türevleri zamanla</span>
         </label>
         <div className="row" style={{ gap: '0.5rem' }}>
-          <button type="button" className="secondary" disabled={busy || !pipelineId} onClick={runPreview}>
+          <button
+            type="button"
+            className="secondary has-info"
+            disabled={busy || !pipelineId}
+            onClick={runPreview}
+            title="Dağıtım slotlarını kaydetmeden gösterir (Uygulanmadı kalır)."
+          >
             Önizle
+            <BtnInfoMark />
           </button>
-          <button type="button" disabled={busy || !pipelineId} onClick={applySchedule}>
+          <button
+            type="button"
+            className="has-info"
+            disabled={busy || !pipelineId}
+            onClick={applySchedule}
+            title="Slotları SCHEDULED olarak yazar; «Zamanlanmışları yayınla» veya Sıradaki adım ile çıkar."
+          >
             Takvime uygula
+            <BtnInfoMark />
           </button>
         </div>
 

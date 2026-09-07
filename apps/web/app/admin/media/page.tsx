@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 import { DEFAULT_ADMIN_API_KEY } from '@content-studio/core/adminKey'
 import { HoverExpandList, HoverExpandRow } from '@/components/admin/HoverExpandList'
+import { BtnInfoMark } from '@/components/admin/BtnInfoMark'
 
 type MediaItem = {
   id: string
@@ -275,8 +276,15 @@ export default function MediaPage() {
         </p>
         {pendingAudio.length ? (
           <div className="row" style={{ marginBottom: '0.75rem', gap: '0.5rem' }}>
-            <button type="button" className="ok" disabled={busy} onClick={generateAllPending}>
+            <button
+              type="button"
+              className="ok has-info"
+              disabled={busy}
+              onClick={generateAllPending}
+              title="Bekleyen podcast/marş/şarkı MP3’lerini sırayla üretir. Prod’da lavfi/song hata verirse yerelde veya drain script kullanın."
+            >
               {busy ? 'Üretiliyor…' : `Hepsini üret (${pendingAudio.length})`}
+              <BtnInfoMark />
             </button>
           </div>
         ) : (

@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { BtnInfoMark } from '@/components/admin/BtnInfoMark'
 
 type WorkerTickProfile = 'quick' | 'daily' | 'full'
 
@@ -143,39 +144,43 @@ export function WorkerOpsPanel({
       <div className="row workflow-worker-actions">
         <button
           type="button"
-          className="ok"
+          className="ok has-info"
           disabled={Boolean(busy)}
           title="Asıl akış butonu. Temiz Onay yoksa: taslak sync + en dolu platformdan ~10 yayın (X hariç). Onay/Medya gerekirse oraya yönlendirir. Arı engellemez — birkaç kez tıklayın."
           onClick={runContinue}
         >
           {busy === 'continue' ? '…' : 'Sıradaki adım'}
+          <BtnInfoMark />
         </button>
         <button
           type="button"
-          className="secondary"
+          className="secondary has-info"
           disabled={Boolean(busy)}
           title="Sadece zamanı gelmiş SCHEDULED postları yayınlar (~birkaç sn). Cron yokken veya «şu an yayınlansın» için. Taslak/onay işi yapmaz."
           onClick={() => runTick('quick')}
         >
           {busy === 'quick' ? '…' : 'Zamanlanmışları yayınla'}
+          <BtnInfoMark />
         </button>
         <button
           type="button"
-          className="secondary"
+          className="secondary has-info"
           disabled={Boolean(busy)}
           title="Hafif bakım: kuyruk + taslak onarım. Vercel’de discovery/HPV/analytics atlanır (Hobby 60s). Ağır keşif için yerelde npm run worker veya local daily."
           onClick={() => runTick('daily')}
         >
           {busy === 'daily' ? '…' : 'Günlük bakım'}
+          <BtnInfoMark />
         </button>
         <button
           type="button"
-          className="secondary"
+          className="secondary has-info"
           disabled={Boolean(busy)}
           title="Yalnızca yerelde / PC worker. Autopilot + daha fazla kuyruk; video/ffmpeg burada değil (Medya veya local generate). Prod Vercel’de timeout riski — tercih etmeyin."
           onClick={() => runTick('full')}
         >
           {busy === 'full' ? '…' : 'Tam tur (ağır)'}
+          <BtnInfoMark />
         </button>
       </div>
       {msg ? (
