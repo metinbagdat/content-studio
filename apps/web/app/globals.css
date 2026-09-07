@@ -675,6 +675,33 @@ button:disabled {
   gap: 0.5rem;
 }
 
+/* Hover tip cue — pair with title= on buttons/labels */
+.btn-info-i {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.95rem;
+  height: 0.95rem;
+  margin-inline-start: 0.1rem;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  font-size: 0.62rem;
+  font-weight: 700;
+  font-style: italic;
+  font-family: Georgia, 'Times New Roman', serif;
+  line-height: 1;
+  opacity: 0.72;
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+label.has-info,
+.has-info {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
 .workflow-worker-msg {
   margin: 0.55rem 0 0;
   font-size: 0.82rem;
