@@ -130,9 +130,8 @@ export function WorkerOpsPanel({
     <div className="workflow-worker-ops">
       <strong>Arka plan işlemleri</strong>
       <p className="muted workflow-worker-lead">
-        Senaryo A — worker sürekli açık değil. Akışı ilerletmek için{' '}
-        <strong>Sıradaki adım</strong> (taslak sync + en dolu platformdan 10 yayın) — tekrarlayarak devam edin.
-        Arı (video) otomatik onayı engellemez.
+        Senaryo A — worker sürekli açık değil. Günlük ilerleme: <strong>Sıradaki adım</strong> (tekrarlayın).
+        Hover = ne zaman kullanılır. Arı (video) otomatik onayı engellemez.
       </p>
       {status ? (
         <p className="muted workflow-worker-meta">
@@ -142,20 +141,38 @@ export function WorkerOpsPanel({
         </p>
       ) : null}
       <div className="row workflow-worker-actions">
-        <button type="button" className="ok" disabled={Boolean(busy)} onClick={runContinue}>
+        <button
+          type="button"
+          className="ok"
+          disabled={Boolean(busy)}
+          title="Asıl akış butonu. Temiz Onay yoksa: taslak sync + en dolu platformdan ~10 yayın (X hariç). Onay/Medya gerekirse oraya yönlendirir. Arı engellemez — birkaç kez tıklayın."
+          onClick={runContinue}
+        >
           {busy === 'continue' ? '…' : 'Sıradaki adım'}
         </button>
-        <button type="button" className="secondary" disabled={Boolean(busy)} onClick={() => runTick('quick')}>
+        <button
+          type="button"
+          className="secondary"
+          disabled={Boolean(busy)}
+          title="Sadece zamanı gelmiş SCHEDULED postları yayınlar (~birkaç sn). Cron yokken veya «şu an yayınlansın» için. Taslak/onay işi yapmaz."
+          onClick={() => runTick('quick')}
+        >
           {busy === 'quick' ? '…' : 'Zamanlanmışları yayınla'}
         </button>
-        <button type="button" className="secondary" disabled={Boolean(busy)} onClick={() => runTick('daily')}>
+        <button
+          type="button"
+          className="secondary"
+          disabled={Boolean(busy)}
+          title="Hafif bakım: kuyruk + taslak onarım. Vercel’de discovery/HPV/analytics atlanır (Hobby 60s). Ağır keşif için yerelde npm run worker veya local daily."
+          onClick={() => runTick('daily')}
+        >
           {busy === 'daily' ? '…' : 'Günlük bakım'}
         </button>
         <button
           type="button"
           className="secondary"
           disabled={Boolean(busy)}
-          title="Video/görsel üretimi — yerelde veya PC worker ile"
+          title="Yalnızca yerelde / PC worker. Autopilot + daha fazla kuyruk; video/ffmpeg burada değil (Medya veya local generate). Prod Vercel’de timeout riski — tercih etmeyin."
           onClick={() => runTick('full')}
         >
           {busy === 'full' ? '…' : 'Tam tur (ağır)'}
