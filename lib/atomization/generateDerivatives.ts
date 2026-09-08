@@ -471,7 +471,7 @@ export async function generateAllDerivatives(
 
   // Pinterest when any social surface is selected (no enum on SocialPlatform)
   if (!platformOrder.length || platformOrder.some((x) => ['TWITTER', 'INSTAGRAM', 'FACEBOOK'].includes(x))) {
-    drafts.push(...(await generatePinterestPins(p.pinterestPins, title, article, plan)))
+    drafts.push(...(await generatePinterestPins(p.pinterestPins, title, article, plan, articleUrl)))
   }
 
   // Infographic copy: design-ready text + structured points for ImageResponse render
