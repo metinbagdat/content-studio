@@ -67,6 +67,7 @@ async function generatePinterestPins(
   title: string,
   article: string,
   plan: AtomizationPlan,
+  articleUrl?: string,
 ): Promise<DerivativeDraft[]> {
   if (count <= 0) return []
   const concepts = pickConcepts(plan.keyConcepts, splitArticleSections(article), count)
@@ -74,12 +75,12 @@ async function generatePinterestPins(
 
   const fallback = {
     pins: concepts.map((c) => ({
-      text: `${c} | ${title}`.slice(0, max),
+      text: withShareCta(`${c} | ${title}`.slice(0, Math.max(40, max - 80)), articleUrl, 'PINTEREST'),
     })),
   }
 
   const batch = await llmJsonBatch<{ pins: Array<{ text: string }> }>(
-    'Write keyword-rich Turkish Pinterest pin descriptions for egitim.today.',
+    `Write keyword-rich Turkish Pinterest pin descriptions for egitim.today.${articleUrl ? ` Include article URL ${articleUrl} when space allows.` : ''}`,
     `Title: ${title}\nKeywords: ${concepts.join(', ')}\nOutput JSON {"pins":[{"text":"..."}]} count=${count}, max ${max} chars.`,
     fallback,
   )
@@ -87,8 +88,8 @@ async function generatePinterestPins(
   return (batch.pins || fallback.pins).slice(0, count).map((p, i) => ({
     contentType: 'SOCIAL_CAPTION' as const,
     title: `Pinterest ${i + 1}/${count}: ${title.slice(0, 50)}`,
-    content: p.text.slice(0, max),
-    metadata: baseMetadata('pinterest_pin', title, undefined, {
+    content: withShareCta((p.text || '').slice(0, max), articleUrl, 'PINTEREST'),
+    metadata: baseMetadata('pinterest_pin', title, articleUrl, {
       platform: 'PINTEREST',
       partIndex: i + 1,
       partTotal: count,
