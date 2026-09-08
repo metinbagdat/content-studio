@@ -111,6 +111,9 @@ export async function generateVideoVariants(
       } catch (err) {
         lastError = err
         console.warn(`[generateVideoVariants] image ${i + 1} attempt ${attempt} failed`, err)
+        const msg = err instanceof Error ? err.message : String(err)
+        // Rate-limit / total provider outage: don't burn 3× delays per slide during drains.
+        if (/429|All image providers failed/i.test(msg)) break
         if (attempt < 3) await new Promise((r) => setTimeout(r, 2000 * attempt))
       }
     }
