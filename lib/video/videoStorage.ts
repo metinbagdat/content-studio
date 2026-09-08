@@ -58,10 +58,14 @@ export async function persistGeneratedVideo(mediaId: string, data: Buffer): Prom
 
   if (blobVideoUploadEnabled()) {
     const { put } = await import('@vercel/blob')
+    // Prefer static RW token locally: OIDC often targets Production only and fails with
+    // "OIDC is enabled… not for the development environment".
+    const token = process.env.BLOB_READ_WRITE_TOKEN?.trim()
     const blob = await put(`videos/${mediaId}.mp4`, data, {
       access: 'public',
       contentType: 'video/mp4',
       addRandomSuffix: false,
+      ...(token ? { token } : {}),
     })
     return blob.url
   }

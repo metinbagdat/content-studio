@@ -11,6 +11,11 @@
  * Requires CS_ALLOW_SUPABASE_WORKER=1 (set below). Unset / switch .env back to Docker after.
  */
 process.env.CS_ALLOW_SUPABASE_WORKER = '1'
+// Local drain: static RW token must win over store OIDC (dev env often not linked).
+if (process.env.BLOB_READ_WRITE_TOKEN?.trim()) {
+  delete process.env.BLOB_STORE_ID
+  delete process.env.VERCEL_OIDC_TOKEN
+}
 
 import { prisma } from '../lib/prisma'
 import { generateVideoVariants } from '../lib/video/generateVideo'
