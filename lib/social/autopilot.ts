@@ -142,7 +142,8 @@ export async function runSocialAutopilot(limit = 8): Promise<AutopilotResult> {
 
   const videoScripts = await prisma.derivedContent.findMany({
     where: {
-      contentType: { in: ['VIDEO_SCRIPT', 'SHORT_VIDEO_SCRIPT', 'PODCAST_SCRIPT'] },
+      // Podcast MP4 is heavy (many slides + TTS); do not block worker ticks / autopilot.
+      contentType: { in: ['VIDEO_SCRIPT', 'SHORT_VIDEO_SCRIPT'] },
       status: { in: ['APPROVED', 'PUBLISHED'] },
     },
     select: { id: true },

@@ -86,6 +86,20 @@ export async function generatePodcastVideo(
       imageDurations.push(slide.durationSec)
     } catch (err) {
       console.warn(`[generatePodcastVideo] image ${i + 1} failed`, err)
+      const fallback = await sharp({
+        create: {
+          width: 1280,
+          height: 720,
+          channels: 3,
+          background: { r: 20 + ((i * 41) % 35), g: 28 + ((i * 23) % 45), b: 48 + ((i * 31) % 55) },
+        },
+      })
+        .png()
+        .toBuffer()
+      const filename = `${derivedContentId}-podcast-slide-${i}-fallback.png`
+      await writeImageFile(filename, fallback)
+      imagePaths.push(imageDiskPath(filename))
+      imageDurations.push(slide.durationSec)
     }
   }
 
