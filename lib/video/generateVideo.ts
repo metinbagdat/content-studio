@@ -115,7 +115,21 @@ export async function generateVideoVariants(
       }
     }
     if (lastError) {
-      console.warn(`[generateVideoVariants] segment ${i + 1} image failed after 3 attempts, skipping`)
+      console.warn(`[generateVideoVariants] segment ${i + 1} image failed after 3 attempts, using solid fallback`)
+      const fallback = await sharp({
+        create: {
+          width: 1280,
+          height: 720,
+          channels: 3,
+          background: { r: 15 + ((i * 37) % 40), g: 23 + ((i * 19) % 50), b: 42 + ((i * 29) % 60) },
+        },
+      })
+        .png()
+        .toBuffer()
+      const filename = `${derivedContentId}-slide-${language}-${i}-fallback.png`
+      await writeImageFile(filename, fallback)
+      imagePaths.push(imageDiskPath(filename))
+      imageDurations.push(slide.durationSec)
     }
   }
 
