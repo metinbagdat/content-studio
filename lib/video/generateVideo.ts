@@ -83,10 +83,35 @@ export async function generateVideoVariants(
   const musicPath = await fetchBackgroundMusic('inspiring corporate')
 
   // 5) One AI image per visual slide (~3.5s) for fluid background changes
+  // CS_VIDEO_SKIP_AI_IMAGES=1 → solid slides only (fast Arı drain when providers 429/down)
+  const skipAiImages = process.env.CS_VIDEO_SKIP_AI_IMAGES === '1'
   const imagePaths: string[] = []
   const imageDurations: number[] = []
   for (let i = 0; i < visualSlides.length; i++) {
     const slide = visualSlides[i]
+    const useSolid = async (reason: string) => {
+      console.warn(`[generateVideoVariants] segment ${i + 1} ${reason}`)
+      const fallback = await sharp({
+        create: {
+          width: 1280,
+          height: 720,
+          channels: 3,
+          background: { r: 15 + ((i * 37) % 40), g: 23 + ((i * 19) % 50), b: 42 + ((i * 29) % 60) },
+        },
+      })
+        .png()
+        .toBuffer()
+      const filename = `${derivedContentId}-slide-${language}-${i}-fallback.png`
+      await writeImageFile(filename, fallback)
+      imagePaths.push(imageDiskPath(filename))
+      imageDurations.push(slide.durationSec)
+    }
+
+    if (skipAiImages) {
+      await useSolid('solid only (CS_VIDEO_SKIP_AI_IMAGES=1)')
+      continue
+    }
+
     const trSlide = trVisualSlides[i]
     const englishPrompt = await toImagePrompt(trSlide?.visualPrompt || slide.visualPrompt)
     let lastError: unknown = null
@@ -118,21 +143,7 @@ export async function generateVideoVariants(
       }
     }
     if (lastError) {
-      console.warn(`[generateVideoVariants] segment ${i + 1} image failed after 3 attempts, using solid fallback`)
-      const fallback = await sharp({
-        create: {
-          width: 1280,
-          height: 720,
-          channels: 3,
-          background: { r: 15 + ((i * 37) % 40), g: 23 + ((i * 19) % 50), b: 42 + ((i * 29) % 60) },
-        },
-      })
-        .png()
-        .toBuffer()
-      const filename = `${derivedContentId}-slide-${language}-${i}-fallback.png`
-      await writeImageFile(filename, fallback)
-      imagePaths.push(imageDiskPath(filename))
-      imageDurations.push(slide.durationSec)
+      await useSolid('image failed, using solid fallback')
     }
   }
 
