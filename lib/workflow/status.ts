@@ -308,7 +308,9 @@ export async function getWorkflowSnapshot(): Promise<WorkflowSnapshot> {
   if (socialDrafts > 0 && scheduledPosts === 0)
     nextActions.push('Takvim’de pipeline seç → Önizle → Takvime uygula (uygulandı rozetine bak)')
   if (accountHealth.slots.some((s) => s.platform === 'TWITTER' && s.status === 'failed_posts'))
-    nextActions.push('X kredisi bitmiş olabilir (402) — console.x.com plan; Toplu yayınla X’i atlar')
+    nextActions.push(
+      'X kredisi bitmiş olabilir (402) — console.x.com → Billing → Credits; Toplu yayınla X’i atlar',
+    )
   if (accountHealth.missingCount > 0)
     nextActions.push('Sosyal hesap eksik — dry-run otomatik eklendi veya OAuth bağla')
   if (accountHealth.brokenCount > 0)

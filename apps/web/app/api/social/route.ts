@@ -20,6 +20,7 @@ import {
   syncAllAccountStats,
   syncAllPublishedPostAnalytics,
 } from '@/lib/social/platformStats'
+import { getXCreditsStatus } from '@/lib/social/xCredits'
 import { loadAccountPublicRows } from '@/lib/social/accountPublic'
 import { getValidAccessToken } from '@/lib/social/tokenRefresh'
 import { testYouTubeConnection } from '@/lib/social/youtubeApi'
@@ -51,7 +52,7 @@ export async function GET(req: NextRequest) {
 }
 
 async function handleGet() {
-  const [accounts, posts, accountHealth, diagnostics, topPerformers] = await Promise.all([
+  const [accounts, posts, accountHealth, diagnostics, topPerformers, xCredits] = await Promise.all([
     loadAccountPublicRows(),
     prisma.socialMediaPost.findMany({
       orderBy: { createdAt: 'desc' },
@@ -82,6 +83,7 @@ async function handleGet() {
     auditSocialAccounts(),
     getDraftDiagnostics(),
     getTopPerformingPosts(5),
+    getXCreditsStatus(),
   ])
   const previewRows =
     posts.length === 0
@@ -99,6 +101,7 @@ async function handleGet() {
     accountHealth,
     diagnostics,
     topPerformers,
+    xCredits,
     accounts: accounts.map((a) => {
       const username =
         (typeof a.username === 'string' ? `@${a.username.replace(/^@/, '')}` : null) ||

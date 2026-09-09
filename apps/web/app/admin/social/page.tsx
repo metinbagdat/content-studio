@@ -11,6 +11,7 @@ import { EngagementDigestPanel } from '@/components/admin/EngagementDigestPanel'
 import { PlatformIconLink } from '@/components/admin/PlatformIconLink'
 import { BtnInfoMark } from '@/components/admin/BtnInfoMark'
 import { HoverExpandList, HoverExpandRow, hoverSnippet } from '@/components/admin/HoverExpandList'
+import { XCreditsBanner, type XCreditsBannerStatus } from '@/components/admin/XCreditsBanner'
 import { DEFAULT_ADMIN_API_KEY } from '@content-studio/core/adminKey'
 import type { EngagementDigest } from '@/lib/social/engagementDigest'
 import { AUDIENCE_SEGMENTS, SEGMENT_LABELS, isAudienceSegment, type AudienceSegment } from '@/lib/audience/segments'
@@ -191,6 +192,7 @@ export default function SocialPage() {
   const [topPerformers, setTopPerformers] = useState<TopPerformingPost[]>([])
   const [engagementDigest, setEngagementDigest] = useState<EngagementDigest | null>(null)
   const [bulkPublishBusy, setBulkPublishBusy] = useState(false)
+  const [xCredits, setXCredits] = useState<XCreditsBannerStatus | null>(null)
   const statusRef = useRef<HTMLParagraphElement>(null)
 
   // Any action can run from deep inside a platform card — always bring the result into view.
@@ -225,6 +227,7 @@ export default function SocialPage() {
     setTopPerformers(data.topPerformers || [])
     setAccounts(data.accounts || [])
     setPosts(data.posts || [])
+    setXCredits((data.xCredits as XCreditsBannerStatus) || null)
   }, [adminKey])
 
   async function bulkPublish(includeDryRun: boolean) {
@@ -1008,14 +1011,7 @@ export default function SocialPage() {
           </a>
         </p>
       ) : null}
-      <p className="flash" style={{ marginTop: '0.5rem' }}>
-        <strong>X (Twitter):</strong> Toplu yayın 402 / credits depleted →{' '}
-        <a href="https://console.x.com" target="_blank" rel="noreferrer">
-          console.x.com
-        </a>{' '}
-        kredi yükle; FB/LI/YT ayrı kartlardan devam eder. Pinterest satırları dry-run ise platformda
-        görünmez.
-      </p>
+      <XCreditsBanner status={xCredits} />
       <div className="row btn-group-tabs sm-view-tabs" style={{ marginBottom: '1rem' }}>
         <button
           type="button"
@@ -1107,6 +1103,7 @@ export default function SocialPage() {
         busyId={busyId}
         readyDraftsByPlatform={readyDraftsByPlatform}
         recentPublishedByPlatform={recentPublishedByPlatform}
+        xCredits={xCredits}
         onOAuthConnect={oauthConnect}
         onDryConnect={dryConnect}
         onDisconnect={disconnect}
