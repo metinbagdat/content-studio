@@ -82,6 +82,27 @@ Ardışık merge'ler 90 sn coalesce ile tek deploy'a birleştirilir.
 
 Vercel Git auto-deploy kapalı (`vercel.json` → `git.deploymentEnabled: false`) — deploy yalnızca GHA üzerinden.
 
+### Framework Settings / Production Overrides
+
+Dashboard’da *“Configuration Settings in the current Production deployment differ from your current Project Settings”* ve **Production Overrides → Framework Preset** görürsen: canlı production deploy’un framework ayarı, Project Settings’ten (veya `vercel.json`’daki `framework`) sapmış demektir. Build kırığı değildir; uyarıyı hizalamak yeter.
+
+**Doğru Project Settings** (monorepo kök deploy — `apps/web` Root Directory **yapma**):
+
+| Ayar | Değer |
+|------|--------|
+| Framework Preset | **Next.js** |
+| Root Directory | boş / `.` |
+| Build Command | `npm run build` (kök; `vercel.json` ile aynı) |
+| Install Command | `npm install` |
+| Output Directory | boş bırak (Next + `apps/web` `distDir: '../../.next'`) |
+| Node.js Version | `22.x` (`package.json` `engines`) |
+
+1. Project → **Settings → Build and Deployment → Framework Settings** — yukarıdaki değerleri kaydet.
+2. Sarı **Production Overrides** uyarısında Framework Preset farkını temizle / Project Settings’e hizala.
+3. Actions → **Deploy Content Studio** → **Run workflow** (veya `main`’e merge) — GHA `vercel build` + `--prebuilt` production’ı yeniden yazar.
+
+`vercel.json` zaten `"framework": "nextjs"` + kök `buildCommand`/`installCommand` tanımlı; Root Directory’yi `apps/web` yapmak install/env/`lib` + `packages/db` tracing’i bozar (`AGENTS.md`, `docs/MONOREPO.md`).
+
 ## 4. LearnCon admin linki
 
 LearnCon Vercel env:
