@@ -44,6 +44,19 @@ export function parseXApiError(status: number, body: string): string {
   if (status === 429) {
     return `X API 429 — rate limit; birkaç dakika bekleyin.`
   }
+  if (status === 402) {
+    let detail = body
+    try {
+      const j = JSON.parse(body) as { detail?: string; title?: string; errors?: Array<{ message?: string }> }
+      detail = j.detail || j.title || j.errors?.[0]?.message || body
+    } catch {
+      /* raw */
+    }
+    return (
+      `X API 402 — credits depleted: ${detail.slice(0, 180)}. ` +
+      'console.x.com → Billing → Credits ile kredi yükleyin, sonra FAILED postları yeniden deneyin.'
+    )
+  }
   return `X API ${status}: ${body.slice(0, 300)}`
 }
 

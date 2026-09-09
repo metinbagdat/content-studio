@@ -2,6 +2,7 @@
 
 import { PlatformIconLink } from '@/components/admin/PlatformIconLink'
 import { BtnInfoMark } from '@/components/admin/BtnInfoMark'
+import type { XCreditsBannerStatus } from '@/components/admin/XCreditsBanner'
 import { platformLabel, platformProfileUrl } from '@/lib/social/platformLinks'
 import { isLocalOauthHost, OAUTH_HOST_HINTS } from '@/lib/social/oauthHostHints'
 
@@ -266,7 +267,7 @@ function ReadyDraftsList({
             onClick={() => onBulkPublish(platform)}
             title={
               platform === 'TWITTER'
-                ? 'X kredisi bitmişse (402) atlanır — console.x.com. Diğer platformlar ayrı kartlardan.'
+                ? 'X kredisi bitmişse (402) atlanır — console.x.com → Billing → Credits. Diğer platformlar ayrı kartlardan.'
                 : 'Bu platformdaki hazır DRAFT/FAILED postları sırayla yayınlar (dry-run hariç).'
             }
           >
@@ -330,6 +331,7 @@ export function SocialPlatformDashboard({
   busyId,
   readyDraftsByPlatform,
   recentPublishedByPlatform,
+  xCredits = null,
   onOAuthConnect,
   onDryConnect,
   onDisconnect,
@@ -355,6 +357,7 @@ export function SocialPlatformDashboard({
   busyId: string | null
   readyDraftsByPlatform: Record<string, ReadyDraft[]>
   recentPublishedByPlatform: Record<string, RecentPublished[]>
+  xCredits?: XCreditsBannerStatus | null
   onOAuthConnect: (
     p: 'TWITTER' | 'LINKEDIN' | 'YOUTUBE' | 'FACEBOOK' | 'INSTAGRAM' | 'TIKTOK' | 'PINTEREST',
   ) => void
@@ -457,6 +460,36 @@ export function SocialPlatformDashboard({
           <p className="muted sm-sync-time">Son senkron: {formatWhen(stats.fetchedAt)}</p>
         ) : null}
         {stats?.error ? <p className="muted sm-sync-error">{stats.error}</p> : null}
+
+        {platform === 'TWITTER' && xCredits ? (
+          <p
+            className="muted"
+            style={{ margin: '0.5rem 0 0', fontSize: '0.82rem' }}
+            data-testid="x-credits-card-hint"
+          >
+            {xCredits.level === 'exhausted' || xCredits.level === 'low' ? (
+              <span className={xCredits.level === 'exhausted' ? 'badge danger' : 'badge warn'}>
+                {xCredits.level === 'exhausted' ? 'kredi tükendi' : 'kredi düşük'}
+              </span>
+            ) : xCredits.level === 'ok' && typeof xCredits.totalBalanceUsd === 'number' ? (
+              <span className="badge ok">
+                kredi {xCredits.totalBalanceUsd.toLocaleString('tr-TR', { style: 'currency', currency: 'USD' })}
+              </span>
+            ) : (
+              <span className="badge warn">kredi bilinmiyor</span>
+            )}{' '}
+            <a
+              href={xCredits.billingUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="has-info"
+              title="X Developer Console → Billing → Credits"
+            >
+              Kredi yükle ↗
+              <BtnInfoMark />
+            </a>
+          </p>
+        ) : null}
 
         <div className="sm-platform-actions row">
           <OAuthConnectButton
@@ -589,7 +622,11 @@ export function SocialPlatformDashboard({
         {envCheck?.ready ? (
           <ul className="muted" style={{ margin: '0.75rem 0 0', fontSize: '0.82rem', paddingLeft: '1.1rem' }}>
             <li>
-              <strong>X:</strong> Developer Portal → kredi yükle → başarısız postlar otomatik yeniden denenecek
+              <strong>X:</strong>{' '}
+              <a href="https://console.x.com" target="_blank" rel="noopener noreferrer">
+                console.x.com → Billing → Credits
+              </a>{' '}
+              kredi yükle → başarısız postlar yeniden denenebilir
             </li>
             <li>
               <strong>LinkedIn:</strong> <code>unauthorized_scope_error</code> →{' '}
