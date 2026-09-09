@@ -48,6 +48,24 @@ type PinterestTokenResponse = {
   scope?: string
 }
 
+/** Trial apps may call sandbox only; production /pins returns 403 code 29. */
+export function formatPinterestApiError(path: string, status: number, body: string): string {
+  const slice = body.slice(0, 400)
+  try {
+    const json = JSON.parse(body) as { code?: number; message?: string }
+    if (status === 403 && (json.code === 29 || /Trial access/i.test(json.message || ''))) {
+      return (
+        'Pinterest Trial access: production api.pinterest.com üzerinde Pin oluşturulamaz. ' +
+        'developers.pinterest.com → App → Apply for Standard access (veya Review). ' +
+        'Sandbox (api-sandbox) yalnızca test içindir; egitim.today Pin’leri için Standard gerekir.'
+      )
+    }
+  } catch {
+    /* raw body */
+  }
+  return `Pinterest API ${path} ${status}: ${slice}`
+}
+
 async function pinterestFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`${PINTEREST_API_BASE}${path}`, {
     ...init,
@@ -56,7 +74,7 @@ async function pinterestFetch<T>(path: string, init: RequestInit = {}): Promise<
   })
   if (!res.ok) {
     const body = await res.text()
-    throw new Error(`Pinterest API ${path} ${res.status}: ${body.slice(0, 400)}`)
+    throw new Error(formatPinterestApiError(path, res.status, body))
   }
   return res.json() as Promise<T>
 }

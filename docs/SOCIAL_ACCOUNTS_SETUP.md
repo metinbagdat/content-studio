@@ -197,7 +197,7 @@ Caption/video pipeline şu platformlar için içerik üretir; **gerçek OAuth he
 | **Instagram** | @egitim.today (Business) | Aynı — taslak + takvim testi |
 | **TikTok** | @egitim.today | Aynı |
 | **Facebook** | egitim.today sayfası | Aynı |
-| **Pinterest** | egitim.today | Caption üretilir; DB hesap slotu yok (Faz 2 API) |
+| **Pinterest** | egitim.today | OAuth + Pin API canlı. **Trial access** app production’da Pin atamaz (`code:29`) — [developers.pinterest.com](https://developers.pinterest.com) → Standard access. Sandbox yalnızca test. |
 
 Dry-run postlar gerçek SM’de görünmez; onay → taslak → zamanlama akışını doğrular.
 

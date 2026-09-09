@@ -98,7 +98,7 @@ const PIPELINE_PLATFORMS: PipelinePlatformDef[] = [
     id: 'PINTEREST',
     oauthKey: 'pinterest',
     note:
-      'OAuth bağla → Pin (görsel URL + board). Prod’da herkese açık image URL gerekir; localhost Pin yayınlanmaz.',
+      'OAuth bağla → Pin (görsel URL + board). Prod image URL şart. Trial access app production’da Pin atamaz — developers.pinterest.com’da Standard access iste.',
   },
 ]
 
