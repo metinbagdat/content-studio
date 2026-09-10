@@ -127,26 +127,67 @@ export function WorkerOpsPanel({
     }
   }
 
+  const isServerless = status?.mode === 'serverless'
+
   return (
     <div className="workflow-worker-ops">
-      <strong>Arka plan işlemleri</strong>
+      <strong className="has-info" title="Prod Vercel’de worker/cron kapalı. İlerleme: bu butonlar veya yerelde npm run ops:daily. Hobby egress: günlük Docker localhost:5434; Supabase yalnız kısa one-shot (CS_ALLOW).">
+        Arka plan işlemleri
+        <BtnInfoMark />
+      </strong>
       <p className="muted workflow-worker-lead">
-        Senaryo A — worker sürekli açık değil. Günlük ilerleme: <strong>Sıradaki adım</strong> (tekrarlayın).
-        Hover = ne zaman kullanılır. Arı (video) otomatik onayı engellemez.
+        Senaryo A — sürekli worker yok. Panelde: <strong>Sıradaki adım</strong>. Ağır video / toplu sosyal:{' '}
+        <code className="has-info" title="Yerel terminal checklist. status/social = prod HTTP (ADMIN_API_KEY, CS_ALLOW yok). video = child process’te CS_ALLOW=1 + .env.prod.pull; parent shell’de flag kalmaz. worker:loop+Supabase kullanma.">
+          npm run ops:daily
+          <BtnInfoMark />
+        </code>
+        . Hover = ne zaman. Arı onayı engellemez.
       </p>
       {status ? (
         <p className="muted workflow-worker-meta">
-          Mod: {status.mode === 'serverless' ? 'Vercel (serverless)' : 'yerel'} · cron:{' '}
+          Mod: {isServerless ? 'Vercel (serverless)' : 'yerel'} · cron:{' '}
           {status.cronEnabled ? 'aktif' : 'kapalı (manuel)'}
           {status.cronNote ? ` · ${status.cronNote}` : ''}
         </p>
       ) : null}
+
+      <ol className="workflow-ops-daily muted">
+        <li
+          className="has-info"
+          title="studio.egitim.today /admin/review — temiz Onay. Arı (video fault) bu adımı bloklamaz; video yerelde ops:daily video ile üretilir."
+        >
+          Onay (prod UI)
+          <BtnInfoMark />
+        </li>
+        <li
+          className="has-info"
+          title="Laptop: npm run ops:daily -- video -- --limit=10 --type=SHORT_VIDEO_SCRIPT --approve. ffmpeg→Blob. CS_ALLOW yalnız child’ta; bitince .env’i localhost:5434’e bırak."
+        >
+          Arı video (yerel one-shot)
+          <BtnInfoMark />
+        </li>
+        <li
+          className="has-info"
+          title="npm run ops:daily -- social — sync-drafts + LI/FB bulk via studio API. Egress yok (CS_ALLOW gerekmez). X kredi / Pinterest Trial ayrı."
+        >
+          Sosyal drain (prod HTTP)
+          <BtnInfoMark />
+        </li>
+        <li
+          className="has-info"
+          title="npm run ops:daily -- youtube-seo — Blob URL’li long-form. generateVideo=false; Vercel’de ffmpeg yok."
+        >
+          YouTube SEO (Blob hazırsa)
+          <BtnInfoMark />
+        </li>
+      </ol>
+
       <div className="row workflow-worker-actions">
         <button
           type="button"
           className="ok has-info"
           disabled={Boolean(busy)}
-          title="Asıl akış butonu. Temiz Onay yoksa: taslak sync + en dolu platformdan ~10 yayın (X hariç). Onay/Medya gerekirse oraya yönlendirir. Arı engellemez — birkaç kez tıklayın."
+          title="Asıl panel akışı. Temiz Onay yoksa: taslak sync + en dolu platformdan ~10 yayın (X hariç). Onay/Medya gerekirse yönlendirir. Arı engellemez. Ağır video için yerelde ops:daily video."
           onClick={runContinue}
         >
           {busy === 'continue' ? '…' : 'Sıradaki adım'}
@@ -156,7 +197,7 @@ export function WorkerOpsPanel({
           type="button"
           className="secondary has-info"
           disabled={Boolean(busy)}
-          title="Sadece zamanı gelmiş SCHEDULED postları yayınlar (~birkaç sn). Cron yokken veya «şu an yayınlansın» için. Taslak/onay işi yapmaz."
+          title="Sadece zamanı gelmiş SCHEDULED postları yayınlar (~birkaç sn). Cron yokken veya «şu an yayınlansın» için. Taslak/onay/video üretmez."
           onClick={() => runTick('quick')}
         >
           {busy === 'quick' ? '…' : 'Zamanlanmışları yayınla'}
@@ -166,7 +207,7 @@ export function WorkerOpsPanel({
           type="button"
           className="secondary has-info"
           disabled={Boolean(busy)}
-          title="Hafif bakım: kuyruk + taslak onarım. Vercel’de discovery/HPV/analytics atlanır (Hobby 60s). Ağır keşif için yerelde npm run worker veya local daily."
+          title="Hafif bakım: kuyruk + taslak onarım. Vercel’de discovery/HPV/analytics atlanır (Hobby 60s). Tam checklist: yerelde npm run ops:daily."
           onClick={() => runTick('daily')}
         >
           {busy === 'daily' ? '…' : 'Günlük bakım'}
@@ -176,7 +217,7 @@ export function WorkerOpsPanel({
           type="button"
           className="secondary has-info"
           disabled={Boolean(busy)}
-          title="Yalnızca yerelde / PC worker. Autopilot + daha fazla kuyruk; video/ffmpeg burada değil (Medya veya local generate). Prod Vercel’de timeout riski — tercih etmeyin."
+          title="Yalnızca yerelde / PC. Autopilot + kuyruk; ffmpeg burada değil. Prod Vercel’de timeout — tercih etme. Sistematik drain: npm run ops:daily (video/social)."
           onClick={() => runTick('full')}
         >
           {busy === 'full' ? '…' : 'Tam tur (ağır)'}

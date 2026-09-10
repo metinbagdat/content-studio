@@ -675,6 +675,21 @@ button:disabled {
   gap: 0.5rem;
 }
 
+.workflow-ops-daily {
+  margin: 0 0 0.75rem;
+  padding-left: 1.15rem;
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
+.workflow-ops-daily li {
+  margin: 0.15rem 0;
+}
+
+code.has-info .btn-info-i {
+  vertical-align: middle;
+}
+
 /* Hover tip cue — pair with title= on buttons/labels */
 .btn-info-i {
   display: inline-flex;
