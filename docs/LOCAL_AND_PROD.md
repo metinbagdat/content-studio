@@ -196,9 +196,30 @@ Günlük cron route (`/api/cron/daily`) hâlâ kodda; yeniden açmak için `verc
 **Local akış:**
 
 1. `.env.local` → `NEXT_PUBLIC_APP_URL=http://localhost:3100`
-2. Terminal 1: `npm run dev` — Terminal 2: `npm run worker`
+2. Terminal 1: `npm run dev` — Terminal 2: `npm run worker` (yalnızca yayın varken; `worker:loop`+Supabase yok)
 3. `/admin/social` → görsel/klip/video üret → **Şimdi yayınla**
 4. Facebook 403 → `.env.local`: `META_OAUTH_PUBLISH=true`, `META_LOGIN_CONFIG_ID_PUBLISH=919581157862599` → Facebook **Kes** → **OAuth bağla**
 5. YouTube ffprobe hatası → dev sunucuyu yeniden başlatın (`npm run dev:clean`)
+
+## Günlük ops checklist (`npm run ops:daily`)
+
+Egress-safe playbook (admin panelde WorkerOps hover’ları ile aynı sıra):
+
+```powershell
+npm run ops:daily                          # playbook yazdır
+$env:ADMIN_API_KEY="…"                     # Vercel Production admin key
+npm run ops:daily -- status                # prod sosyal tanı (HTTP; CS_ALLOW yok)
+npm run ops:daily -- social                # sync-drafts + LI/FB bulk
+npm run ops:daily -- youtube-seo           # Blob’lu 1 long-form YT
+# Arı video — .env.prod.pull gerekir; CS_ALLOW yalnız child process’te:
+npm run ops:daily -- video -- --limit=10 --type=SHORT_VIDEO_SCRIPT --approve
+```
+
+| Adım | Nerede | `CS_ALLOW_SUPABASE_WORKER` |
+|------|--------|----------------------------|
+| Onay / Sıradaki adım | `studio.egitim.today` | Hayır |
+| Sosyal bulk | `ops:daily social` → prod API | Hayır |
+| Arı ffmpeg → Blob | `ops:daily video` | Evet, **yalnızca child** |
+| Günlük browse | Docker `:5434` + `npm run dev` | Hayır |
 
 **Prod admin paneli:** Vercel'deki `ADMIN_API_KEY` ile giriş — `admin123` prod'da çalışmaz.
