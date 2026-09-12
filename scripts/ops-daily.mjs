@@ -95,7 +95,12 @@ function readEnvFile(name) {
 function runVideoDrain() {
   const prodPull = readEnvFile('.env.prod.pull')
   const localEnv = readEnvFile('.env')
-  const databaseUrl = process.env.DATABASE_URL || prodPull.DATABASE_URL || ''
+  // Prefer .env.prod.pull over a leftover shell DATABASE_URL=localhost:5434
+  const fromEnv = process.env.DATABASE_URL || ''
+  const databaseUrl =
+    fromEnv && !/localhost:5434/i.test(fromEnv) && !/SENSITIVE/i.test(fromEnv)
+      ? fromEnv
+      : prodPull.DATABASE_URL || ''
   const blob = process.env.BLOB_READ_WRITE_TOKEN || localEnv.BLOB_READ_WRITE_TOKEN || ''
 
   if (!databaseUrl || /localhost:5434/i.test(databaseUrl) || /SENSITIVE/i.test(databaseUrl)) {
