@@ -11,6 +11,21 @@ const GROQ_BASE = 'https://api.groq.com/openai/v1'
 const GROQ_DEFAULT_MODEL = 'openai/gpt-oss-20b'
 const OPENAI_DEFAULT_MODEL = 'gpt-4o-mini'
 
+/** Env may still pin retired IDs — remap so pipeline does not 404. */
+const GROQ_RETIRED_MODELS: Record<string, string> = {
+  'llama-3.3-70b-versatile': GROQ_DEFAULT_MODEL,
+  'llama-3.1-8b-instant': GROQ_DEFAULT_MODEL,
+  'llama3-70b-8192': GROQ_DEFAULT_MODEL,
+  'llama3-8b-8192': GROQ_DEFAULT_MODEL,
+  'mixtral-8x7b-32768': GROQ_DEFAULT_MODEL,
+  'gemma2-9b-it': GROQ_DEFAULT_MODEL,
+}
+
+export function normalizeGroqModel(model: string | undefined | null): string {
+  const raw = (model || '').trim() || GROQ_DEFAULT_MODEL
+  return GROQ_RETIRED_MODELS[raw] || raw
+}
+
 /** Groq öncelikli; yoksa OPENAI_*; ikisi de yoksa null (mock). */
 export function resolveLlm(): {
   client: OpenAI | null
@@ -25,7 +40,7 @@ export function resolveLlm(): {
         baseURL: process.env.GROQ_BASE_URL?.trim() || GROQ_BASE,
       }),
       provider: 'groq',
-      model: process.env.GROQ_MODEL?.trim() || GROQ_DEFAULT_MODEL,
+      model: normalizeGroqModel(process.env.GROQ_MODEL),
     }
   }
 
@@ -35,7 +50,9 @@ export function resolveLlm(): {
     return {
       client: new OpenAI({ apiKey: openaiKey, baseURL: openaiBase }),
       provider: 'groq',
-      model: process.env.OPENAI_MODEL?.trim() || process.env.GROQ_MODEL?.trim() || GROQ_DEFAULT_MODEL,
+      model: normalizeGroqModel(
+        process.env.OPENAI_MODEL?.trim() || process.env.GROQ_MODEL?.trim(),
+      ),
     }
   }
 
