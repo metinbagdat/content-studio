@@ -10,6 +10,21 @@ re-discover from scratch, add an entry here before you stop.
 
 ---
 
+## 2026-09-14 (later same day) — First test suite (Vitest)
+
+Repo had zero automated tests. Opened [#123](https://github.com/metinbagdat/content-studio/pull/123):
+Vitest (`npm test`, root `vitest.config.mts`) + 37 unit tests for pure logic
+(`packages/core/src/platforms/{limits,formats}.test.ts`,
+`lib/scheduling/postingTimes.test.ts`, `lib/image/platformSizes.test.ts`,
+`lib/discovery/articleFingerprint.test.ts`). Extracted
+`lib/discovery/articleFingerprint.ts` (`normalizeTitle`/`hashContent`/
+`isLikelyHubPage`) out of `duplicateDetection.ts` so it's testable without a
+live DB — `duplicateDetection.ts` re-exports the same names, no call sites
+changed. **Pattern for future work:** keep DB-touching code in its own file,
+separate from pure logic, so it stays unit-testable.
+
+---
+
 ## 2026-09-14 — Cloud sandbox drift + dep security fix + Docker-less setup
 
 **Context:** A prior Cursor Cloud session had a long conversation building
