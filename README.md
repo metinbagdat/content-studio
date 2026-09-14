@@ -6,6 +6,8 @@ Do not deploy this on the LearnCon Vercel Hobby project. Production: **`studio.e
 
 Tracking: [docs/ROADMAP.md](docs/ROADMAP.md) · Monorepo plan: [docs/MONOREPO.md](docs/MONOREPO.md) · Issues: [.github/ISSUE_INDEX.md](.github/ISSUE_INDEX.md) · DB changes: [docs/DATABASE.md](docs/DATABASE.md)
 
+**AI agents (Cursor Cloud or local IDE):** read [`cursor.md`](cursor.md) and [`docs/AGENT_HANDOFF.md`](docs/AGENT_HANDOFF.md) first.
+
 ## Layout
 
 | Path | Role |

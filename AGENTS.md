@@ -1,5 +1,17 @@
 # AGENTS.md
 
+## Session continuity — read this before anything else
+
+- This repo moves fast (maintainer + multiple agents push to `main` daily).
+  **A prior conversation's summary of "current work" can be badly stale** —
+  always `git fetch origin main` and diff against it before continuing a
+  plan from earlier context.
+- Read [`cursor.md`](cursor.md) and [`docs/AGENT_HANDOFF.md`](docs/AGENT_HANDOFF.md)
+  first: the handoff log has dated notes on what recent sessions did, what's
+  next, and environment gotchas already discovered (don't re-discover them).
+- Before ending a session with non-trivial progress, append a short dated
+  entry to `docs/AGENT_HANDOFF.md`.
+
 ## Cursor Cloud specific instructions
 
 ### What this repo is
