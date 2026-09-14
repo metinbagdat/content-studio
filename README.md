@@ -38,6 +38,7 @@ npm install
 .\scripts\setup-db.ps1    # or Supabase — docs/SUPABASE_SETUP.md
 npm run dev               # Docker + drain worker (exits when idle) + http://localhost:3100/admin
 npm run worker:loop       # optional: 15s forever worker — local Docker only
+npm test                  # Vitest unit tests (pure logic, no DB/network needed)
 ```
 
 ### Admin
