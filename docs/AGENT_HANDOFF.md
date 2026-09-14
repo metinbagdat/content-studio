@@ -13,15 +13,20 @@ re-discover from scratch, add an entry here before you stop.
 ## 2026-09-14 (later same day) — First test suite (Vitest)
 
 Repo had zero automated tests. Opened [#123](https://github.com/metinbagdat/content-studio/pull/123):
-Vitest (`npm test`, root `vitest.config.mts`) + 37 unit tests for pure logic
+Vitest (`npm test`, root `vitest.config.mts`) + 48 unit tests for pure logic
 (`packages/core/src/platforms/{limits,formats}.test.ts`,
-`lib/scheduling/postingTimes.test.ts`, `lib/image/platformSizes.test.ts`,
-`lib/discovery/articleFingerprint.test.ts`). Extracted
-`lib/discovery/articleFingerprint.ts` (`normalizeTitle`/`hashContent`/
-`isLikelyHubPage`) out of `duplicateDetection.ts` so it's testable without a
-live DB — `duplicateDetection.ts` re-exports the same names, no call sites
-changed. **Pattern for future work:** keep DB-touching code in its own file,
-separate from pure logic, so it stays unit-testable.
+`lib/scheduling/{postingTimes,engagementScore}.test.ts`,
+`lib/image/platformSizes.test.ts`, `lib/discovery/articleFingerprint.test.ts`).
+Extracted two pure modules out of DB-touching files that eagerly construct
+the Prisma client at module scope (can't unit-test those without a live
+`DATABASE_URL`): `lib/discovery/articleFingerprint.ts`
+(`normalizeTitle`/`hashContent`/`isLikelyHubPage`, out of
+`duplicateDetection.ts`) and `lib/scheduling/engagementScore.ts`
+(`engagementScore`/`nearestSlot`/`rankSlotsByEngagement`, out of CS-08's
+`postingPerformance.ts`). Both parent files re-export/delegate to the
+extracted functions — no call sites changed. **Pattern for future work:**
+keep DB-touching code in its own file, separate from pure logic, so it stays
+unit-testable; add new tests there rather than starting a second suite.
 
 ---
 
