@@ -16,6 +16,8 @@
     "start": "npm run start -w @content-studio/web",
     "lint": "npm run lint -w @content-studio/web",
     "typecheck": "npm run typecheck -w @content-studio/web && npm run typecheck -w @content-studio/worker",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "db:up": "tsx scripts/ensure-local-docker.ts",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
@@ -66,7 +68,8 @@
     "playwright": "^1.62.1",
     "prisma": "^6.9.0",
     "tsx": "^4.19.4",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vitest": "^5.0.0"
   },
   "engines": {
     "node": "22.x"

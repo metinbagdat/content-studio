@@ -29,6 +29,7 @@
 
 - `npm run lint` may prompt interactive ESLint setup — avoid non-interactively. Prefer `npm run typecheck` or `next build`.
 - Web typecheck: `apps/web/tsconfig.json`. Worker/scripts/lib: root `tsconfig.json` (excludes `apps/web`).
+- `npm test` (Vitest, root `vitest.config.mts`) runs unit tests for pure, DB-free logic in `lib/**/*.test.ts` + `packages/**/src/**/*.test.ts` (scheduling, platform limits/formats, image sizing, discovery de-dup heuristics). No DB/network needed. Keep DB-touching code in a separate file from pure logic so it stays testable here (see `lib/discovery/articleFingerprint.ts` vs `duplicateDetection.ts` for the pattern).
 
 ### Deploy
 
