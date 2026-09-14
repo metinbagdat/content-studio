@@ -1,5 +1,17 @@
 # AGENTS.md
 
+## Session continuity — read this before anything else
+
+- This repo moves fast (maintainer + multiple agents push to `main` daily).
+  **A prior conversation's summary of "current work" can be badly stale** —
+  always `git fetch origin main` and diff against it before continuing a
+  plan from earlier context.
+- Read [`cursor.md`](cursor.md) and [`docs/AGENT_HANDOFF.md`](docs/AGENT_HANDOFF.md)
+  first: the handoff log has dated notes on what recent sessions did, what's
+  next, and environment gotchas already discovered (don't re-discover them).
+- Before ending a session with non-trivial progress, append a short dated
+  entry to `docs/AGENT_HANDOFF.md`.
+
 ## Cursor Cloud specific instructions
 
 ### What this repo is
@@ -11,9 +23,17 @@
 
 ### Services (dev)
 
-- **PostgreSQL** (required): start before DB work (`sudo pg_ctlcluster 16 main start` on Cloud VM). Local Docker/Supabase: see `docs/SUPABASE_SETUP.md`.
-- **Next.js**: `npm run dev` from repo root → Docker Postgres (if local URL) + drain worker (exits when queues idle) + http://localhost:3100/admin (`apps/web`)
-- **Worker 24/7 loop** (optional): `npm run worker:loop` — do not point this at Supabase.
+- **PostgreSQL** (required): the Cloud VM has **no Docker and no PostgreSQL preinstalled** — `npm run dev`'s `predev` hook (`scripts/ensure-local-docker.ts`) shells out to `docker`, which does not exist here. One-time setup:
+  ```bash
+  sudo apt-get update -qq && sudo apt-get install -y -qq postgresql
+  sudo pg_ctlcluster 16 main start
+  sudo -u postgres psql -c "CREATE ROLE content WITH LOGIN PASSWORD 'content' SUPERUSER;"
+  sudo -u postgres psql -c "CREATE DATABASE content_studio OWNER content;"
+  ```
+  Then set `DATABASE_URL="postgresql://content:content@127.0.0.1:5432/content_studio?schema=public"` in `.env`/`.env.local` (port **5432**, not the Docker Compose port 5434 from `.env.example`), and run `npx prisma db push`.
+  If the pod is later recreated, PostgreSQL must be reinstalled/restarted — it is not part of the base image.
+- **Next.js**: run with `SKIP_LOCAL_DOCKER=true npm run dev` from repo root — the flag skips the Docker-only `predev`/`preworker` checks (they only make sense on the maintainer's Windows+Docker Desktop box) and go straight to the drain worker (exits when queues idle) + http://localhost:3100/admin (`apps/web`). Without the flag, `npm run dev`/`npm run worker` fail fast on this VM.
+- **Worker 24/7 loop** (optional): `SKIP_LOCAL_DOCKER=true npm run worker:loop` — do not point this at Supabase.
 
 ### Environment files
 

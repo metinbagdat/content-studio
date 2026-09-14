@@ -1,6 +1,6 @@
 ## Meta
 - **ID:** CS-M0
-- **Status:** doing
+- **Status:** done
 - **Repo:** content-studio
 
 ## Summary
