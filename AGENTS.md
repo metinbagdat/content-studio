@@ -19,10 +19,10 @@
 
 - `.env` and `.env.local` are git-ignored and hold the local `DATABASE_URL`. They persist in the VM snapshot, not via git. If they are ever missing, recreate them from `.env.example` and set `DATABASE_URL="postgresql://content:content@127.0.0.1:5432/content_studio?schema=public"`. Next.js reads `.env.local`; Prisma/worker read `.env`.
 
-### Database schema — non-obvious drift caveat
+### Database schema
 
-- The committed migration `prisma/migrations/20260720190000_init` is **out of sync** with `prisma/schema.prisma`: its `ContentType` enum is missing `TWITTER_THREAD`, `LINKEDIN_CAROUSEL`, and `SHORT_VIDEO_SCRIPT`. If you only run `prisma migrate deploy`, the content pipeline fails at runtime with `invalid input value for enum "ContentType": "TWITTER_THREAD"`.
-- To get a working dev DB, reconcile the schema after migrating: `npx prisma db push` (or just use `npx prisma db push` on a fresh DB). This does not modify the committed migration.
+- Apply migrations with `npx prisma migrate deploy`. On a fresh DB this now produces a schema that fully matches `prisma/schema.prisma` (no `prisma db push` workaround needed).
+- History note: the initial migration `20260720190000_init` predated three `ContentType` enum values (`TWITTER_THREAD`, `LINKEDIN_CAROUSEL`, `SHORT_VIDEO_SCRIPT`); the follow-up migration `20260914000000_add_content_type_values` adds them. Without that follow-up the content pipeline fails at runtime with `invalid input value for enum "ContentType": "TWITTER_THREAD"`.
 
 ### Admin auth
 
