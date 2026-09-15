@@ -9,6 +9,13 @@ cd "$(dirname "$0")/.."
 
 DB_URL='postgresql://content:content@127.0.0.1:5432/content_studio?schema=public'
 
+# 0. Ensure PostgreSQL 16 is installed (idempotent; needed on a base image that
+#    does not already ship it). No-op when a cluster tool is already present.
+if ! command -v pg_ctlcluster >/dev/null 2>&1; then
+  sudo apt-get update -qq
+  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq postgresql-16 postgresql-client-16
+fi
+
 # 1. Env files (git-ignored) — create from example, pin local DATABASE_URL.
 for f in .env .env.local; do
   [ -f "$f" ] || cp .env.example "$f"
