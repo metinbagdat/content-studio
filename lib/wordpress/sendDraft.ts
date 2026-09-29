@@ -4,6 +4,7 @@ import { withFaqSchemaHtml } from '@/lib/seo/faqSchema'
 import { scoreTopicOpportunity } from '@/lib/seo/keywordOpportunity'
 import { sendDraftToWordPress, wordpressConfigured } from './publisher'
 import { validateWithSafeSamurai } from './safeSamurai'
+import { stripContentTypePrefix, wpSlugFor } from './slug'
 import type { WpContentPayload, WpPostType, WpPublishResult, SamuraiValidation } from './types'
 
 function mapContentType(contentType: string): WpPostType {
@@ -39,7 +40,11 @@ export async function buildPayloadFromDerived(derivedId: string): Promise<WpCont
       ? (derived.metadata as Record<string, unknown>)
       : {}
 
-  const title = derived.title || derived.source.title
+  // Derived titles may carry the internal content-type label ("BLOG_POST: …"); never let it
+  // reach WordPress, where it became the public title and the `blog_post-…` slug.
+  const title = stripContentTypePrefix(derived.title || '') || stripContentTypePrefix(derived.source.title)
+  const seo = meta.seo && typeof meta.seo === 'object' ? (meta.seo as Record<string, unknown>) : {}
+  const slug = wpSlugFor(title, seo.slug)
   const postType = mapContentType(derived.contentType)
   let content = toHtml(derived.content)
   // Article stays Rank Math base schema; FAQPage JSON-LD is additive for Q&A posts.
@@ -49,6 +54,7 @@ export async function buildPayloadFromDerived(derivedId: string): Promise<WpCont
 
   return {
     title,
+    ...(slug ? { slug } : {}),
     content,
     excerpt: typeof meta.excerpt === 'string' ? meta.excerpt : undefined,
     post_type: postType,
