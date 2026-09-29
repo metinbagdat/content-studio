@@ -197,7 +197,8 @@ Title: ${title}\n\n${article.slice(0, 3000)}`
       ? captionMetadataWithImage({ model, provider, mock: false })
       : { model, provider, mock: false }
   return {
-    title: `${kind}: ${title}`,
+    // BLOG_POST titles go to WordPress verbatim (title + slug) — no internal kind label.
+    title: kind === 'BLOG_POST' ? title : `${kind}: ${title}`,
     content: text + (kind === 'SOCIAL_CAPTION' ? brandCta() : ''),
     metadata,
   }
