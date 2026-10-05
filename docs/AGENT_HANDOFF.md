@@ -10,6 +10,41 @@ re-discover from scratch, add an entry here before you stop.
 
 ---
 
+## 2026-10-05 — CI gate: lint + typecheck + vitest on PR/main (#139)
+
+Closed [#139](https://github.com/metinbagdat/content-studio/issues/139).
+`.github/workflows/ci.yml` now runs `npm ci` + `npm run lint` +
+`npm run typecheck` + `npm test` on every PR and on push to `main`. None of
+the three checks need a live DB or network.
+
+`npm run lint` (`next lint`) had never actually been runnable — ESLint
+wasn't installed at all. Added `eslint@9.39.5` + `eslint-config-next@15.5.27`
+(pinned to the `next@15.5.25` track) to `apps/web`, plus
+`apps/web/eslint.config.mjs` using `FlatCompat` (`eslint-config-next@15.5.27`
+still ships a legacy `.eslintrc`-shaped config, not flat-config-native, so
+`compat.extends('next/core-web-vitals')` is required — a plain flat-config
+array import does not work with this version). Lint now exits 0 with only
+pre-existing `no-img-element` warnings (5 files, cosmetic/perf only).
+
+Also found 48 → **78** unit tests currently pass (other sessions added
+`lib/image/providers/providers.test.ts` and `lib/wordpress/slug.test.ts`
+independently, on top of the original 37 from #123 — the "37 unit tests"
+text below is stale, corrected here).
+
+**Accepted risk, not fixed:** `npm audit` flags `braces`/`micromatch`/
+`fast-glob` (high) via `eslint-config-next`'s `@next/eslint-plugin-next`.
+`braces@3.0.3` is already the latest release and has no upstream fix yet
+(GHSA-vfj7-8cjw-p6xm) — npm's only "fix" is downgrading
+`eslint-config-next` to the Next-14 line, which is not a real fix for a
+Next-15 app. This chain is dev-only lint tooling, never shipped to
+production. Re-check when `eslint-config-next` next gets bumped.
+
+Issue #139 also listed two follow-ups explicitly scoped as "next step", not
+done here: a coverage-report artifact, and Vitest integration tests for the
+prompt-builder / format-validator / generate→draft→publish pipeline.
+
+---
+
 ## 2026-09-14 (later same day) — First test suite (Vitest)
 
 Repo had zero automated tests. Opened [#123](https://github.com/metinbagdat/content-studio/pull/123):

@@ -47,9 +47,11 @@
 
 ### Lint / static checks
 
-- `npm run lint` may prompt interactive ESLint setup — avoid non-interactively. Prefer `npm run typecheck` or `next build`.
+- `npm run lint` (`apps/web/eslint.config.mjs`, flat config via `FlatCompat` + `eslint-config-next`) now runs non-interactively and exits 0 with only pre-existing `no-img-element` warnings. ESLint/`eslint-config-next` are pinned to the same minor track as `next` (currently `9.39.5` / `15.5.27`) — bump them together when `next` is bumped.
 - Web typecheck: `apps/web/tsconfig.json`. Worker/scripts/lib: root `tsconfig.json` (excludes `apps/web`).
 - `npm test` (Vitest, root `vitest.config.mts`) runs unit tests for pure, DB-free logic in `lib/**/*.test.ts` + `packages/**/src/**/*.test.ts` (scheduling, platform limits/formats, image sizing, discovery de-dup heuristics). No DB/network needed. Keep DB-touching code in a separate file from pure logic so it stays testable here (see `lib/discovery/articleFingerprint.ts` vs `duplicateDetection.ts` for the pattern).
+- CI (`.github/workflows/ci.yml`) runs `npm ci` + `npm run lint` + `npm run typecheck` + `npm test` on every PR and on push to `main`, as a merge gate — no DB/network needed for any of these three checks. Keep it that way: don't make lint/typecheck/test depend on a live DB.
+- Known accepted risk: `npm audit` reports `braces`/`micromatch`/`fast-glob` (high) pulled in transitively by `eslint-config-next`'s `@next/eslint-plugin-next` — `braces@3.0.3` is already latest and has no upstream fix yet (GHSA-vfj7-8cjw-p6xm), and the chain is dev-only lint tooling, not shipped to production. Re-check next time `eslint-config-next` is bumped.
 
 ### Deploy
 
