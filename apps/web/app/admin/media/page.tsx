@@ -37,12 +37,29 @@ function kindForContentType(contentType: string): 'podcast' | 'march' | 'song' {
   return 'podcast'
 }
 
-function AdminAudio({ mediaId, adminKey }: { mediaId: string; adminKey: string }) {
+function isDurableAudioUrl(url: string | undefined): boolean {
+  if (!url) return false
+  return /^https:\/\//i.test(url) && !url.includes('/api/media/')
+}
+
+function AdminAudio({
+  mediaId,
+  adminKey,
+  fileUrl,
+}: {
+  mediaId: string
+  adminKey: string
+  fileUrl?: string
+}) {
   const [src, setSrc] = useState<string | null>(null)
   const [err, setErr] = useState('')
 
   useEffect(() => {
     let objectUrl: string | null = null
+    if (isDurableAudioUrl(fileUrl)) {
+      setSrc(fileUrl!)
+      return
+    }
     if (!adminKey) return
     fetch(`/api/media/${mediaId}/file`, { headers: headers(adminKey) })
       .then(async (res) => {
@@ -55,7 +72,7 @@ function AdminAudio({ mediaId, adminKey }: { mediaId: string; adminKey: string }
     return () => {
       if (objectUrl) URL.revokeObjectURL(objectUrl)
     }
-  }, [mediaId, adminKey])
+  }, [mediaId, adminKey, fileUrl])
 
   if (err) return <p className="muted">{err}</p>
   if (!src) return <p className="muted">Yükleniyor…</p>
@@ -438,7 +455,7 @@ export default function MediaPage() {
                 {m.duration ? `~${m.duration}s` : ''} · {formatSize(m.fileSize)} · {m.format}
               </div>
               {m.processingStatus === 'COMPLETED' && m.mediaType === 'AUDIO' ? (
-                <AdminAudio mediaId={m.id} adminKey={adminKey} />
+                <AdminAudio mediaId={m.id} adminKey={adminKey} fileUrl={m.fileUrl} />
               ) : null}
               {m.processingStatus === 'COMPLETED' && m.mediaType === 'IMAGE' ? (
                 <img

@@ -10,7 +10,7 @@ import { writeImageFile, imageDiskPath } from '../media/imageStorage'
 import { generatePodcastAudio } from '../media/generatePodcast'
 import { extractPodcastSpeechParts, estimateSpeechDurationSec } from '../media/podcastText'
 import { parsePodcastScript } from '../media/podcastSchema'
-import { audioDiskPath } from '../media/tts'
+import { ensureAudioDiskPath } from '../media/audioStorage'
 import { expandVisualSlides } from '../media/videoScriptSchema'
 import { getAudioDurationSec } from './audioDuration'
 import sharp from 'sharp'
@@ -32,8 +32,16 @@ export async function generatePodcastVideo(
   }
 
   const audioResult = await generatePodcastAudio(derivedContentId)
-  const audioPath = audioDiskPath(`${audioResult.media.id}.mp3`)
-  const audioDurationSec = (await getAudioDurationSec(audioPath)) || audioResult.media.duration || 60
+  const audioPath = await ensureAudioDiskPath({
+    mediaId: audioResult.media.id,
+    publicUrl: audioResult.media.fileUrl,
+  })
+  let audioDurationSec = audioResult.media.duration || 60
+  try {
+    audioDurationSec = (await getAudioDurationSec(audioPath)) || audioDurationSec
+  } catch {
+    /* keep DB duration / 60s fallback when ffprobe unavailable */
+  }
 
   const excerpt = derived.source?.content?.slice(0, 4000) || ''
   const { parts } = extractPodcastSpeechParts(derived.content, derived.title, { excerpt })
