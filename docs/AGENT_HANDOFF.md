@@ -18,8 +18,9 @@ Audio had the same ephemeral-`/tmp` gap images/videos already fixed:
 Added `lib/media/audioStorage.ts` with `persistGeneratedAudio` (disk +
 `audio/{id}.mp3` Blob when token/serverless), `ensureAudioDiskPath` for
 FFmpeg reuse, and `/api/media/[id]/file` 302-to-Blob. Admin player uses
-durable `fileUrl` directly when present. Branch:
-`cursor/persist-generated-audio-c79f`.
+durable `fileUrl` directly when present. Merged as [#145](https://github.com/metinbagdat/content-studio/pull/145).
+Backfill for pre-fix COMPLETED rows: `scripts/upload-audio-to-blob.ts`
+(mirrors `upload-videos-to-blob.ts`).
 
 ---
 
