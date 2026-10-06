@@ -31,6 +31,8 @@ import { getValidAccessToken } from './tokenRefresh'
 import { resolvePostMediaUrls, readPostImageBuffer } from './brandImage'
 import { deletePlatformPost } from './platformDelete'
 import { preparePostForPublish, isDryRunAccount, recoverStuckPublishing } from './preparePublish'
+import { lintContent, formatContentLintFailure } from '../quality/contentLint'
+import { markReviewFault } from '../review/fault'
 import {
   postContentFingerprint,
   readPublishMetrics,
@@ -105,6 +107,27 @@ export async function publishPost(postId: string, options: PublishOptions = {}):
   )
   const requireImage = options.requireImage ?? true
   const requireVideo = options.requireVideo ?? false
+
+  // Publish gate: content linter (#136) — before PUBLISHING so UI sees post.error / Arı fault.
+  const captionTitle =
+    post.postContent.trim().split('\n').find((l) => l.trim())?.trim().slice(0, 80) || post.platform
+  const lint = lintContent({
+    title: captionTitle,
+    body: post.postContent,
+    mode: 'caption',
+  })
+  if (!lint.ok) {
+    const msg = formatContentLintFailure(lint)
+    await prisma.socialMediaPost.update({
+      where: { id: postId },
+      data: {
+        status: post.scheduledAt && post.status !== 'PUBLISHED' ? 'SCHEDULED' : 'FAILED',
+        error: msg,
+      },
+    })
+    await markReviewFault(post.derivedContentId, msg).catch(() => {})
+    throw new Error(msg)
+  }
 
   await prisma.socialMediaPost.update({
     where: { id: postId },

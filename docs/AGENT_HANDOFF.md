@@ -10,6 +10,17 @@ re-discover from scratch, add an entry here before you stop.
 
 ---
 
+## 2026-10-06 — Content lint publish gate (#136)
+
+Added `lib/quality/contentLint.ts` (pure, Vitest-covered): title/body floors,
+single-H1 / title≠H1, empty headings, broken markdown links, light TR slips
+(`herşey`, `birşey`, …), placeholder text. Wired as a fail-closed gate in
+`preparePostForPublish`, `publishPost` (sets `post.error` + review fault), and
+`sendDerivedToWordPressDraft` (returns `validation.approved=false` + Arı fault)
+before Safe Samurai. Branch: `cursor/content-lint-publish-gate-c79f`.
+
+---
+
 ## 2026-10-06 — Durable podcast/song audio via Vercel Blob
 
 Audio had the same ephemeral-`/tmp` gap images/videos already fixed:
