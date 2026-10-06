@@ -6,6 +6,8 @@ import { sendDraftToWordPress, wordpressConfigured } from './publisher'
 import { validateWithSafeSamurai } from './safeSamurai'
 import { stripContentTypePrefix, wpSlugFor } from './slug'
 import type { WpContentPayload, WpPostType, WpPublishResult, SamuraiValidation } from './types'
+import { lintContent, formatContentLintFailure } from '@/lib/quality/contentLint'
+import { markReviewFault } from '@/lib/review/fault'
 
 function mapContentType(contentType: string): WpPostType {
   switch (contentType) {
@@ -105,6 +107,30 @@ export async function sendDerivedToWordPressDraft(
   }
 
   const payload = await buildPayloadFromDerived(derivedId)
+
+  // Publish gate: deterministic content linter (#136) before Safe Samurai / WP send.
+  // Articles/podcasts need long body + H1 rules; anthem/video captions use lighter floor.
+  const lintMode =
+    payload.post_type === 'article' || payload.post_type === 'podcast' ? 'html' : 'caption'
+  const lint = lintContent({
+    title: payload.title,
+    body: payload.content,
+    mode: lintMode,
+  })
+  if (!lint.ok) {
+    const reason = formatContentLintFailure(lint)
+    await markReviewFault(derivedId, reason).catch(() => {})
+    return {
+      validation: {
+        approved: false,
+        reason,
+        score: 0,
+        layer: 'config',
+      },
+      skipped: true,
+    }
+  }
+
   if (process.env.HPV_GATE_ENABLED !== 'false') {
     const opp = await scoreTopicOpportunity(payload.title)
     if (!payload.acf) payload.acf = {}

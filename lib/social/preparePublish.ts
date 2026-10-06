@@ -3,11 +3,21 @@ import { ensureGeneratedPostMedia } from './publishCaption'
 import { readPostImageBuffer } from '../media/generatePostImage'
 import { readPublishMetrics } from './publishFingerprint'
 import { resolveVideoMediaUrls } from './publishVideo'
+import { assertContentLintPasses } from '../quality/contentLint'
 
 /** Ensure media exists before publish (images for LinkedIn/X, video for YouTube). */
 export async function preparePostForPublish(postId: string): Promise<string[]> {
   const post = await prisma.socialMediaPost.findUnique({ where: { id: postId } })
   if (!post) throw new Error('Post not found')
+
+  // Publish gate: caption/body lint (issue #136) — fail before media work.
+  const captionTitle =
+    post.postContent.trim().split('\n').find((l) => l.trim())?.trim().slice(0, 80) || post.platform
+  assertContentLintPasses({
+    title: captionTitle,
+    body: post.postContent,
+    mode: 'caption',
+  })
 
   if (post.platform === 'YOUTUBE') {
     const mediaUrls = await resolveVideoMediaUrls(post.derivedContentId)
