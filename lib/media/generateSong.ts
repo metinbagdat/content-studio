@@ -4,6 +4,7 @@ import path from 'path'
 import { prisma } from '../prisma'
 import { synthesizeSpeech } from './tts'
 import { audioStorageDir, writeAudioFile, audioDiskPath } from './tts'
+import { persistGeneratedAudio } from './audioStorage'
 import { ttsPronunciation } from './pronunciation'
 import { fetchBackgroundMusic } from '../video/pixabayMusic'
 
@@ -87,11 +88,12 @@ export async function generateSongAudio(derivedContentId: string) {
 
     const { readFile } = await import('fs/promises')
     const finalBuffer = await readFile(finalPath)
+    const publicUrl = await persistGeneratedAudio(media.id, finalBuffer)
 
     const updated = await prisma.mediaFile.update({
       where: { id: media.id },
       data: {
-        fileUrl: `/api/media/${media.id}/file`,
+        fileUrl: publicUrl,
         fileSize: finalBuffer.length,
         processingStatus: 'COMPLETED',
       },

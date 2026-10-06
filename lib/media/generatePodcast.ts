@@ -6,6 +6,7 @@ import { configureFfmpeg, getFfmpegBinaryPath } from '@/lib/media/ffmpegPaths'
 import { prisma } from '../prisma'
 import { extractPodcastSpeechParts, estimateSpeechDurationSec } from './podcastText'
 import { synthesizeSpeech, writeAudioFile, ttsModeLabel, audioDiskPath, audioStorageDir } from './tts'
+import { persistGeneratedAudio } from './audioStorage'
 import { fetchBackgroundMusic } from '../video/pixabayMusic'
 
 configureFfmpeg()
@@ -229,11 +230,12 @@ export async function generatePodcastAudio(
     const finalBuffer = await readFile(finalPath)
     const jingleDuration = hasJingles ? INTRO_JINGLE_SEC + OUTRO_JINGLE_SEC + MID_JINGLE_SEC * Math.max(0, parts.length - 1) : 0
     const duration = estimateSpeechDurationSec(fullText) + Math.round(jingleDuration)
+    const publicUrl = await persistGeneratedAudio(media.id, finalBuffer)
 
     const updated = await prisma.mediaFile.update({
       where: { id: media.id },
       data: {
-        fileUrl: `/api/media/${media.id}/file`,
+        fileUrl: publicUrl,
         fileSize: finalBuffer.length,
         duration,
         processingStatus: 'COMPLETED',

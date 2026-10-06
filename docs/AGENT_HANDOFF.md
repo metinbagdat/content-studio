@@ -10,6 +10,19 @@ re-discover from scratch, add an entry here before you stop.
 
 ---
 
+## 2026-10-06 — Durable podcast/song audio via Vercel Blob
+
+Audio had the same ephemeral-`/tmp` gap images/videos already fixed:
+`generatePodcast` / `generateSong` wrote only to disk and stored
+`fileUrl=/api/media/{id}/file`, which 404s on a later Vercel instance.
+Added `lib/media/audioStorage.ts` with `persistGeneratedAudio` (disk +
+`audio/{id}.mp3` Blob when token/serverless), `ensureAudioDiskPath` for
+FFmpeg reuse, and `/api/media/[id]/file` 302-to-Blob. Admin player uses
+durable `fileUrl` directly when present. Branch:
+`cursor/persist-generated-audio-c79f`.
+
+---
+
 ## 2026-10-05 — CI gate: lint + typecheck + vitest on PR/main (#139)
 
 Closed [#139](https://github.com/metinbagdat/content-studio/issues/139).

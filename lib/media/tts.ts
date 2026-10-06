@@ -1,6 +1,3 @@
-import { mkdir, writeFile } from 'fs/promises'
-import path from 'path'
-
 export type TtsMode = 'openai' | 'edge' | 'none'
 
 export function ttsModeLabel(): string {
@@ -77,20 +74,11 @@ async function edgeTts(text: string, voiceOverride?: string): Promise<Buffer> {
   return buffer
 }
 
-import { storageSubdir } from '../storage/writableRoot'
-
-export function audioStorageDir(): string {
-  return storageSubdir('audio')
-}
-
-export async function writeAudioFile(filename: string, data: Buffer): Promise<string> {
-  const dir = audioStorageDir()
-  await mkdir(dir, { recursive: true })
-  const full = path.join(dir, filename)
-  await writeFile(full, data)
-  return full
-}
-
-export function audioDiskPath(filename: string): string {
-  return path.join(audioStorageDir(), filename)
-}
+export {
+  audioStorageDir,
+  writeAudioFile,
+  audioDiskPath,
+  persistGeneratedAudio,
+  publicMediaAudioUrl,
+  ensureAudioDiskPath,
+} from './audioStorage'
