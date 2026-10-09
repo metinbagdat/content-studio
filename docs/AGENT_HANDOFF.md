@@ -10,6 +10,14 @@ re-discover from scratch, add an entry here before you stop.
 
 ---
 
+## 2026-10-09 — Keyword research row, no new table
+
+`lib/seo/keywordRecord.ts` maps a keyword onto `ContentSource` (`category=seo-keyword`).
+`volume_source=unverified` cannot carry a number. Ahrefs stays `ahrefs-third-party` and unverified.
+Social derivative is `IN_REVIEW` only after human approval and quality ≥ 90. No email or TikTok job.
+
+---
+
 ## 2026-10-06 — Content lint publish gate (#136)
 
 Added `lib/quality/contentLint.ts` (pure, Vitest-covered): title/body floors,
