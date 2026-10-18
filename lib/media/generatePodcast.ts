@@ -5,7 +5,7 @@ import ffmpeg from 'fluent-ffmpeg'
 import { configureFfmpeg, getFfmpegBinaryPath } from '@/lib/media/ffmpegPaths'
 import { prisma } from '../prisma'
 import { extractPodcastSpeechParts, estimateSpeechDurationSec } from './podcastText'
-import { synthesizeSpeech, writeAudioFile, ttsModeLabel, audioDiskPath, audioStorageDir } from './tts'
+import { synthesizeSpeech, writeAudioFile, ttsModeLabel, audioDiskPath, audioStorageDir, persistGeneratedAudio, isDurableAudioUrl, promoteAudioFromDisk } from './tts'
 import { fetchBackgroundMusic } from '../video/pixabayMusic'
 
 configureFfmpeg()
@@ -178,10 +178,27 @@ export async function generatePodcastAudio(
   const existing = derived.mediaFiles[0]
   if (existing && !options.force) {
     const { clearReviewFault } = await import('../review/fault')
-    await clearReviewFault(derivedContentId).catch(() => {})
-    return { media: existing, reused: true, mode: ttsModeLabel() }
+    if (isDurableAudioUrl(existing.fileUrl)) {
+      await clearReviewFault(derivedContentId).catch(() => {})
+      return { media: existing, reused: true, mode: ttsModeLabel() }
+    }
+    let promoted: string | null
+    try {
+      promoted = await promoteAudioFromDisk(existing.id)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      throw new Error(`MP3 diskte var; Blob yüklenemedi, yeniden TTS yok: ${message}`)
+    }
+    if (promoted) {
+      const updated = await prisma.mediaFile.update({
+        where: { id: existing.id },
+        data: { fileUrl: promoted },
+      })
+      await clearReviewFault(derivedContentId).catch(() => {})
+      return { media: updated, reused: true, mode: ttsModeLabel() }
+    }
   }
-  if (existing && options.force) {
+  if (existing) {
     await deleteExistingPodcastMedia(existing.id)
   }
 
@@ -230,10 +247,11 @@ export async function generatePodcastAudio(
     const jingleDuration = hasJingles ? INTRO_JINGLE_SEC + OUTRO_JINGLE_SEC + MID_JINGLE_SEC * Math.max(0, parts.length - 1) : 0
     const duration = estimateSpeechDurationSec(fullText) + Math.round(jingleDuration)
 
+    const publicUrl = await persistGeneratedAudio(media.id, finalBuffer)
     const updated = await prisma.mediaFile.update({
       where: { id: media.id },
       data: {
-        fileUrl: `/api/media/${media.id}/file`,
+        fileUrl: publicUrl,
         fileSize: finalBuffer.length,
         duration,
         processingStatus: 'COMPLETED',
