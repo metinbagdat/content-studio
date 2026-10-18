@@ -182,9 +182,7 @@ export async function runContentDiscovery(options: DiscoveryOptions = {}): Promi
       result.ingested.push({ slug: entry.slug, sourceId: source.id, title: blog.title })
       if (triggerPipeline) {
         // Omit platforms → createPipeline uses platformsForSegment via resolveAudienceSegment
-        await createPipeline(source.id, {
-          includeMarchSong: true,
-        })
+        await createPipeline(source.id)
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)

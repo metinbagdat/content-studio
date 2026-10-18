@@ -82,9 +82,8 @@ export async function generateVideoVariants(
   // 4) Background music — local library or generated ambient fallback
   const musicPath = await fetchBackgroundMusic('inspiring corporate')
 
-  // 5) One AI image per visual slide (~3.5s) for fluid background changes
-  // CS_VIDEO_SKIP_AI_IMAGES=1 → solid slides only (fast Arı drain when providers 429/down)
-  const skipAiImages = process.env.CS_VIDEO_SKIP_AI_IMAGES === '1'
+  // 5) Solid slides by default. Set CS_VIDEO_SKIP_AI_IMAGES=0 to pay for one AI image per slide.
+  const skipAiImages = process.env.CS_VIDEO_SKIP_AI_IMAGES !== '0'
   const imagePaths: string[] = []
   const imageDurations: number[] = []
   for (let i = 0; i < visualSlides.length; i++) {

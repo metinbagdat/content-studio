@@ -66,8 +66,8 @@ async function main() {
   const batchStart = new Date()
 
   const pipeline = await createPipeline(source.id, {
-    platforms: ['TWITTER', 'LINKEDIN'],
-    includeMarchSong: true,
+    platforms: ['LINKEDIN'],
+    includeMarchSong: false,
     marchStyle: 'motivational',
     musicGenre: 'pop',
     podcastDuration: 10,
