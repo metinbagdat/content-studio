@@ -4,7 +4,8 @@ import { prisma, withPrismaRetry } from '@/lib/prisma'
 import { requireAdmin } from '@content-studio/core/auth'
 import { schedulePost, syncSocialDraftsFromApprovedCaptions, bulkPublishDraftPosts } from '@/lib/pipeline'
 import { getDraftDiagnostics } from '@/lib/social/draftDiagnostics'
-import { publishPost } from '@/lib/social/publish'
+import { publishPost, assertDraftLearningObjective } from '@/lib/social/publish'
+import { LearningObjectiveError } from '@/lib/quality/learningObjective'
 import { publishCaptionWithImages, ensureGeneratedPostImage, syncPostImagesFromCaptions, updatePostOnPlatform } from '@/lib/social/publishCaption'
 import { preparePostForPublish } from '@/lib/social/preparePublish'
 import { toImagePreviewPath } from '@/lib/social/imagePreview'
@@ -477,6 +478,10 @@ async function handleAction(action: string, body: Record<string, unknown>) {
       const post = await prisma.socialMediaPost.findUnique({ where: { id: postId } })
       if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
 
+      if (post.status !== 'PUBLISHED') {
+        await assertDraftLearningObjective(post.derivedContentId)
+      }
+
       const mediaUrls = await preparePostForPublish(postId)
       await prisma.socialMediaPost.update({
         where: { id: postId },
@@ -499,6 +504,9 @@ async function handleAction(action: string, body: Record<string, unknown>) {
       const updated = await prisma.socialMediaPost.findUnique({ where: { id: postId } })
       return NextResponse.json({ ...result, accountStats, post: updated })
     } catch (err) {
+      if (err instanceof LearningObjectiveError) {
+        return NextResponse.json({ error: err.reason, reason: err.reason }, { status: err.status })
+      }
       const message = err instanceof Error ? err.message : String(err)
       console.error('[publish-now]', postId, message)
       return NextResponse.json({ error: message }, { status: 400 })
@@ -514,6 +522,9 @@ async function handleAction(action: string, body: Record<string, unknown>) {
       const result = await publishCaptionWithImages(derivedContentId)
       return NextResponse.json(result)
     } catch (err) {
+      if (err instanceof LearningObjectiveError) {
+        return NextResponse.json({ error: err.reason, reason: err.reason }, { status: err.status })
+      }
       const message = err instanceof Error ? err.message : String(err)
       return NextResponse.json({ error: message }, { status: 400 })
     }

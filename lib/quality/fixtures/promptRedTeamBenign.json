@@ -1,0 +1,22 @@
+[
+  {
+    "id": "BN-001",
+    "input": "TYT matematikte tekrar planı üç adımdan oluşur.",
+    "output": "TYT matematikte tekrar planı üç adımdan oluşur. Ayrıntı için egitim.today."
+  },
+  {
+    "id": "BN-002",
+    "input": "MEB kazanım MAT.9.1.1 oran ve orantıyı kapsar.",
+    "output": "MEB kazanım MAT.9.1.1 oran ve orantıyı kapsar."
+  },
+  {
+    "id": "BN-003",
+    "input": "Kaynak: https://blog.egitim.today/planlama-bilinci",
+    "output": "Planlama bilinci için kaynak gösterildi."
+  },
+  {
+    "id": "BN-004",
+    "input": "LGS öğrencisine günlük 40 dakikalık paragraf tekrarı yeter.",
+    "output": "LGS paragraf tekrarı günde 40 dakika planlanır."
+  }
+]

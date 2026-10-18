@@ -19,6 +19,7 @@ import { resolveAudienceSegment } from './audience/resolveAudienceSegment'
 import { metaBulkPublishGapMs } from './social/metaReview'
 import { splitArticleForEpisodes, suggestedPodcastEpisodeCount } from './media/podcastEpisodes'
 import { canonicalArticleUrl } from './content/canonicalUrl'
+import { stampDraftQuality } from './quality/qualityStamp'
 import { isServerlessRuntime } from './storage/writableRoot'
 import {
   faultMessageFromBulkError,
@@ -191,16 +192,23 @@ export async function processPipeline(pipelineId: string) {
             episodeFocus: chunk.heading,
             ...(articleUrl ? { articleUrl } : {}),
           }
-          await prisma.derivedContent.create({
+          const stamped = await stampDraftQuality({
+            title: ep.title,
+            content: ep.content,
+            contentType: toContentType(kind),
+            metadata: epMeta,
+          })
+          const created = await prisma.derivedContent.create({
             data: {
               sourceId: pipeline.sourceId,
               contentType: toContentType(kind),
               title: ep.title,
               content: ep.content,
-              metadata: epMeta as Prisma.InputJsonValue,
+              metadata: stamped.metadata as Prisma.InputJsonValue,
               status: 'IN_REVIEW',
             },
           })
+          if (stamped.status === 'APPROVED') await setDerivedStatus(created.id, 'APPROVED')
         }
         continue
       }
@@ -215,16 +223,23 @@ export async function processPipeline(pipelineId: string) {
         meta.atomKind = 'long_form_video'
       }
 
-      await prisma.derivedContent.create({
+      const stamped = await stampDraftQuality({
+        title: out.title,
+        content: out.content,
+        contentType: toContentType(kind),
+        metadata: meta,
+      })
+      const created = await prisma.derivedContent.create({
         data: {
           sourceId: pipeline.sourceId,
           contentType: toContentType(kind),
           title: out.title,
           content: out.content,
-          metadata: meta as Prisma.InputJsonValue,
+          metadata: stamped.metadata as Prisma.InputJsonValue,
           status: 'IN_REVIEW',
         },
       })
+      if (stamped.status === 'APPROVED') await setDerivedStatus(created.id, 'APPROVED')
     }
     // processPipeline içinde, bu bloğun hemen altına:
     const atomized = await generateAllDerivatives(atomizationPlan, {
@@ -253,7 +268,7 @@ export async function processPipeline(pipelineId: string) {
       if (!m.socialCard) continue
       try {
         const { generateAiImageVariations } = await import('./image/generateAiImage')
-        const variations = await generateAiImageVariations(item.id, 2)
+        const variations = await generateAiImageVariations(item.id, 1)
         if (variations.length) aiImagesGenerated += 1
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err)
@@ -682,7 +697,7 @@ export async function bulkPublishDraftPosts(
   })
 
   const result: BulkPublishResult = { attempted: 0, published: 0, skipped: 0, failed: 0, errors: [] }
-  const { publishPost } = await import('./social/publish')
+  const { publishPost, assertDraftLearningObjective } = await import('./social/publish')
   const maxAttempts = options.limit && options.limit > 0 ? options.limit : undefined
   // Meta spam/rate limits: pause between Facebook/IG publishes
   const metaGapMs = metaBulkPublishGapMs()
@@ -714,6 +729,7 @@ export async function bulkPublishDraftPosts(
     result.attempted += 1
     try {
       await ensurePrismaConnected()
+      await assertDraftLearningObjective(post.derivedContentId)
       await preparePostForPublish(post.id)
       const r = await publishPost(post.id, { requireImage: post.platform === 'LINKEDIN' })
       if (r.skipped) {
@@ -726,6 +742,7 @@ export async function bulkPublishDraftPosts(
       if (isPrismaConnectionError(err)) {
         try {
           await ensurePrismaConnected()
+          await assertDraftLearningObjective(post.derivedContentId)
           await preparePostForPublish(post.id)
           const r = await publishPost(post.id, { requireImage: post.platform === 'LINKEDIN' })
           if (r.skipped) result.skipped += 1

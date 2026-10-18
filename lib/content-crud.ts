@@ -1,6 +1,8 @@
 import { ContentStatus, ContentType, type Prisma } from '@prisma/client'
 import { prisma } from './prisma'
 import { setDerivedStatus } from './pipeline'
+import { normalizeLearningObjectiveMetadata } from './quality/learningObjective'
+import { stampDraftQuality } from './quality/qualityStamp'
 
 const EDITABLE_STATUSES: ContentStatus[] = ['DRAFT', 'IN_REVIEW', 'APPROVED', 'REJECTED']
 
@@ -60,7 +62,9 @@ export async function updateDerivedContent(id: string, input: UpdateDerivedInput
   }
 
   let metadata = existing.metadata as Prisma.InputJsonValue | undefined
-  if (input.metadata !== undefined) metadata = input.metadata
+  if (input.metadata !== undefined) {
+    metadata = normalizeLearningObjectiveMetadata(input.metadata) as Prisma.InputJsonValue
+  }
   if (input.reviewNote) {
     metadata = appendEditHistory(metadata, input.reviewNote)
   } else if (contentChanged) {
@@ -132,17 +136,28 @@ export async function createDerivedContent(input: {
   const content = String(input.content).trim()
   if (!title || !content) throw new Error('title and content required')
 
-  return prisma.derivedContent.create({
+  const stamped = await stampDraftQuality({
+    title,
+    content,
+    contentType: input.contentType,
+    metadata: input.metadata,
+  })
+  const keepDraft = input.status === 'DRAFT'
+  const created = await prisma.derivedContent.create({
     data: {
       sourceId: input.sourceId,
       contentType: input.contentType,
       title,
       content,
-      metadata: input.metadata,
-      status: input.status || 'IN_REVIEW',
+      metadata: stamped.metadata as Prisma.InputJsonValue,
+      status: keepDraft ? 'DRAFT' : 'IN_REVIEW',
     },
     include: { source: { select: { id: true, title: true } } },
   })
+  if (!keepDraft && stamped.status === 'APPROVED') {
+    return setDerivedStatus(created.id, 'APPROVED')
+  }
+  return created
 }
 
 export { setDerivedStatus, EDITABLE_STATUSES }

@@ -43,6 +43,8 @@ import { publishFacebookPost, publishInstagramPost, publishInstagramReel, publis
 import { uploadTikTokVideo } from './tiktokApi'
 import { pinterestConfigured } from './pinterestApi'
 import { prisma } from '../prisma'
+import { assertLearningObjectiveForPublish } from '../quality/learningObjective'
+import { learnconCurriculumLookup } from '../quality/curriculumLookup'
 
 export type PublishOptions = {
   /** Delete existing platform post before publishing (update-in-place flow). */
@@ -66,6 +68,15 @@ export type PublishResult = {
   videoError?: string
   reason?: string
   deleteError?: string
+}
+
+/** Block a not-yet-published draft that has no verified kazanım code. */
+export async function assertDraftLearningObjective(derivedContentId: string): Promise<void> {
+  const derived = await prisma.derivedContent.findUnique({
+    where: { id: derivedContentId },
+    select: { metadata: true },
+  })
+  await assertLearningObjectiveForPublish(derived?.metadata ?? null, learnconCurriculumLookup)
 }
 
 /**
@@ -98,6 +109,10 @@ export async function publishPost(postId: string, options: PublishOptions = {}):
       imageAttached: prevMetrics.imageAttached,
       imageError: prevMetrics.imageError,
     }
+  }
+
+  if (post.status !== 'PUBLISHED') {
+    await assertDraftLearningObjective(post.derivedContentId)
   }
 
   const shouldReplace = Boolean(

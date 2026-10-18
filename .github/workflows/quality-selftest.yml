@@ -1,0 +1,23 @@
+name: Quality selftests
+
+on:
+  pull_request:
+    paths:
+      - 'lib/ai/transform.ts'
+      - 'lib/ai/transformPrompt.ts'
+      - 'lib/quality/**'
+      - '.github/workflows/quality-selftest.yml'
+  workflow_dispatch:
+
+jobs:
+  prompt-red-team:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npx tsx lib/quality/promptRedTeam.selftest.ts

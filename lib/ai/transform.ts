@@ -3,14 +3,10 @@ import { brandCta } from '@content-studio/core/auth'
 import { resolveLlm } from './llmClient'
 import { captionMetadataWithImage } from '../social/brandImage'
 import { fallbackPodcastScript, parsePodcastScript } from '../media/podcastSchema'
+import { guardDraftOutput } from '../quality/draftOutputGuard'
+import { buildTransformMessages, sanitizeArticle, type TransformKind, type TransformOptions } from './transformPrompt'
 
-export type TransformKind =
-  | 'VIDEO_SCRIPT'
-  | 'PODCAST_SCRIPT'
-  | 'SOCIAL_CAPTION'
-  | 'BLOG_POST'
-  | 'MARCH_LYRICS'
-  | 'SONG_LYRICS'
+export type { TransformKind, TransformOptions }
 
 
 function mockTransform(kind: TransformKind, title: string, content: string) {
@@ -96,12 +92,6 @@ function mockTransform(kind: TransformKind, title: string, content: string) {
   }
 }
 
-export type TransformOptions = {
-  episodeIndex?: number
-  episodeTotal?: number
-  episodeFocus?: string
-}
-
 export async function generateTransform(
   kind: TransformKind,
   title: string,
@@ -111,12 +101,14 @@ export async function generateTransform(
   const { client: llm, provider, model } = resolveLlm()
   const epTotal = options.episodeTotal && options.episodeTotal > 1 ? options.episodeTotal : 1
   const epIndex = options.episodeIndex || 1
+  const safeArticle = sanitizeArticle(article)
 
   if (!llm) {
-    const mock = mockTransform(kind, title, article)
+    const mock = mockTransform(kind, title, safeArticle)
     if (kind === 'PODCAST_SCRIPT' && epTotal > 1) {
       return {
         ...mock,
+        content: guardDraftOutput(mock.content).text,
         title: `Podcast ${epIndex}/${epTotal}: ${title}`,
         metadata: {
           ...mock.metadata,
@@ -126,52 +118,31 @@ export async function generateTransform(
         },
       }
     }
-    return mock
+    return {
+      ...mock,
+      content: guardDraftOutput(mock.content).text,
+    }
   }
 
-  const podcastPrompt =
-    epTotal > 1
-      ? `Create a ~8-10 min Turkish podcast EPISODE script for egitim.today as JSON ONLY (no prose):
-{"introMusicCue":"[5 sn jingle]","welcome":"...","segments":[{"title":"...","script":"..."}],"keyTakeaways":["...","..."],"cta":"...","outroMusicCue":"[3 sn outro jingle]","durationMin":8}
-This is episode ${epIndex} of ${epTotal} in a series about: ${title}
-Episode focus: ${options.episodeFocus || `part ${epIndex}`}
-- welcome: greet listeners; if episode>1 mention this is a continuation
-- cover ONLY the excerpt below (do not recap the whole series)
-- cta: if not last episode, tease the next part; last episode: egitim.today
-- music cues are editing notes, NOT spoken text
-Excerpt:\n${article.slice(0, 3500)}`
-      : `Create a ~10 min Turkish podcast script for egitim.today as JSON ONLY (no prose):
-{"introMusicCue":"[5 sn jingle]","welcome":"...","segments":[{"title":"...","script":"..."}],"keyTakeaways":["...","..."],"cta":"...","outroMusicCue":"[3 sn outro jingle]","durationMin":10}
-- welcome: short spoken greeting introducing the topic
-- segments: 3-5 spoken sections covering the article in depth
-- keyTakeaways: 2-4 short spoken wrap-up points
-- cta: spoken call-to-action mentioning egitim.today
-- music cues are editing notes, NOT spoken text
-Title: ${title}\n\n${article.slice(0, 3000)}`
-
-  const prompts: Record<TransformKind, string> = {
-    SOCIAL_CAPTION: `Write a Turkish social caption for X and LinkedIn promoting egitim.today. Include CTA. Article title: ${title}\n\n${article.slice(0, 3000)}`,
-    VIDEO_SCRIPT: `Create a 60s educational short-form video script (JSON: hook, scenes[], durationSec) in Turkish for egitim.today. Title: ${title}\n\n${article.slice(0, 3000)}`,
-    PODCAST_SCRIPT: podcastPrompt,
-    BLOG_POST: `Write a short Turkish blog post (markdown) plus SEO meta JSON fields metaTitle, metaDescription, slug. Title: ${title}\n\n${article.slice(0, 3000)}`,
-    MARCH_LYRICS: `Write short motivational march lyrics JSON (verse1, chorus) in Turkish inspired by: ${title}`,
-    SONG_LYRICS: `Write short song lyrics JSON (verse1, chorus) in Turkish inspired by: ${title}`,
-  }
-
+  const built = buildTransformMessages(kind, title, article, options)
   const res = await llm.chat.completions.create({
     model,
     messages: [
-      {
-        role: 'system',
-        content:
-          'You help egitim.today marketing. Prefer Turkish. Always include brand CTA to https://egitim.today where appropriate. Return useful text; for structured types prefer JSON.',
-      },
-      { role: 'user', content: prompts[kind] },
+      { role: 'system', content: built.system },
+      { role: 'user', content: built.user },
     ],
     temperature: 0.7,
   })
 
-  const text = res.choices[0]?.message?.content?.trim() || ''
+  const guarded = guardDraftOutput(res.choices[0]?.message?.content?.trim() || '')
+  if (!guarded.ok) {
+    return {
+      title: `${kind}: ${title}`,
+      content: guarded.text,
+      metadata: { model, provider, mock: false, guarded: true },
+    }
+  }
+  const text = guarded.text
 
   if (kind === 'PODCAST_SCRIPT') {
     const script = parsePodcastScript(text, title, article.slice(0, 600))
