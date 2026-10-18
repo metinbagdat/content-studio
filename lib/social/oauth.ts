@@ -128,7 +128,7 @@ export async function upsertOAuthAccount(opts: {
   tokenExpiry?: Date
   config?: Prisma.InputJsonValue
 }) {
-  return prisma.socialMediaAccount.upsert({
+  const saved = await prisma.socialMediaAccount.upsert({
     where: {
       platform_accountId: { platform: opts.platform, accountId: opts.accountId },
     },
@@ -151,6 +151,15 @@ export async function upsertOAuthAccount(opts: {
       config: opts.config,
     },
   })
+  await prisma.socialMediaAccount.updateMany({
+    where: {
+      platform: opts.platform,
+      isActive: true,
+      accountId: { startsWith: 'dryrun_' },
+    },
+    data: { isActive: false },
+  })
+  return saved
 }
 
 export async function deactivateAccount(accountId: string) {

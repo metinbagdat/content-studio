@@ -23,11 +23,6 @@ export async function getValidAccessToken(account: SocialMediaAccount): Promise<
   const refreshed = await refreshAccessToken(account)
   if (refreshed) return refreshed
 
-  await prisma.socialMediaAccount.update({
-    where: { id: account.id },
-    data: { isActive: false },
-  }).catch(() => {})
-
   throw new TokenExpiredError(account.platform)
 }
 
