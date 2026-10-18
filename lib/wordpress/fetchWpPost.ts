@@ -45,7 +45,7 @@ function mapPost(raw: Record<string, unknown>): WpRestPost {
 }
 
 function wpBase(): string {
-  return (process.env.WP_BASE_URL || 'https://blog.egitim.today').replace(/\/$/, '')
+  return (process.env.WP_BASE_URL || 'https://wp.egitim.today').replace(/\/$/, '')
 }
 
 export async function fetchWpPostBySlug(slug: string): Promise<WpRestPost | null> {

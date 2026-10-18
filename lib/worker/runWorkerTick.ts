@@ -61,7 +61,7 @@ export async function runWorkerTick(options: WorkerTickOptions = {}): Promise<Wo
   const runHpv =
     (profile === 'daily' || profile === 'full') &&
     !vercelLight &&
-    process.env.HPV_CRON_ENABLED !== 'false'
+    process.env.HPV_CRON_ENABLED === 'true'
 
   try {
     publishJobs = await drainDbPublishJobs(profile === 'quick' ? 3 : profile === 'full' ? 5 : 3)
@@ -115,7 +115,7 @@ export async function runWorkerTick(options: WorkerTickOptions = {}): Promise<Wo
     try {
       const limit =
         options.discoveryLimit ??
-        Number(process.env.DISCOVERY_DAILY_LIMIT || (profile === 'daily' ? 2 : 3))
+        Number(process.env.DISCOVERY_DAILY_LIMIT || (profile === 'daily' ? 1 : 2))
       discovery = await runContentDiscovery({ limit, triggerPipeline: true })
     } catch (err) {
       errors.push(`discovery: ${err instanceof Error ? err.message : String(err)}`)

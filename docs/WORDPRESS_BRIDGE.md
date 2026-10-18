@@ -5,14 +5,17 @@ Product LMS: [`metinbagdat/learncon`](https://github.com/metinbagdat/learncon)
 
 ## Env (content-studio)
 
+Public pages: `https://blog.egitim.today` (Next on Vercel).  
+REST: `https://wp.egitim.today` (Hostinger). Do not add a Vercel rewrite of `/wp-json` — that proxies WordPress through the learning-center project and spends bandwidth. Call the CMS host directly.
+
 ```env
-WP_BASE_URL=https://blog.egitim.today
+WP_BASE_URL=https://wp.egitim.today
 WP_USERNAME=
 WP_APP_PASSWORD=
 CONNECT_STUDIO_API_KEY=
 SAFE_SAMURAI_ENABLED=true
 HPV_GATE_ENABLED=true
-HPV_CRON_ENABLED=true
+HPV_CRON_ENABLED=false
 HPV_DAILY_LIMIT=8
 DATAFORSEO_LOGIN=
 DATAFORSEO_PASSWORD=
@@ -62,7 +65,7 @@ define('CONNECT_STUDIO_API_KEY', '...'); // same as Vercel / CS CONNECT_STUDIO_A
 
 Never hardcode keys inside plugin PHP.
 
-HPV gate: HPV ≥ 75 **and** search volume ≥ 500 → WP adayı; aksi halde yalnız SM. API yoksa `FALLBACK_KEYWORDS` kullanılır. `HPV_GATE_ENABLED=false` ile atlanır.
+HPV gate: HPV ≥ 75 **and** search volume ≥ 500 → WP adayı; aksi halde yalnız SM. Ücretli hacim sorgusu yalnızca `DATAFORSEO_ENABLED=true` iken gider; aksi halde `FALLBACK_KEYWORDS`. Günlük tarama `HPV_CRON_ENABLED=true` olmadan çalışmaz. `HPV_GATE_ENABLED=false` ile kapı atlanır.
 
 ### Publish webhook (WordPress → Content Studio)
 
