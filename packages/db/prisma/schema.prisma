@@ -153,6 +153,7 @@ enum SocialPlatform {
   FACEBOOK
   INSTAGRAM
   PINTEREST
+  TELEGRAM
 }
 
 model SocialMediaPost {

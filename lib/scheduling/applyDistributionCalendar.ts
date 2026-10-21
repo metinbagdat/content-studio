@@ -53,6 +53,7 @@ const KIND_TO_CONTENT_TYPE: Record<string, ContentType[]> = {
   linkedin_post: ['SOCIAL_CAPTION'],
   instagram_post: ['SOCIAL_CAPTION'],
   facebook_post: ['SOCIAL_CAPTION'],
+  telegram_post: ['SOCIAL_CAPTION'],
   social_card: ['SOCIAL_CAPTION'],
   twitter_thread: ['TWITTER_THREAD'],
   linkedin_carousel: ['LINKEDIN_CAROUSEL'],

@@ -20,7 +20,7 @@ type Item = {
   source?: { id: string; title: string; tags?: string[] }
 }
 
-type PlatformFilter = 'ALL' | 'LINKEDIN' | 'TWITTER' | 'YOUTUBE' | 'INSTAGRAM' | 'TIKTOK' | 'FACEBOOK'
+type PlatformFilter = 'ALL' | 'LINKEDIN' | 'TWITTER' | 'YOUTUBE' | 'INSTAGRAM' | 'TIKTOK' | 'FACEBOOK' | 'TELEGRAM'
 type SegmentFilter = 'ALL' | AudienceSegment
 
 const CONTENT_TYPES = [
@@ -225,6 +225,8 @@ function platformLabel(platform: string | null): string {
       return 'Facebook'
     case 'PINTEREST':
       return 'Pinterest'
+    case 'TELEGRAM':
+      return 'Telegram'
     default:
       return platform || '—'
   }
@@ -1102,6 +1104,7 @@ export default function ReviewPage() {
             <option value="INSTAGRAM">Instagram</option>
             <option value="TIKTOK">TikTok</option>
             <option value="FACEBOOK">Facebook</option>
+            <option value="TELEGRAM">Telegram</option>
           </select>
         </div>
         <div>

@@ -17,6 +17,7 @@ export type ContentPieceCounts = {
   youtubeShorts: number
   facebookPosts: number
   pinterestPins: number
+  telegramPosts: number
   infographicSlides: number
 }
 
@@ -28,15 +29,16 @@ export type AtomizationPlan = {
   emotionalTone: string
   contentPieces: ContentPieceCounts
   distributionDays: number
-  platformPriority: Lowercase<SocialPlatform | 'pinterest'>[]
+  platformPriority: Lowercase<SocialPlatform>[]
   generatedAt: string
   mock?: boolean
 }
 
 /**
- * Lean budget: one long video, one podcast, a few LinkedIn/Facebook posts.
- * X and Pinterest stay at 0 until those APIs can publish. Shorts, carousels,
- * songs, and infographics stay at 0 so one article does not fan out into ~50 LLM calls.
+ * Lean budget: one long video, one podcast, a few LinkedIn/Facebook posts,
+ * one Telegram channel post. X and Pinterest stay at 0 until those APIs can
+ * publish. Shorts, carousels, songs, and infographics stay at 0 so one article
+ * does not fan out into ~50 LLM calls.
  */
 export const DEFAULT_PIECE_COUNTS: ContentPieceCounts = {
   longFormVideo: 1,
@@ -55,6 +57,7 @@ export const DEFAULT_PIECE_COUNTS: ContentPieceCounts = {
   youtubeShorts: 0,
   facebookPosts: 2,
   pinterestPins: 0,
+  telegramPosts: 1,
   infographicSlides: 0,
 }
 

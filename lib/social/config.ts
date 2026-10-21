@@ -71,6 +71,12 @@ export function oauthPlatformStatus() {
       clientSecretSet: pinterestConfigured(),
       scopes: pinterestOAuthScopes(),
     },
+    telegram: {
+      configured: Boolean(process.env.TELEGRAM_BOT_TOKEN?.trim() && process.env.TELEGRAM_CHANNEL_ID?.trim()),
+      callbackUrl: '',
+      clientIdSet: Boolean(process.env.TELEGRAM_BOT_TOKEN?.trim()),
+      clientSecretSet: Boolean(process.env.TELEGRAM_CHANNEL_ID?.trim()),
+    },
   }
 }
 
@@ -104,6 +110,13 @@ export function oauthEnvCheck() {
     TIKTOK_CLIENT_SECRET: tiktokConfigured(),
     PINTEREST_APP_ID: Boolean(pinterestAppId()),
     PINTEREST_APP_SECRET: pinterestConfigured(),
+    TELEGRAM_BOT_TOKEN: Boolean(process.env.TELEGRAM_BOT_TOKEN?.trim()),
+    TELEGRAM_CHANNEL_ID: Boolean(process.env.TELEGRAM_CHANNEL_ID?.trim()),
+    TWILIO_WHATSAPP: Boolean(
+      process.env.TWILIO_ACCOUNT_SID?.trim() &&
+        process.env.TWILIO_AUTH_TOKEN?.trim() &&
+        process.env.TWILIO_WHATSAPP_FROM?.trim(),
+    ),
     ready:
       Boolean(process.env.X_CLIENT_ID?.trim() && process.env.X_CLIENT_SECRET?.trim()) &&
       Boolean(process.env.LINKEDIN_CLIENT_ID?.trim() && process.env.LINKEDIN_CLIENT_SECRET?.trim()),

@@ -26,7 +26,7 @@ function chunk<T>(arr: T[], size: number): T[][] {
 }
 
 async function generateSocialPostsBatch(
-  platform: 'TWITTER' | 'LINKEDIN' | 'INSTAGRAM' | 'FACEBOOK',
+  platform: 'TWITTER' | 'LINKEDIN' | 'INSTAGRAM' | 'FACEBOOK' | 'TELEGRAM',
   count: number,
   title: string,
   article: string,
@@ -461,6 +461,19 @@ export async function generateAllDerivatives(
           )),
         )
         break
+      case 'TELEGRAM':
+        drafts.push(
+          ...(await generateSocialPostsBatch(
+            'TELEGRAM',
+            p.telegramPosts,
+            title,
+            article,
+            plan,
+            'telegram_post',
+            articleUrl,
+          )),
+        )
+        break
       default:
         break
     }
@@ -470,8 +483,7 @@ export async function generateAllDerivatives(
     await generateForPlatform(platform)
   }
 
-  // Pinterest when any social surface is selected (no enum on SocialPlatform)
-  if (!platformOrder.length || platformOrder.some((x) => ['TWITTER', 'INSTAGRAM', 'FACEBOOK'].includes(x))) {
+  if (want('PINTEREST')) {
     drafts.push(...(await generatePinterestPins(p.pinterestPins, title, article, plan, articleUrl)))
   }
 

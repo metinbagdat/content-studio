@@ -6,6 +6,9 @@ on:
       - 'lib/ai/transform.ts'
       - 'lib/ai/transformPrompt.ts'
       - 'lib/quality/**'
+      - 'lib/social/telegramChannel.ts'
+      - 'lib/social/whatsappNotify.ts'
+      - 'lib/social/channelNotify.selftest.ts'
       - '.github/workflows/quality-selftest.yml'
   workflow_dispatch:
 
@@ -21,3 +24,4 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx tsx lib/quality/promptRedTeam.selftest.ts
+      - run: npx tsx lib/social/channelNotify.selftest.ts

@@ -12,6 +12,7 @@ export type AtomKind =
   | 'youtube_short'
   | 'facebook_post'
   | 'pinterest_pin'
+  | 'telegram_post'
   | 'social_card'
   | 'short_video'
   | 'long_video'
@@ -19,7 +20,7 @@ export type AtomKind =
 
 export type AtomMetadata = {
   atomKind: AtomKind
-  platform?: SocialPlatform | 'PINTEREST'
+  platform?: SocialPlatform
   seriesId?: string
   partIndex?: number
   partTotal?: number

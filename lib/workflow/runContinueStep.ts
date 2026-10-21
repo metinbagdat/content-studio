@@ -7,7 +7,7 @@ import { runWorkerTick } from '../worker/runWorkerTick'
 import { getWorkflowSnapshot, type WorkflowSnapshot } from './status'
 
 /** Platforms with working OAuth publish in prod (Instagram needs public image URL). */
-const AUTO_PUBLISH_PLATFORMS: SocialPlatform[] = ['LINKEDIN', 'FACEBOOK', 'TWITTER', 'YOUTUBE']
+const AUTO_PUBLISH_PLATFORMS: SocialPlatform[] = ['LINKEDIN', 'FACEBOOK', 'TWITTER', 'YOUTUBE', 'TELEGRAM']
 
 export type ContinueStepResult = {
   action: string

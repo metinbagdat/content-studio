@@ -346,6 +346,11 @@ export async function createSocialDraftsForDerived(
     platforms = [targetPlatform]
   }
 
+  if (platforms.includes('TELEGRAM')) {
+    const { ensureTelegramChannelAccount } = await import('./social/telegramChannel')
+    await ensureTelegramChannelAccount()
+  }
+
   // Prefer real OAuth accounts; fall back to dry-run so drafts still appear on /admin/social
   let accounts = await prisma.socialMediaAccount.findMany({
     where: {

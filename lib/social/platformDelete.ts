@@ -1,4 +1,5 @@
 import { SocialPlatform } from '@prisma/client'
+import { deleteTelegramChannelMessage } from './telegramChannel'
 
 function isMockPlatformId(id: string | null | undefined): boolean {
   return !id || id.startsWith('mock_') || id.startsWith('dryrun_')
@@ -67,5 +68,6 @@ export async function deletePlatformPost(
   }
   if (platform === 'LINKEDIN') return deleteLinkedInPost(accessToken, platformPostId)
   if (platform === 'TWITTER') return deleteTwitterPost(accessToken, platformPostId)
+  if (platform === 'TELEGRAM') return deleteTelegramChannelMessage(platformPostId)
   return { deleted: false, error: `Platform delete not implemented: ${platform}` }
 }

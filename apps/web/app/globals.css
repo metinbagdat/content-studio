@@ -908,6 +908,11 @@ label.has-info,
   color: #7cf1ec;
 }
 
+.badge.plat-TELEGRAM {
+  background: rgba(34, 158, 217, 0.18);
+  color: #7ec8e3;
+}
+
 .sm-dashboard {
   margin-bottom: 1rem;
 }

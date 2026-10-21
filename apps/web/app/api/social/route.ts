@@ -253,6 +253,22 @@ async function handleAction(action: string, body: Record<string, unknown>) {
     return NextResponse.json({ result, accountId: account.id, accountName: account.accountName })
   }
 
+  if (action === 'connect-telegram') {
+    const { ensureTelegramChannelAccount, telegramChannelConfigured } = await import(
+      '@/lib/social/telegramChannel'
+    )
+    if (!telegramChannelConfigured()) {
+      return NextResponse.json(
+        { error: 'TELEGRAM_BOT_TOKEN ve TELEGRAM_CHANNEL_ID gerekli' },
+        { status: 400 },
+      )
+    }
+    const account = await ensureTelegramChannelAccount()
+    const sync = await syncSocialDraftsFromApprovedCaptions()
+    const diagnostics = await getDraftDiagnostics()
+    return NextResponse.json({ account, sync, diagnostics })
+  }
+
   if (action === 'youtube-sync') {
     const limit = Number(body.limit) || 5
     const publishNow = Boolean(body.publishNow)
@@ -399,9 +415,23 @@ async function handleAction(action: string, body: Record<string, unknown>) {
       'TIKTOK',
       'FACEBOOK',
       'PINTEREST',
+      'TELEGRAM',
     ]
     if (!ALL_PLATFORMS.includes(platform)) {
       return NextResponse.json({ error: `platform ${ALL_PLATFORMS.join('|')}` }, { status: 400 })
+    }
+    if (platform === 'TELEGRAM') {
+      const { ensureTelegramChannelAccount } = await import('@/lib/social/telegramChannel')
+      const account = await ensureTelegramChannelAccount()
+      if (!account) {
+        return NextResponse.json(
+          { error: 'TELEGRAM_BOT_TOKEN ve TELEGRAM_CHANNEL_ID gerekli' },
+          { status: 400 },
+        )
+      }
+      const sync = await syncSocialDraftsFromApprovedCaptions()
+      const diagnostics = await getDraftDiagnostics()
+      return NextResponse.json({ account, sync, diagnostics })
     }
     const account = await upsertDryRunAccount(platform as SocialPlatform, `Dry-run ${platform}`)
     const sync = await syncSocialDraftsFromApprovedCaptions()

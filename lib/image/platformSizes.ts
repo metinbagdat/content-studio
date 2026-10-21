@@ -34,6 +34,7 @@ export function pickImageSpecKey(platform?: string | null): PlatformImageKey {
     case 'INSTAGRAM':
       return 'instagramPost'
     case 'FACEBOOK':
+    case 'TELEGRAM':
       return 'facebookPost'
     case 'PINTEREST':
       return 'pinterestPin'

@@ -42,6 +42,7 @@ import { uploadYouTubeVideo, setYouTubeThumbnail } from './youtubeApi'
 import { publishFacebookPost, publishInstagramPost, publishInstagramReel, publishFacebookVideoPost } from './publishMeta'
 import { uploadTikTokVideo } from './tiktokApi'
 import { pinterestConfigured } from './pinterestApi'
+import { sendTelegramChannelMessage } from './telegramChannel'
 import { prisma } from '../prisma'
 import { assertLearningObjectiveForPublish } from '../quality/learningObjective'
 import { learnconCurriculumLookup } from '../quality/curriculumLookup'
@@ -205,6 +206,14 @@ export async function publishPost(postId: string, options: PublishOptions = {}):
       platformPostId = pin.platformPostId
       imageAttached = pin.imageAttached ?? false
       imageError = pin.imageError
+    } else if (post.platform === 'TELEGRAM') {
+      const tg = await sendTelegramChannelMessage({
+        text: post.postContent,
+        photoUrl: mediaUrls[0],
+      })
+      platformPostId = tg.messageId
+      imageAttached = tg.imageAttached
+      imageError = tg.imageError
     } else {
       throw new Error(
         `${post.platform} için gerçek yayın API'si Faz 2'de eklenecek — altyapı (hesap, taslak, otomasyon) hazır, ` +
@@ -246,6 +255,20 @@ export async function publishPost(postId: string, options: PublishOptions = {}):
       await syncPostAnalytics(postId)
     } catch {
       /* stats optional */
+    }
+
+    if (post.platform === 'TELEGRAM') {
+      try {
+        const { notifyWhatsAppPublished } = await import('./whatsappNotify')
+        const { socialPostPublicUrl } = await import('./postUrl')
+        await notifyWhatsAppPublished({
+          platform: 'TELEGRAM',
+          preview: post.postContent,
+          url: socialPostPublicUrl('TELEGRAM', platformPostId),
+        })
+      } catch (notifyError) {
+        console.warn('[publishPost] whatsapp notify skipped', notifyError)
+      }
     }
 
     return {

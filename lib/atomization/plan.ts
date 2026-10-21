@@ -13,7 +13,7 @@ function mockPlan(title: string, excerpt: string, article = excerpt): Atomizatio
     emotionalTone: 'motivasyonel',
     contentPieces: pieces,
     distributionDays: 7,
-    platformPriority: ['linkedin', 'facebook', 'youtube'],
+    platformPriority: ['linkedin', 'facebook', 'youtube', 'telegram'],
     generatedAt: new Date().toISOString(),
     mock: true,
   }
@@ -54,7 +54,7 @@ export async function generateAtomizationPlan(
   if (!client) return mockPlan(title, excerpt, articleText)
 
   const prompt = `Analyze this Turkish article and output ONLY valid JSON for a content atomization plan.
-Keep the plan small: one long video, one podcast, two LinkedIn posts, two Facebook posts.
+Keep the plan small: one long video, one podcast, two LinkedIn posts, two Facebook posts, one Telegram channel post.
 Do not add Twitter, Pinterest, shorts, reels, TikTok, songs, marches, carousels, or infographics.
 
 Article title: ${title}
@@ -85,10 +85,11 @@ JSON schema:
     "youtubeShorts": 0,
     "facebookPosts": 2,
     "pinterestPins": 0,
+    "telegramPosts": 1,
     "infographicSlides": 0
   },
   "distributionDays": 7,
-  "platformPriority": ["linkedin", "facebook", "youtube"]
+  "platformPriority": ["linkedin", "facebook", "youtube", "telegram"]
 }`
 
   try {

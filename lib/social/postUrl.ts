@@ -18,5 +18,12 @@ export function socialPostPublicUrl(
     return `https://www.youtube.com/watch?v=${platformPostId}`
   }
 
+  if (platform === 'TELEGRAM') {
+    const channel = process.env.TELEGRAM_CHANNEL_ID?.trim()?.replace(/^@/, '')
+    if (channel && !/^-?\d+$/.test(channel) && /^\d+$/.test(platformPostId)) {
+      return `https://t.me/${encodeURIComponent(channel)}/${platformPostId}`
+    }
+  }
+
   return null
 }
