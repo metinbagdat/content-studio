@@ -6,6 +6,8 @@ Do not deploy this on the LearnCon Vercel Hobby project. Production: **`studio.e
 
 Tracking: [docs/ROADMAP.md](docs/ROADMAP.md) · Monorepo plan: [docs/MONOREPO.md](docs/MONOREPO.md) · Issues: [.github/ISSUE_INDEX.md](.github/ISSUE_INDEX.md) · DB changes: [docs/DATABASE.md](docs/DATABASE.md)
 
+**AI agents (Cursor Cloud or local IDE):** read [`cursor.md`](cursor.md) and [`docs/AGENT_HANDOFF.md`](docs/AGENT_HANDOFF.md) first.
+
 ## Layout
 
 | Path | Role |
@@ -36,6 +38,7 @@ npm install
 .\scripts\setup-db.ps1    # or Supabase — docs/SUPABASE_SETUP.md
 npm run dev               # Docker + drain worker (exits when idle) + http://localhost:3100/admin
 npm run worker:loop       # optional: 15s forever worker — local Docker only
+npm test                  # Vitest unit tests (pure logic, no DB/network needed)
 ```
 
 ### Admin

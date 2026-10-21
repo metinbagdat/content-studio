@@ -17,7 +17,7 @@ Status legend: `todo` · `doing` · `done` · `blocked` · `learncon` (tracked i
 
 | ID | Title | Status | Start when | Done when |
 |----|-------|--------|------------|-----------|
-| CS-M0 | Monorepo foundation (workspaces + legacy quarantine) | doing | Roadmap approved | Root workspaces; legacy under `legacy/`; `npm run dev` still works |
+| CS-M0 | Monorepo foundation (workspaces + legacy quarantine) | done | Roadmap approved | Root workspaces; legacy under `legacy/`; `npm run dev` still works |
 | CS-M1 | Move Next app → `apps/web`, worker → `apps/worker` (+ Prisma merge) | done | CS-M0 merged | #43 merged; `apps/web` + `apps/worker` + `packages/db` |
 | CS-M2 | Shared packages (`packages/core`) | done | CS-M1 merged | `auth`, `adminKey`, `platforms/*` in `@content-studio/core`; typecheck/build green; root `lib/` thinned (not deleted) |
 | CS-00 | Discovery cron + admin UI | done | — | `/admin/discovery` + worker 06:00 IST |

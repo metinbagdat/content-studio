@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { DEFAULT_ADMIN_API_KEY } from '@content-studio/core/adminKey'
 import { PodcastTimeline } from '@/components/admin/PodcastTimeline'
 import { CommentTopicBanner } from '@/components/admin/CommentTopicBanner'
-import { BtnInfoMark } from '@/components/admin/BtnInfoMark'
 import { AUDIENCE_SEGMENTS, SEGMENT_LABELS, isAudienceSegment, parseSegmentFromTags, type AudienceSegment } from '@/lib/audience/segments'
 import { readReviewFault, parseBulkErrorLine, isStorageOrVideoFault, VIDEO_FAULT_TYPES } from '@/lib/review/faultMeta'
 import { readQualityReport } from '@/lib/quality/scoreDraft'
@@ -1149,7 +1148,6 @@ export default function ReviewPage() {
             title="Elle yapılan sıralamayı temizle"
           >
             Sırayı sıfırla
-            <BtnInfoMark />
           </button>
         ) : null}
         <button type="button" className="secondary" onClick={() => setShowCreate((v) => !v)}>
@@ -1162,7 +1160,6 @@ export default function ReviewPage() {
         >
           <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} />
           Tümünü göster
-          <BtnInfoMark />
         </label>
       </div>
       {msg ? <p className="flash">{msg}</p> : null}
@@ -1211,7 +1208,6 @@ export default function ReviewPage() {
             title="Video scriptlerini Arı sekmesine alır; toplu onaya girmez. Yerelde ffmpeg ile üretin."
           >
             Hepsini Arı&apos;ya al
-            <BtnInfoMark />
           </button>{' '}
           (toplu onaya girmez; yerelde npm run dev)
         </p>
@@ -1307,7 +1303,6 @@ export default function ReviewPage() {
               disabled={bulkBusy}
             />
             Otomatik medya
-            <BtnInfoMark />
           </label>
           <label
             className="row muted has-info"
@@ -1322,7 +1317,6 @@ export default function ReviewPage() {
               disabled={bulkBusy}
             />
             Onay + WP draft
-            <BtnInfoMark />
           </label>
           <p className="muted" style={{ flexBasis: '100%', margin: 0, fontSize: '0.78rem' }}>
             İlerleme DB’de (ReviewBulkJob). Prod’da <strong>Otomatik medya</strong> / ağır WP açıkken
@@ -1338,7 +1332,6 @@ export default function ReviewPage() {
             title="Seçili temiz Onay öğelerini onaylar. Otomatik medya / WP draft açıksa onları da tetikler."
           >
             {bulkBusy ? 'İşleniyor…' : 'Toplu onayla'}
-            <BtnInfoMark />
           </button>
           {bulkBusy ? (
             <button type="button" className="danger" onClick={cancelBulk}>
@@ -1622,7 +1615,6 @@ export default function ReviewPage() {
                         title="Yerelde video ürettikten sonra, medya olmadan onayla"
                       >
                         Medyasız onayla
-                        <BtnInfoMark />
                       </button>
                       <button type="button" className="danger" disabled={busyId === item.id} onClick={() => act(item.id, 'reject')}>
                         Reddet
@@ -1646,7 +1638,6 @@ export default function ReviewPage() {
                       title="Safe samurAI + WP draft (blog.egitim.today)"
                     >
                       WP draft gönder
-                      <BtnInfoMark />
                     </button>
                   ) : null}
                   {item.contentType === 'PODCAST_SCRIPT' ? (

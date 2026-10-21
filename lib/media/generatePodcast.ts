@@ -246,6 +246,7 @@ export async function generatePodcastAudio(
     const finalBuffer = await readFile(finalPath)
     const jingleDuration = hasJingles ? INTRO_JINGLE_SEC + OUTRO_JINGLE_SEC + MID_JINGLE_SEC * Math.max(0, parts.length - 1) : 0
     const duration = estimateSpeechDurationSec(fullText) + Math.round(jingleDuration)
+    const publicUrl = await persistGeneratedAudio(media.id, finalBuffer)
 
     const publicUrl = await persistGeneratedAudio(media.id, finalBuffer)
     const updated = await prisma.mediaFile.update({

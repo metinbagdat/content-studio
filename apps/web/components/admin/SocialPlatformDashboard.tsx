@@ -1,7 +1,6 @@
 'use client'
 
 import { PlatformIconLink } from '@/components/admin/PlatformIconLink'
-import { BtnInfoMark } from '@/components/admin/BtnInfoMark'
 import type { XCreditsBannerStatus } from '@/components/admin/XCreditsBanner'
 import { platformLabel, platformProfileUrl } from '@/lib/social/platformLinks'
 import { isLocalOauthHost, OAUTH_HOST_HINTS } from '@/lib/social/oauthHostHints'
@@ -279,7 +278,6 @@ function ReadyDraftsList({
             }
           >
             {busyId === bulkKey ? 'Yayınlanıyor…' : `Toplu yayınla (${bulkCount})`}
-            <BtnInfoMark />
           </button>
         ) : null}
       </div>
@@ -496,7 +494,6 @@ export function SocialPlatformDashboard({
               title="X Developer Console → Billing → Credits"
             >
               Kredi yükle ↗
-              <BtnInfoMark />
             </a>
           </p>
         ) : null}

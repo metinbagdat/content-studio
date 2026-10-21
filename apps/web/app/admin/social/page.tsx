@@ -9,7 +9,6 @@ import { DraftDiagnosticsPanel, type DraftDiagnostics } from '@/components/admin
 import { TopPerformersPanel, type TopPerformingPost } from '@/components/admin/TopPerformersPanel'
 import { EngagementDigestPanel } from '@/components/admin/EngagementDigestPanel'
 import { PlatformIconLink } from '@/components/admin/PlatformIconLink'
-import { BtnInfoMark } from '@/components/admin/BtnInfoMark'
 import { HoverExpandList, HoverExpandRow, hoverSnippet } from '@/components/admin/HoverExpandList'
 import { XCreditsBanner, type XCreditsBannerStatus } from '@/components/admin/XCreditsBanner'
 import { DEFAULT_ADMIN_API_KEY } from '@content-studio/core/adminKey'
@@ -1073,7 +1072,6 @@ export default function SocialPage() {
           title="Bağlı hesaplardan etkileşim / takipçi metriklerini çeker."
         >
           Metrikleri yenile
-          <BtnInfoMark />
         </button>
         <button
           type="button"
@@ -1083,7 +1081,6 @@ export default function SocialPage() {
           title="Eksik dry-run / placeholder hesapları gerçek OAuth hesaplarıyla hizalar."
         >
           Faz 2 dry-run tamamla
-          <BtnInfoMark />
         </button>
         <button
           type="button"
@@ -1093,7 +1090,6 @@ export default function SocialPage() {
           title="Onaylı caption’lardan eksik SM taslaklarını oluşturur (görsel atlanabilir)."
         >
           Taslakları senkronize et
-          <BtnInfoMark />
         </button>
         <select
           value={segmentFilter}
@@ -1166,7 +1162,6 @@ export default function SocialPage() {
           title="Onaylı caption’lardan eksik SM taslaklarını oluşturur."
         >
           Taslakları senkronize et
-          <BtnInfoMark />
         </button>
         <button
           type="button"
@@ -1176,7 +1171,6 @@ export default function SocialPage() {
           title="Caption’lara bağlı AI görsellerini postlara bağlar."
         >
           Görselleri senkronize et
-          <BtnInfoMark />
         </button>
         <button
           type="button"
@@ -1186,7 +1180,6 @@ export default function SocialPage() {
           title="YouTube video kimliklerini / SEO alanlarını senkronize eder."
         >
           YouTube video senkronize
-          <BtnInfoMark />
         </button>
         <button
           type="button"
@@ -1196,7 +1189,6 @@ export default function SocialPage() {
           title="Platform istatistiklerini yeniler."
         >
           İstatistikleri yenile
-          <BtnInfoMark />
         </button>
       </div>
 

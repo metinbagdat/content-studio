@@ -105,6 +105,7 @@ export async function generateSongAudio(derivedContentId: string) {
 
     const { readFile } = await import('fs/promises')
     const finalBuffer = await readFile(finalPath)
+    const publicUrl = await persistGeneratedAudio(media.id, finalBuffer)
 
     const publicUrl = await persistGeneratedAudio(media.id, finalBuffer)
     const updated = await prisma.mediaFile.update({

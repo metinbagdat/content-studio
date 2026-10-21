@@ -1,6 +1,5 @@
 'use client'
 
-import { BtnInfoMark } from '@/components/admin/BtnInfoMark'
 
 export type XCreditsBannerStatus = {
   level: 'ok' | 'low' | 'exhausted' | 'unknown'
@@ -75,7 +74,6 @@ export function XCreditsBanner({ status }: { status: XCreditsBannerStatus | null
           style={{ marginLeft: '0.25rem' }}
         >
           Kredi yükle ↗
-          <BtnInfoMark />
         </a>
       </span>
       <span style={{ display: 'block', marginTop: '0.35rem' }}>{status.message}</span>

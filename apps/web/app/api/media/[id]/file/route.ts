@@ -8,13 +8,16 @@ export const dynamic = 'force-dynamic'
 
 type RouteCtx = { params: Promise<{ id: string }> }
 
+/**
+ * Admin audio URL. Durable Blob URLs → 302 (no Vercel byte egress). Disk only for local dev.
+ */
 export async function GET(req: NextRequest, ctx: RouteCtx) {
   if (!requireAdmin(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   const { id } = await ctx.params
   const media = await getMediaFile(id)
-  if (!media || media.processingStatus !== 'COMPLETED') {
+  if (!media || media.mediaType !== 'AUDIO' || media.processingStatus !== 'COMPLETED') {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
