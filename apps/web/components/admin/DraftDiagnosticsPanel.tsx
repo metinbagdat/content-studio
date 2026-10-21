@@ -1,6 +1,5 @@
 'use client'
 
-import { BtnInfoMark } from '@/components/admin/BtnInfoMark'
 
 export type CaptionPlatformBreakdown = {
   platform: string
@@ -114,7 +113,6 @@ export function DraftDiagnosticsPanel({
             title="Hazır DRAFT’ları (dry-run hesaplar hariç) toplu yayınlar. X 402 ise atlanır."
           >
             {bulkBusy ? 'Yayınlanıyor…' : 'Hazır taslakları toplu yayınla'}
-            <BtnInfoMark />
           </button>
           <span className="muted" style={{ fontSize: '0.8rem' }}>Dry-run hesaplar hariç tutulur</span>
         </div>

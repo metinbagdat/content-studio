@@ -1,7 +1,6 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { BtnInfoMark } from '@/components/admin/BtnInfoMark'
 
 type WorkerTickProfile = 'quick' | 'daily' | 'full'
 
@@ -133,13 +132,11 @@ export function WorkerOpsPanel({
     <div className="workflow-worker-ops">
       <strong className="has-info" title="Prod Vercel’de worker/cron kapalı. İlerleme: bu butonlar veya yerelde npm run ops:daily. Hobby egress: günlük Docker localhost:5434; Supabase yalnız kısa one-shot (CS_ALLOW).">
         Arka plan işlemleri
-        <BtnInfoMark />
       </strong>
       <p className="muted workflow-worker-lead">
         Senaryo A — sürekli worker yok. Panelde: <strong>Sıradaki adım</strong>. Ağır video / toplu sosyal:{' '}
         <code className="has-info" title="Yerel terminal checklist. status/social = prod HTTP (ADMIN_API_KEY, CS_ALLOW yok). video = child process’te CS_ALLOW=1 + .env.prod.pull; parent shell’de flag kalmaz. worker:loop+Supabase kullanma.">
           npm run ops:daily
-          <BtnInfoMark />
         </code>
         . Hover = ne zaman. Arı onayı engellemez.
       </p>
@@ -157,28 +154,24 @@ export function WorkerOpsPanel({
           title="studio.egitim.today /admin/review — temiz Onay. Arı (video fault) bu adımı bloklamaz; video yerelde ops:daily video ile üretilir."
         >
           Onay (prod UI)
-          <BtnInfoMark />
         </li>
         <li
           className="has-info"
           title="Laptop: npm run ops:daily -- video -- --limit=10 --type=SHORT_VIDEO_SCRIPT --approve. ffmpeg→Blob. CS_ALLOW yalnız child’ta; bitince .env’i localhost:5434’e bırak."
         >
           Arı video (yerel one-shot)
-          <BtnInfoMark />
         </li>
         <li
           className="has-info"
           title="npm run ops:daily -- social — sync-drafts + LI/FB bulk via studio API. Egress yok (CS_ALLOW gerekmez). X kredi / Pinterest Trial ayrı."
         >
           Sosyal drain (prod HTTP)
-          <BtnInfoMark />
         </li>
         <li
           className="has-info"
           title="npm run ops:daily -- youtube-seo — Blob URL’li long-form. generateVideo=false; Vercel’de ffmpeg yok."
         >
           YouTube SEO (Blob hazırsa)
-          <BtnInfoMark />
         </li>
       </ol>
 
@@ -191,7 +184,6 @@ export function WorkerOpsPanel({
           onClick={runContinue}
         >
           {busy === 'continue' ? '…' : 'Sıradaki adım'}
-          <BtnInfoMark />
         </button>
         <button
           type="button"
@@ -201,7 +193,6 @@ export function WorkerOpsPanel({
           onClick={() => runTick('quick')}
         >
           {busy === 'quick' ? '…' : 'Zamanlanmışları yayınla'}
-          <BtnInfoMark />
         </button>
         <button
           type="button"
@@ -211,7 +202,6 @@ export function WorkerOpsPanel({
           onClick={() => runTick('daily')}
         >
           {busy === 'daily' ? '…' : 'Günlük bakım'}
-          <BtnInfoMark />
         </button>
         <button
           type="button"
@@ -221,7 +211,6 @@ export function WorkerOpsPanel({
           onClick={() => runTick('full')}
         >
           {busy === 'full' ? '…' : 'Tam tur (ağır)'}
-          <BtnInfoMark />
         </button>
       </div>
       {msg ? (
