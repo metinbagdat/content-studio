@@ -4,7 +4,7 @@ import { oauthPlatformStatus } from './config'
 import { upsertDryRunAccount } from './oauth'
 
 /** Platforms that produce drafts and can publish in Faz 1. */
-export const PUBLISH_PLATFORMS: SocialPlatform[] = ['TWITTER', 'LINKEDIN']
+export const PUBLISH_PLATFORMS: SocialPlatform[] = ['TWITTER', 'LINKEDIN', 'TELEGRAM']
 
 /** Pipeline-only platforms — dry-run for draft/calendar infra until OAuth (Faz 2). */
 export const FAZ2_DRY_RUN_PLATFORMS: SocialPlatform[] = [
@@ -37,7 +37,10 @@ export type AccountAudit = {
 }
 
 function platformLabel(platform: SocialPlatform): string {
-  return platform === 'TWITTER' ? 'X' : platform === 'LINKEDIN' ? 'LinkedIn' : platform
+  if (platform === 'TWITTER') return 'X'
+  if (platform === 'LINKEDIN') return 'LinkedIn'
+  if (platform === 'TELEGRAM') return 'Telegram'
+  return platform
 }
 
 export async function auditSocialAccounts(): Promise<AccountAudit> {
@@ -84,7 +87,11 @@ export async function auditSocialAccounts(): Promise<AccountAudit> {
 
   for (const platform of PUBLISH_PLATFORMS) {
     const oauthConfigured =
-      platform === 'TWITTER' ? oauth.twitter.configured : oauth.linkedin.configured
+      platform === 'TWITTER'
+        ? oauth.twitter.configured
+        : platform === 'TELEGRAM'
+          ? Boolean(process.env.TELEGRAM_BOT_TOKEN?.trim() && process.env.TELEGRAM_CHANNEL_ID?.trim())
+          : oauth.linkedin.configured
     const platformAccounts = accounts.filter((a) => a.platform === platform)
     const real = platformAccounts.find((a) => !a.dryRun)
     const dry = platformAccounts.find((a) => a.dryRun)
@@ -99,7 +106,14 @@ export async function auditSocialAccounts(): Promise<AccountAudit> {
         isOAuth: false,
         oauthConfigured,
         failedPosts: 0,
-        detail: oauthConfigured ? 'OAuth veya dry-run bağla' : 'Dry-run önerilir (env yok)',
+        detail:
+          platform === 'TELEGRAM'
+            ? oauthConfigured
+              ? 'Kanal hesabı yok — Kanalı bağla'
+              : 'TELEGRAM_BOT_TOKEN ve TELEGRAM_CHANNEL_ID gerekli'
+            : oauthConfigured
+              ? 'OAuth veya dry-run bağla'
+              : 'Dry-run önerilir (env yok)',
       })
       continue
     }
@@ -157,6 +171,12 @@ export async function repairMissingSocialAccounts(): Promise<AccountAudit> {
 
   for (const slot of audit.slots) {
     if (slot.status !== 'missing') continue
+    if (slot.platform === 'TELEGRAM') {
+      const { ensureTelegramChannelAccount } = await import('./telegramChannel')
+      const account = await ensureTelegramChannelAccount()
+      if (account) repaired.push(slot.platform)
+      continue
+    }
     const oauthConfigured =
       slot.platform === 'TWITTER' ? oauth.twitter.configured : oauth.linkedin.configured
     if (oauthConfigured) continue

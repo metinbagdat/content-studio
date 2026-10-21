@@ -77,6 +77,9 @@ export async function buildDistributionCalendar(input: BuildCalendarInput): Prom
       case 'FACEBOOK':
         push('FACEBOOK', 'facebook_post', pieces.facebookPosts)
         break
+      case 'TELEGRAM':
+        push('TELEGRAM', 'telegram_post', pieces.telegramPosts)
+        break
       default:
         break
     }

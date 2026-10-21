@@ -37,6 +37,8 @@ function platformLabel(p: string): string {
       return 'YouTube'
     case 'TIKTOK':
       return 'TikTok'
+    case 'TELEGRAM':
+      return 'Telegram'
     default:
       return p
   }

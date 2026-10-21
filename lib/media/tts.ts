@@ -1,3 +1,8 @@
+import { mkdir, readFile, writeFile } from 'fs/promises'
+import path from 'path'
+import { isDurableMediaUrl } from '../video/videoStorage'
+import { isServerlessRuntime } from '../storage/writableRoot'
+
 export type TtsMode = 'openai' | 'edge' | 'none'
 
 export function ttsModeLabel(): string {
@@ -74,11 +79,66 @@ async function edgeTts(text: string, voiceOverride?: string): Promise<Buffer> {
   return buffer
 }
 
-export {
-  audioStorageDir,
-  writeAudioFile,
-  audioDiskPath,
-  persistGeneratedAudio,
-  publicMediaAudioUrl,
-  ensureAudioDiskPath,
-} from './audioStorage'
+import { storageSubdir } from '../storage/writableRoot'
+
+export function audioStorageDir(): string {
+  return storageSubdir('audio')
+}
+
+export async function writeAudioFile(filename: string, data: Buffer): Promise<string> {
+  const dir = audioStorageDir()
+  await mkdir(dir, { recursive: true })
+  const full = path.join(dir, filename)
+  await writeFile(full, data)
+  return full
+}
+
+export function audioDiskPath(filename: string): string {
+  return path.join(audioStorageDir(), filename)
+}
+
+/** HTTPS CDN URL. Studio `/api/media/.../file` is local disk and is not durable. */
+export function isDurableAudioUrl(url: string | null | undefined): boolean {
+  return isDurableMediaUrl(url)
+}
+
+function blobAudioUploadEnabled(): boolean {
+  return Boolean(process.env.BLOB_READ_WRITE_TOKEN?.trim()) || isServerlessRuntime()
+}
+
+/**
+ * Write MP3 locally when not on Vercel, and upload `audio/{id}.mp3` when a Blob
+ * token is set. Returns the Blob URL, or the local file route when Blob is off.
+ * Does not call TTS.
+ */
+export async function persistGeneratedAudio(mediaId: string, data: Buffer): Promise<string> {
+  if (!isServerlessRuntime()) {
+    await writeAudioFile(`${mediaId}.mp3`, data)
+  }
+
+  if (blobAudioUploadEnabled()) {
+    const { put } = await import('@vercel/blob')
+    const token = process.env.BLOB_READ_WRITE_TOKEN?.trim()
+    const blob = await put(`audio/${mediaId}.mp3`, data, {
+      access: 'public',
+      contentType: 'audio/mpeg',
+      addRandomSuffix: false,
+      ...(token ? { token } : {}),
+    })
+    return blob.url
+  }
+
+  return `/api/media/${mediaId}/file`
+}
+
+/** Upload an existing disk MP3. Returns null when the file is not on disk. Blob errors propagate. */
+export async function promoteAudioFromDisk(mediaId: string): Promise<string | null> {
+  let data: Buffer
+  try {
+    data = await readFile(audioDiskPath(`${mediaId}.mp3`))
+  } catch {
+    return null
+  }
+  if (!data.length) return null
+  return persistGeneratedAudio(mediaId, data)
+}

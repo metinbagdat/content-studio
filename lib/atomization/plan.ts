@@ -1,14 +1,9 @@
 import { resolveLlm } from '../ai/llmClient'
-import {
-  DEFAULT_PIECE_COUNTS,
-  type AtomizationPlan,
-  type ContentPieceCounts,
-  totalPlannedPieces,
-} from './types'
+import { capPieceCounts, type AtomizationPlan, totalPlannedPieces } from './types'
 import { suggestedPodcastEpisodeCount } from '../media/podcastEpisodes'
 
 function mockPlan(title: string, excerpt: string, article = excerpt): AtomizationPlan {
-  const pieces = { ...DEFAULT_PIECE_COUNTS }
+  const pieces = capPieceCounts(undefined)
   pieces.podcastEpisodes = suggestedPodcastEpisodeCount(article, pieces.podcastEpisodes)
   return {
     keyConcepts: ['planlama', 'zaman yönetimi', 'hedef'],
@@ -17,8 +12,8 @@ function mockPlan(title: string, excerpt: string, article = excerpt): Atomizatio
     targetAudience: 'öğrenciler ve kendini geliştirenler',
     emotionalTone: 'motivasyonel',
     contentPieces: pieces,
-    distributionDays: 14,
-    platformPriority: ['twitter', 'linkedin', 'instagram', 'tiktok', 'youtube', 'facebook', 'pinterest'],
+    distributionDays: 7,
+    platformPriority: ['linkedin', 'facebook', 'youtube', 'telegram'],
     generatedAt: new Date().toISOString(),
     mock: true,
   }
@@ -27,7 +22,7 @@ function mockPlan(title: string, excerpt: string, article = excerpt): Atomizatio
 function parsePlanJson(raw: string, title: string): AtomizationPlan {
   const cleaned = raw.replace(/^```json?\s*/i, '').replace(/```\s*$/i, '').trim()
   const parsed = JSON.parse(cleaned) as Partial<AtomizationPlan>
-  const pieces = { ...DEFAULT_PIECE_COUNTS, ...(parsed.contentPieces || {}) } as ContentPieceCounts
+  const pieces = capPieceCounts(parsed.contentPieces)
   return {
     keyConcepts: parsed.keyConcepts?.length ? parsed.keyConcepts : ['içerik', 'öğrenme'],
     mainArguments: parsed.mainArguments?.length ? parsed.mainArguments : [title],
@@ -59,7 +54,8 @@ export async function generateAtomizationPlan(
   if (!client) return mockPlan(title, excerpt, articleText)
 
   const prompt = `Analyze this Turkish article and output ONLY valid JSON for a content atomization plan.
-Maximize social output from one article (target ~50 pieces total).
+Keep the plan small: one long video, one podcast, two LinkedIn posts, two Facebook posts, one Telegram channel post.
+Do not add Twitter, Pinterest, shorts, reels, TikTok, songs, marches, carousels, or infographics.
 
 Article title: ${title}
 Article excerpt:
@@ -74,25 +70,26 @@ JSON schema:
   "emotionalTone": "...",
   "contentPieces": {
     "longFormVideo": 1,
-    "shortVideos": 3,
+    "shortVideos": 0,
     "podcastEpisodes": 1,
-    "songs": 1,
-    "marches": 1,
-    "socialCards": 5,
-    "twitterPosts": 10,
-    "twitterThreads": 2,
-    "linkedinPosts": 5,
-    "linkedinCarousels": 1,
-    "instagramPosts": 5,
-    "instagramReels": 3,
-    "tiktokVideos": 3,
-    "youtubeShorts": 2,
-    "facebookPosts": 3,
-    "pinterestPins": 5,
-    "infographicSlides": 2
+    "songs": 0,
+    "marches": 0,
+    "socialCards": 2,
+    "twitterPosts": 0,
+    "twitterThreads": 0,
+    "linkedinPosts": 2,
+    "linkedinCarousels": 0,
+    "instagramPosts": 0,
+    "instagramReels": 0,
+    "tiktokVideos": 0,
+    "youtubeShorts": 0,
+    "facebookPosts": 2,
+    "pinterestPins": 0,
+    "telegramPosts": 1,
+    "infographicSlides": 0
   },
-  "distributionDays": 14,
-  "platformPriority": ["twitter", "linkedin", "instagram", "tiktok", "youtube", "facebook", "pinterest"]
+  "distributionDays": 7,
+  "platformPriority": ["linkedin", "facebook", "youtube", "telegram"]
 }`
 
   try {

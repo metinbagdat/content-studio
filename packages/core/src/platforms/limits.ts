@@ -15,6 +15,7 @@ export const PLATFORM_LIMITS: Record<SocialPlatform, PlatformRateLimit> = {
   YOUTUBE: { daily: 5, perRequest: 1000, window: 'day' },
   FACEBOOK: { daily: 10, perRequest: 200, window: 'hour' },
   PINTEREST: { daily: 50, perRequest: 1000, window: 'day' },
+  TELEGRAM: { daily: 20, perRequest: 4096, window: 'day' },
 }
 
 /** @deprecated use PLATFORM_LIMITS.PINTEREST */

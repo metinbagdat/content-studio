@@ -97,11 +97,11 @@ export function segmentCtaHint(segment: AudienceSegment): string {
 /** Preferred platform order — does not drop platforms, only reorders. */
 export function platformsForSegment(segment: AudienceSegment): PlatformId[] {
   const order: Record<AudienceSegment, PlatformId[]> = {
-    tyt: ['TWITTER', 'TIKTOK', 'INSTAGRAM', 'YOUTUBE', 'FACEBOOK', 'LINKEDIN'],
-    ayt: ['YOUTUBE', 'LINKEDIN', 'TWITTER', 'INSTAGRAM', 'FACEBOOK', 'TIKTOK'],
-    lgs: ['TIKTOK', 'INSTAGRAM', 'YOUTUBE', 'FACEBOOK', 'TWITTER', 'LINKEDIN'],
-    veli: ['FACEBOOK', 'INSTAGRAM', 'LINKEDIN', 'YOUTUBE', 'TWITTER', 'TIKTOK'],
-    egitimci: ['LINKEDIN', 'FACEBOOK', 'TWITTER', 'YOUTUBE', 'INSTAGRAM', 'TIKTOK'],
+    tyt: ['TWITTER', 'TIKTOK', 'INSTAGRAM', 'YOUTUBE', 'FACEBOOK', 'LINKEDIN', 'TELEGRAM'],
+    ayt: ['YOUTUBE', 'LINKEDIN', 'TWITTER', 'INSTAGRAM', 'FACEBOOK', 'TIKTOK', 'TELEGRAM'],
+    lgs: ['TIKTOK', 'INSTAGRAM', 'YOUTUBE', 'FACEBOOK', 'TWITTER', 'LINKEDIN', 'TELEGRAM'],
+    veli: ['FACEBOOK', 'INSTAGRAM', 'LINKEDIN', 'YOUTUBE', 'TWITTER', 'TIKTOK', 'TELEGRAM'],
+    egitimci: ['LINKEDIN', 'FACEBOOK', 'TWITTER', 'YOUTUBE', 'INSTAGRAM', 'TIKTOK', 'TELEGRAM'],
     genel: [...DEFAULT_PIPELINE_PLATFORMS],
   }
   return order[segment]

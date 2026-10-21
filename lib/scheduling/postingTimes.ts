@@ -12,6 +12,7 @@ export const OPTIMAL_POSTING_IST: Record<SocialPlatform, string[]> = {
   YOUTUBE: ['14:00', '18:00'],
   FACEBOOK: ['13:00', '15:00'],
   PINTEREST: ['20:00', '21:00', '23:00'],
+  TELEGRAM: ['09:00', '18:00'],
 }
 
 /** Weekend windows — fewer slots, later start (matches "hafta sonu daha az paylaşım"). */
@@ -23,6 +24,7 @@ export const OPTIMAL_POSTING_WEEKEND_IST: Record<SocialPlatform, string[]> = {
   YOUTUBE: ['15:00'],
   FACEBOOK: ['14:00'],
   PINTEREST: ['21:00'],
+  TELEGRAM: ['11:00'],
 }
 
 /** @deprecated use OPTIMAL_POSTING_IST.PINTEREST */

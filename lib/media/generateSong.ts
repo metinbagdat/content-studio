@@ -3,8 +3,7 @@ import { configureFfmpeg, getFfmpegBinaryPath } from '@/lib/media/ffmpegPaths'
 import path from 'path'
 import { prisma } from '../prisma'
 import { synthesizeSpeech } from './tts'
-import { audioStorageDir, writeAudioFile, audioDiskPath } from './tts'
-import { persistGeneratedAudio } from './audioStorage'
+import { audioStorageDir, writeAudioFile, audioDiskPath, persistGeneratedAudio, isDurableAudioUrl, promoteAudioFromDisk } from './tts'
 import { ttsPronunciation } from './pronunciation'
 import { fetchBackgroundMusic } from '../video/pixabayMusic'
 
@@ -52,8 +51,26 @@ export async function generateSongAudio(derivedContentId: string) {
   const existing = derived.mediaFiles[0]
   if (existing) {
     const { clearReviewFault } = await import('../review/fault')
-    await clearReviewFault(derivedContentId).catch(() => {})
-    return { media: existing, reused: true }
+    if (isDurableAudioUrl(existing.fileUrl)) {
+      await clearReviewFault(derivedContentId).catch(() => {})
+      return { media: existing, reused: true }
+    }
+    let promoted: string | null
+    try {
+      promoted = await promoteAudioFromDisk(existing.id)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      throw new Error(`MP3 diskte var; Blob yüklenemedi, yeniden TTS yok: ${message}`)
+    }
+    if (promoted) {
+      const updated = await prisma.mediaFile.update({
+        where: { id: existing.id },
+        data: { fileUrl: promoted },
+      })
+      await clearReviewFault(derivedContentId).catch(() => {})
+      return { media: updated, reused: true }
+    }
+    await prisma.mediaFile.delete({ where: { id: existing.id } }).catch(() => {})
   }
 
   const isMarch = derived.contentType === 'MARCH_LYRICS'
@@ -89,7 +106,6 @@ export async function generateSongAudio(derivedContentId: string) {
     const { readFile } = await import('fs/promises')
     const finalBuffer = await readFile(finalPath)
     const publicUrl = await persistGeneratedAudio(media.id, finalBuffer)
-
     const updated = await prisma.mediaFile.update({
       where: { id: media.id },
       data: {

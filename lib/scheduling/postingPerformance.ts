@@ -44,7 +44,15 @@ export type AdaptiveSlotRow = {
 
 /** Admin/calendar: how close each platform is to using learned posting times. */
 export async function getAdaptiveSlotReport(): Promise<AdaptiveSlotRow[]> {
-  const platforms: SocialPlatform[] = ['TWITTER', 'LINKEDIN', 'YOUTUBE', 'FACEBOOK', 'INSTAGRAM', 'TIKTOK']
+  const platforms: SocialPlatform[] = [
+    'TWITTER',
+    'LINKEDIN',
+    'YOUTUBE',
+    'FACEBOOK',
+    'INSTAGRAM',
+    'TIKTOK',
+    'TELEGRAM',
+  ]
   const rows: AdaptiveSlotRow[] = []
   for (const platform of platforms) {
     for (const weekend of [false, true]) {

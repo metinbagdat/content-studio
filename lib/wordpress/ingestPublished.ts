@@ -117,7 +117,7 @@ export async function ingestWordpressPublished(
     }
     let pipelineId: string | null = null
     if (!alreadyWp && triggerPipeline) {
-      const pipeline = await createPipeline(existing.id, { includeMarchSong: true })
+      const pipeline = await createPipeline(existing.id)
       pipelineId = pipeline.id
     }
     return {
@@ -154,7 +154,7 @@ export async function ingestWordpressPublished(
 
   let pipelineId: string | null = null
   if (triggerPipeline) {
-  const pipeline = await createPipeline(source.id, { includeMarchSong: true })
+  const pipeline = await createPipeline(source.id)
     pipelineId = pipeline.id
   }
 

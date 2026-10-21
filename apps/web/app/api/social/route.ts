@@ -4,7 +4,8 @@ import { prisma, withPrismaRetry } from '@/lib/prisma'
 import { requireAdmin } from '@content-studio/core/auth'
 import { schedulePost, syncSocialDraftsFromApprovedCaptions, bulkPublishDraftPosts } from '@/lib/pipeline'
 import { getDraftDiagnostics } from '@/lib/social/draftDiagnostics'
-import { publishPost } from '@/lib/social/publish'
+import { publishPost, assertDraftLearningObjective } from '@/lib/social/publish'
+import { LearningObjectiveError } from '@/lib/quality/learningObjective'
 import { publishCaptionWithImages, ensureGeneratedPostImage, syncPostImagesFromCaptions, updatePostOnPlatform } from '@/lib/social/publishCaption'
 import { preparePostForPublish } from '@/lib/social/preparePublish'
 import { toImagePreviewPath } from '@/lib/social/imagePreview'
@@ -252,6 +253,22 @@ async function handleAction(action: string, body: Record<string, unknown>) {
     return NextResponse.json({ result, accountId: account.id, accountName: account.accountName })
   }
 
+  if (action === 'connect-telegram') {
+    const { ensureTelegramChannelAccount, telegramChannelConfigured } = await import(
+      '@/lib/social/telegramChannel'
+    )
+    if (!telegramChannelConfigured()) {
+      return NextResponse.json(
+        { error: 'TELEGRAM_BOT_TOKEN ve TELEGRAM_CHANNEL_ID gerekli' },
+        { status: 400 },
+      )
+    }
+    const account = await ensureTelegramChannelAccount()
+    const sync = await syncSocialDraftsFromApprovedCaptions()
+    const diagnostics = await getDraftDiagnostics()
+    return NextResponse.json({ account, sync, diagnostics })
+  }
+
   if (action === 'youtube-sync') {
     const limit = Number(body.limit) || 5
     const publishNow = Boolean(body.publishNow)
@@ -398,9 +415,23 @@ async function handleAction(action: string, body: Record<string, unknown>) {
       'TIKTOK',
       'FACEBOOK',
       'PINTEREST',
+      'TELEGRAM',
     ]
     if (!ALL_PLATFORMS.includes(platform)) {
       return NextResponse.json({ error: `platform ${ALL_PLATFORMS.join('|')}` }, { status: 400 })
+    }
+    if (platform === 'TELEGRAM') {
+      const { ensureTelegramChannelAccount } = await import('@/lib/social/telegramChannel')
+      const account = await ensureTelegramChannelAccount()
+      if (!account) {
+        return NextResponse.json(
+          { error: 'TELEGRAM_BOT_TOKEN ve TELEGRAM_CHANNEL_ID gerekli' },
+          { status: 400 },
+        )
+      }
+      const sync = await syncSocialDraftsFromApprovedCaptions()
+      const diagnostics = await getDraftDiagnostics()
+      return NextResponse.json({ account, sync, diagnostics })
     }
     const account = await upsertDryRunAccount(platform as SocialPlatform, `Dry-run ${platform}`)
     const sync = await syncSocialDraftsFromApprovedCaptions()
@@ -477,6 +508,10 @@ async function handleAction(action: string, body: Record<string, unknown>) {
       const post = await prisma.socialMediaPost.findUnique({ where: { id: postId } })
       if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
 
+      if (post.status !== 'PUBLISHED') {
+        await assertDraftLearningObjective(post.derivedContentId)
+      }
+
       const mediaUrls = await preparePostForPublish(postId)
       await prisma.socialMediaPost.update({
         where: { id: postId },
@@ -499,6 +534,9 @@ async function handleAction(action: string, body: Record<string, unknown>) {
       const updated = await prisma.socialMediaPost.findUnique({ where: { id: postId } })
       return NextResponse.json({ ...result, accountStats, post: updated })
     } catch (err) {
+      if (err instanceof LearningObjectiveError) {
+        return NextResponse.json({ error: err.reason, reason: err.reason }, { status: err.status })
+      }
       const message = err instanceof Error ? err.message : String(err)
       console.error('[publish-now]', postId, message)
       return NextResponse.json({ error: message }, { status: 400 })
@@ -514,6 +552,9 @@ async function handleAction(action: string, body: Record<string, unknown>) {
       const result = await publishCaptionWithImages(derivedContentId)
       return NextResponse.json(result)
     } catch (err) {
+      if (err instanceof LearningObjectiveError) {
+        return NextResponse.json({ error: err.reason, reason: err.reason }, { status: err.status })
+      }
       const message = err instanceof Error ? err.message : String(err)
       return NextResponse.json({ error: message }, { status: 400 })
     }

@@ -91,7 +91,7 @@ function matchFallback(text: string): KeywordMetrics | null {
 async function fetchFromGenericSeoApi(text: string): Promise<KeywordMetrics | null> {
   const base = (process.env.SEO_API_BASE_URL || '').replace(/\/$/, '')
   const key = process.env.SEO_API_KEY?.trim() || ''
-  if (!base || !key || dataForSeoConfigured()) return null
+  if (process.env.SEO_API_ENABLED !== 'true' || !base || !key || dataForSeoConfigured()) return null
 
   try {
     const q = encodeURIComponent(text.slice(0, 180))
@@ -122,7 +122,7 @@ async function fetchFromGenericSeoApi(text: string): Promise<KeywordMetrics | nu
 }
 
 async function fetchFromDataForSeo(title: string): Promise<KeywordMetrics | null> {
-  if (!dataForSeoConfigured()) return null
+  if (process.env.DATAFORSEO_ENABLED !== 'true' || !dataForSeoConfigured()) return null
   const rows = await fetchDataForSeoSearchVolume(keywordCandidatesFromTitle(title))
   const best = bestVolumeRow(rows)
   if (!best) return null

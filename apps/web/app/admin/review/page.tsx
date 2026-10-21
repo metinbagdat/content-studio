@@ -6,6 +6,7 @@ import { PodcastTimeline } from '@/components/admin/PodcastTimeline'
 import { CommentTopicBanner } from '@/components/admin/CommentTopicBanner'
 import { AUDIENCE_SEGMENTS, SEGMENT_LABELS, isAudienceSegment, parseSegmentFromTags, type AudienceSegment } from '@/lib/audience/segments'
 import { readReviewFault, parseBulkErrorLine, isStorageOrVideoFault, VIDEO_FAULT_TYPES } from '@/lib/review/faultMeta'
+import { readQualityReport } from '@/lib/quality/scoreDraft'
 
 type Item = {
   id: string
@@ -18,7 +19,7 @@ type Item = {
   source?: { id: string; title: string; tags?: string[] }
 }
 
-type PlatformFilter = 'ALL' | 'LINKEDIN' | 'TWITTER' | 'YOUTUBE' | 'INSTAGRAM' | 'TIKTOK' | 'FACEBOOK'
+type PlatformFilter = 'ALL' | 'LINKEDIN' | 'TWITTER' | 'YOUTUBE' | 'INSTAGRAM' | 'TIKTOK' | 'FACEBOOK' | 'TELEGRAM'
 type SegmentFilter = 'ALL' | AudienceSegment
 
 const CONTENT_TYPES = [
@@ -223,6 +224,8 @@ function platformLabel(platform: string | null): string {
       return 'Facebook'
     case 'PINTEREST':
       return 'Pinterest'
+    case 'TELEGRAM':
+      return 'Telegram'
     default:
       return platform || '—'
   }
@@ -1100,6 +1103,7 @@ export default function ReviewPage() {
             <option value="INSTAGRAM">Instagram</option>
             <option value="TIKTOK">TikTok</option>
             <option value="FACEBOOK">Facebook</option>
+            <option value="TELEGRAM">Telegram</option>
           </select>
         </div>
         <div>
@@ -1506,6 +1510,14 @@ export default function ReviewPage() {
               ) : null}
               <span className="badge">{item.contentType}</span>
               <span className={statusBadgeClass(item.status)}>{statusLabel(item.status)}</span>
+              {readQualityReport(item.metadata) ? (
+                <span
+                  className={readQualityReport(item.metadata)!.passed ? 'badge ok' : 'badge warn'}
+                  title={readQualityReport(item.metadata)!.reasons.join(' · ')}
+                >
+                  Skor {readQualityReport(item.metadata)!.score}
+                </span>
+              ) : null}
               {itemFault(item).fault ? (
                 <span className="badge danger" title={itemFault(item).last}>
                   Arı
@@ -1523,6 +1535,13 @@ export default function ReviewPage() {
                 {itemFault(item).last ? (
                   <p className="flash" style={{ margin: '0 0 0.5rem', fontSize: '0.85rem' }}>
                     Arı: {itemFault(item).last}
+                  </p>
+                ) : null}
+                {readQualityReport(item.metadata) ? (
+                  <p className="muted" style={{ margin: '0 0 0.5rem', fontSize: '0.85rem' }}>
+                    Skor {readQualityReport(item.metadata)!.score}/{readQualityReport(item.metadata)!.threshold}
+                    {readQualityReport(item.metadata)!.passed ? ' — eşik üstü' : ' — incelemeye alındı'}
+                    . {readQualityReport(item.metadata)!.reasons.join(' · ')}
                   </p>
                 ) : null}
                 {editingId === item.id ? (

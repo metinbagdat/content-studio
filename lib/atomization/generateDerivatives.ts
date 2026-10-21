@@ -15,6 +15,7 @@ import type { AtomKind, DerivativeDraft, GenerateDerivativesInput, GenerateDeriv
 import { appendSegmentHashtags } from '../audience/segments'
 import { resolveAudienceSegment } from '../audience/resolveAudienceSegment'
 import { withShareCta, shareCtaBlock } from '../content/canonicalUrl'
+import { stampDraftQuality } from '../quality/qualityStamp'
 
 const HASHTAGS = '#egitim #egitimtoday #ogrenme'
 
@@ -25,7 +26,7 @@ function chunk<T>(arr: T[], size: number): T[][] {
 }
 
 async function generateSocialPostsBatch(
-  platform: 'TWITTER' | 'LINKEDIN' | 'INSTAGRAM' | 'FACEBOOK',
+  platform: 'TWITTER' | 'LINKEDIN' | 'INSTAGRAM' | 'FACEBOOK' | 'TELEGRAM',
   count: number,
   title: string,
   article: string,
@@ -332,7 +333,7 @@ function linkedinCaptionSeries(
   }))
 }
 
-/** Generate ~50 atomized derivatives from plan and persist to DB. */
+/** Generate the lean derivative set from the capped plan and persist to DB. */
 export async function generateAllDerivatives(
   plan: AtomizationPlan,
   input: GenerateDerivativesInput,
@@ -460,6 +461,19 @@ export async function generateAllDerivatives(
           )),
         )
         break
+      case 'TELEGRAM':
+        drafts.push(
+          ...(await generateSocialPostsBatch(
+            'TELEGRAM',
+            p.telegramPosts,
+            title,
+            article,
+            plan,
+            'telegram_post',
+            articleUrl,
+          )),
+        )
+        break
       default:
         break
     }
@@ -469,8 +483,7 @@ export async function generateAllDerivatives(
     await generateForPlatform(platform)
   }
 
-  // Pinterest when any social surface is selected (no enum on SocialPlatform)
-  if (!platformOrder.length || platformOrder.some((x) => ['TWITTER', 'INSTAGRAM', 'FACEBOOK'].includes(x))) {
+  if (want('PINTEREST')) {
     drafts.push(...(await generatePinterestPins(p.pinterestPins, title, article, plan, articleUrl)))
   }
 
@@ -502,19 +515,30 @@ export async function generateAllDerivatives(
       // One bad item (e.g. a ContentType enum value not yet migrated on this DB) must not
       // take down the other ~49 already-generated pieces — persist what we can, report the rest.
       try {
-        await prisma.derivedContent.create({
+        const content =
+          d.contentType === 'SOCIAL_CAPTION' || d.contentType === 'TWITTER_THREAD'
+            ? appendSegmentHashtags(d.content, segment)
+            : d.content
+        const stamped = await stampDraftQuality({
+          title: d.title,
+          content,
+          contentType: d.contentType,
+          metadata: { ...d.metadata, segment, planGeneratedAt: plan.generatedAt },
+        })
+        const created = await prisma.derivedContent.create({
           data: {
             sourceId,
             contentType: d.contentType,
             title: d.title,
-            content:
-              d.contentType === 'SOCIAL_CAPTION' || d.contentType === 'TWITTER_THREAD'
-                ? appendSegmentHashtags(d.content, segment)
-                : d.content,
-            metadata: { ...d.metadata, segment, planGeneratedAt: plan.generatedAt } as Prisma.InputJsonValue,
+            content,
+            metadata: stamped.metadata as Prisma.InputJsonValue,
             status: 'IN_REVIEW',
           },
         })
+        if (stamped.status === 'APPROVED') {
+          const { setDerivedStatus } = await import('../pipeline')
+          await setDerivedStatus(created.id, 'APPROVED')
+        }
         byType[d.contentType] = (byType[d.contentType] || 0) + 1
         savedCount += 1
       } catch (err) {

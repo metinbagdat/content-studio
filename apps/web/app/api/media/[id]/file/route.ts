@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { readFile } from 'fs/promises'
 import { requireAdmin } from '@content-studio/core/auth'
 import { getMediaFile } from '@/lib/media/mediaDb'
-import { audioDiskPath, isDurableMediaUrl } from '@/lib/media/audioStorage'
+import { audioDiskPath, isDurableAudioUrl } from '@/lib/media/tts'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,8 +21,10 @@ export async function GET(req: NextRequest, ctx: RouteCtx) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
-  if (isDurableMediaUrl(media.fileUrl)) {
-    return NextResponse.redirect(media.fileUrl, 302)
+  // If the file lives in Blob (durable CDN URL), redirect — never proxy the
+  // bytes ourselves (avoids Vercel egress and the old ephemeral-disk 404s).
+  if (isDurableAudioUrl(media.fileUrl)) {
+    return NextResponse.redirect(media.fileUrl, { status: 302 })
   }
 
   const diskPath = audioDiskPath(`${id}.mp3`)

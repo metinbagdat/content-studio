@@ -44,7 +44,10 @@ import { uploadYouTubeVideo, setYouTubeThumbnail } from './youtubeApi'
 import { publishFacebookPost, publishInstagramPost, publishInstagramReel, publishFacebookVideoPost } from './publishMeta'
 import { uploadTikTokVideo } from './tiktokApi'
 import { pinterestConfigured } from './pinterestApi'
+import { sendTelegramChannelMessage } from './telegramChannel'
 import { prisma } from '../prisma'
+import { assertLearningObjectiveForPublish } from '../quality/learningObjective'
+import { learnconCurriculumLookup } from '../quality/curriculumLookup'
 
 export type PublishOptions = {
   /** Delete existing platform post before publishing (update-in-place flow). */
@@ -68,6 +71,15 @@ export type PublishResult = {
   videoError?: string
   reason?: string
   deleteError?: string
+}
+
+/** Block a not-yet-published draft that has no verified kazanım code. */
+export async function assertDraftLearningObjective(derivedContentId: string): Promise<void> {
+  const derived = await prisma.derivedContent.findUnique({
+    where: { id: derivedContentId },
+    select: { metadata: true },
+  })
+  await assertLearningObjectiveForPublish(derived?.metadata ?? null, learnconCurriculumLookup)
 }
 
 /**
@@ -100,6 +112,10 @@ export async function publishPost(postId: string, options: PublishOptions = {}):
       imageAttached: prevMetrics.imageAttached,
       imageError: prevMetrics.imageError,
     }
+  }
+
+  if (post.status !== 'PUBLISHED') {
+    await assertDraftLearningObjective(post.derivedContentId)
   }
 
   const shouldReplace = Boolean(
@@ -213,6 +229,14 @@ export async function publishPost(postId: string, options: PublishOptions = {}):
       platformPostId = pin.platformPostId
       imageAttached = pin.imageAttached ?? false
       imageError = pin.imageError
+    } else if (post.platform === 'TELEGRAM') {
+      const tg = await sendTelegramChannelMessage({
+        text: post.postContent,
+        photoUrl: mediaUrls[0],
+      })
+      platformPostId = tg.messageId
+      imageAttached = tg.imageAttached
+      imageError = tg.imageError
     } else {
       throw new Error(
         `${post.platform} için gerçek yayın API'si Faz 2'de eklenecek — altyapı (hesap, taslak, otomasyon) hazır, ` +
@@ -254,6 +278,20 @@ export async function publishPost(postId: string, options: PublishOptions = {}):
       await syncPostAnalytics(postId)
     } catch {
       /* stats optional */
+    }
+
+    if (post.platform === 'TELEGRAM') {
+      try {
+        const { notifyWhatsAppPublished } = await import('./whatsappNotify')
+        const { socialPostPublicUrl } = await import('./postUrl')
+        await notifyWhatsAppPublished({
+          platform: 'TELEGRAM',
+          preview: post.postContent,
+          url: socialPostPublicUrl('TELEGRAM', platformPostId),
+        })
+      } catch (notifyError) {
+        console.warn('[publishPost] whatsapp notify skipped', notifyError)
+      }
     }
 
     return {

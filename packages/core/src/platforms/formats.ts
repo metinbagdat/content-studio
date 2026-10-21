@@ -66,6 +66,14 @@ export const PLATFORM_FORMATS: Record<SocialPlatform, PlatformFormat> = {
     hashtagStyle: 'heavy',
     tone: 'keyword-rich pin description',
   },
+  TELEGRAM: {
+    maxChars: 4096,
+    supportsThreads: false,
+    supportsCarousel: false,
+    supportsVideo: false,
+    hashtagStyle: 'minimal',
+    tone: 'channel update, plain text',
+  },
 }
 
 /** @deprecated use PLATFORM_FORMATS.PINTEREST */

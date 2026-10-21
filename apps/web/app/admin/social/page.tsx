@@ -57,6 +57,12 @@ type OAuthStatus = {
     scopes?: string
     audited?: boolean
   }
+  telegram?: {
+    configured: boolean
+    callbackUrl: string
+    clientIdSet?: boolean
+    clientSecretSet?: boolean
+  }
 }
 
 type EnvCheck = {
@@ -72,6 +78,9 @@ type EnvCheck = {
   TIKTOK_CLIENT_SECRET?: boolean
   PINTEREST_APP_ID?: boolean
   PINTEREST_APP_SECRET?: boolean
+  TELEGRAM_BOT_TOKEN?: boolean
+  TELEGRAM_CHANNEL_ID?: boolean
+  TWILIO_WHATSAPP?: boolean
   ready: boolean
 }
 
@@ -685,6 +694,32 @@ export default function SocialPage() {
     }
   }
 
+  async function connectTelegram() {
+    setBusyId('connect-telegram')
+    try {
+      const res = await fetch('/api/social', {
+        method: 'POST',
+        headers: headers(adminKey, true),
+        body: JSON.stringify({ action: 'connect-telegram' }),
+      })
+      const data = await parseApiJson(res)
+      if (!res.ok) {
+        setMsgType('error')
+        setMsg(String(data.error || 'Telegram kanal bağlanamadı'))
+        return
+      }
+      setMsgType('ok')
+      setMsg('Telegram kanal hesabı hazır')
+      if (data.diagnostics) setDiagnostics(data.diagnostics as DraftDiagnostics)
+      await load()
+    } catch (err) {
+      setMsgType('error')
+      setMsg(`Telegram: ${err instanceof Error ? err.message : String(err)}`)
+    } finally {
+      setBusyId(null)
+    }
+  }
+
   async function disconnect(accountId: string) {
     if (!confirm('Hesap bağlantısı kapatılsın mı?')) return
     setBusyId(accountId)
@@ -1102,6 +1137,7 @@ export default function SocialPage() {
         xCredits={xCredits}
         onOAuthConnect={oauthConnect}
         onDryConnect={dryConnect}
+        onConnectTelegram={connectTelegram}
         onDisconnect={disconnect}
         onSyncStats={syncStats}
         onRepair={repairAccounts}

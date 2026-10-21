@@ -19,6 +19,12 @@ export function platformProfileUrl(
     return `https://www.pinterest.com/${encodeURIComponent(u)}/`
   }
   if (platform === 'PINTEREST') return 'https://www.pinterest.com'
+  if (platform === 'TELEGRAM' && u && u !== 'dry-run' && u !== 'telegram-bot') {
+    const handle = u.replace(/^@/, '')
+    if (/^-?\d+$/.test(handle)) return 'https://t.me'
+    return `https://t.me/${encodeURIComponent(handle)}`
+  }
+  if (platform === 'TELEGRAM') return 'https://t.me'
   return null
 }
 
@@ -38,6 +44,8 @@ export function platformLabel(platform: string): string {
       return 'Facebook'
     case 'PINTEREST':
       return 'Pinterest'
+    case 'TELEGRAM':
+      return 'Telegram'
     default:
       return platform
   }

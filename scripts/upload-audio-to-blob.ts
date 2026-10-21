@@ -1,21 +1,15 @@
 /**
  * Backfill local MP3s → Vercel Blob (`audio/{id}.mp3`) and set MediaFile.fileUrl.
  *
- * Usage (local, with Blob token from Vercel project):
+ * Usage (local Docker DB, Blob token in .env):
  *   npx tsx --env-file=.env scripts/upload-audio-to-blob.ts
  *   npx tsx --env-file=.env scripts/upload-audio-to-blob.ts --limit=5
  *
- * Does not regenerate audio. Skips rows that already have a durable HTTPS URL.
- * Prefer running against local Docker DB after generate; for prod DB use
- * CS_ALLOW_SUPABASE_WORKER=1 only for this short command, then unset.
+ * Does not call TTS. Skips rows that already have a durable HTTPS URL.
+ * For prod DB use CS_ALLOW_SUPABASE_WORKER=1 only for this short command, then unset.
  */
-import { readFile } from 'fs/promises'
 import { prisma } from '../lib/prisma'
-import {
-  audioDiskPath,
-  isDurableMediaUrl,
-  persistGeneratedAudio,
-} from '../lib/media/audioStorage'
+import { isDurableAudioUrl, promoteAudioFromDisk } from '../lib/media/tts'
 
 const limitArg = process.argv.find((a) => a.startsWith('--limit='))
 const limit = limitArg ? Math.max(1, Number(limitArg.split('=')[1]) || 20) : 20
@@ -37,25 +31,21 @@ async function main() {
 
   for (const row of rows) {
     if (uploaded >= limit) break
-    if (isDurableMediaUrl(row.fileUrl)) {
+    if (isDurableAudioUrl(row.fileUrl)) {
       skipped += 1
       continue
     }
-    const path = audioDiskPath(`${row.id}.mp3`)
-    let buffer: Buffer
-    try {
-      buffer = await readFile(path)
-    } catch {
+    const url = await promoteAudioFromDisk(row.id)
+    if (!url || !isDurableAudioUrl(url)) {
       console.warn('skip (no disk)', row.id)
       missing += 1
       continue
     }
-    const url = await persistGeneratedAudio(row.id, buffer)
     await prisma.mediaFile.update({
       where: { id: row.id },
-      data: { fileUrl: url, fileSize: buffer.length },
+      data: { fileUrl: url },
     })
-    console.log('uploaded', row.id, `${(buffer.length / 1e6).toFixed(1)}MB`, url.slice(0, 60) + '…')
+    console.log('uploaded', row.id, url.slice(0, 64) + '…')
     uploaded += 1
   }
 

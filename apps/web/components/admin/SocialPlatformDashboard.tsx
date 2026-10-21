@@ -62,6 +62,9 @@ type EnvCheck = {
   TIKTOK_CLIENT_SECRET?: boolean
   PINTEREST_APP_ID?: boolean
   PINTEREST_APP_SECRET?: boolean
+  TELEGRAM_BOT_TOKEN?: boolean
+  TELEGRAM_CHANNEL_ID?: boolean
+  TWILIO_WHATSAPP?: boolean
   ready: boolean
 }
 
@@ -98,6 +101,10 @@ const PIPELINE_PLATFORMS: PipelinePlatformDef[] = [
     oauthKey: 'pinterest',
     note:
       'OAuth bağla → Pin (görsel URL + board). Prod image URL şart. Trial access app production’da Pin atamaz — developers.pinterest.com’da Standard access iste.',
+  },
+  {
+    id: 'TELEGRAM',
+    note: 'Bot kanalda yönetici. TELEGRAM_BOT_TOKEN + TELEGRAM_CHANNEL_ID. Öğrenci botu LearnCon’da kalır.',
   },
 ]
 
@@ -332,6 +339,7 @@ export function SocialPlatformDashboard({
   xCredits = null,
   onOAuthConnect,
   onDryConnect,
+  onConnectTelegram,
   onDisconnect,
   onSyncStats,
   onRepair,
@@ -350,6 +358,7 @@ export function SocialPlatformDashboard({
     instagram?: OAuthSlot
     tiktok?: OAuthSlot
     pinterest?: OAuthSlot
+    telegram?: OAuthSlot
   } | null
   envCheck: EnvCheck | null
   busyId: string | null
@@ -360,6 +369,7 @@ export function SocialPlatformDashboard({
     p: 'TWITTER' | 'LINKEDIN' | 'YOUTUBE' | 'FACEBOOK' | 'INSTAGRAM' | 'TIKTOK' | 'PINTEREST',
   ) => void
   onDryConnect: (p: string) => void
+  onConnectTelegram?: () => void
   onDisconnect: (id: string) => void
   onSyncStats: () => void
   onRepair: () => void
@@ -599,6 +609,9 @@ export function SocialPlatformDashboard({
             <EnvRow label="TIKTOK_CLIENT_SECRET" ok={Boolean(envCheck.TIKTOK_CLIENT_SECRET)} />
             <EnvRow label="PINTEREST_APP_ID" ok={Boolean(envCheck.PINTEREST_APP_ID)} />
             <EnvRow label="PINTEREST_APP_SECRET" ok={Boolean(envCheck.PINTEREST_APP_SECRET)} />
+            <EnvRow label="TELEGRAM_BOT_TOKEN" ok={Boolean(envCheck.TELEGRAM_BOT_TOKEN)} />
+            <EnvRow label="TELEGRAM_CHANNEL_ID" ok={Boolean(envCheck.TELEGRAM_CHANNEL_ID)} />
+            <EnvRow label="TWILIO_WHATSAPP" ok={Boolean(envCheck.TWILIO_WHATSAPP)} />
             <p className="row" style={{ marginTop: '0.65rem' }}>
               {envCheck.ready ? (
                 <span className="badge ok">OAuth env tamam — kartlardan OAuth bağla</span>
@@ -659,7 +672,9 @@ export function SocialPlatformDashboard({
                     ? oauth?.tiktok
                     : p.oauthKey === 'pinterest'
                       ? oauth?.pinterest
-                      : undefined
+                      : p.id === 'TELEGRAM'
+                        ? oauth?.telegram
+                        : undefined
           const oauthPlatform =
             p.id === 'YOUTUBE'
               ? 'YOUTUBE'
@@ -722,6 +737,16 @@ export function SocialPlatformDashboard({
               ) : null}
               {stats?.error ? <p className="muted sm-sync-error">{stats.error}</p> : null}
               <div className="sm-platform-actions row">
+                {p.id === 'TELEGRAM' ? (
+                  <button
+                    type="button"
+                    className={connState === 'connected' ? 'ok' : 'danger'}
+                    disabled={busyId === 'connect-telegram' || !oauthSlot?.configured}
+                    onClick={() => onConnectTelegram?.()}
+                  >
+                    {connState === 'connected' ? 'Kanal bağlı ✓' : 'Kanalı bağla'}
+                  </button>
+                ) : null}
                 {oauthPlatform ? (
                   <OAuthConnectButton
                     platform={p.id}
@@ -762,7 +787,7 @@ export function SocialPlatformDashboard({
                     API test
                   </button>
                 ) : null}
-                {!oauthSlot?.configured ? (
+                {!oauthSlot?.configured && p.id !== 'TELEGRAM' ? (
                   <button
                     type="button"
                     className="secondary"

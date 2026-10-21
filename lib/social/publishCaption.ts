@@ -106,6 +106,16 @@ export async function syncCaptionToSocial(
     throw new Error('SOCIAL_CAPTION bulunamadı')
   }
 
+  if (opts.publish) {
+    const pending = await prisma.socialMediaPost.count({
+      where: { derivedContentId, status: { not: 'PUBLISHED' } },
+    })
+    if (pending > 0) {
+      const { assertDraftLearningObjective } = await import('./publish')
+      await assertDraftLearningObjective(derivedContentId)
+    }
+  }
+
   const mediaUrls = await ensureGeneratedPostMedia(derivedContentId)
   await syncPostRowsFromCaption(derivedContentId, caption.content, mediaUrls)
 

@@ -56,6 +56,12 @@ export const OAUTH_HOST_HINTS: Record<string, OauthHostHint> = {
       'OAuth localhost callback ile bağlanır. Pin için herkese açık HTTPS image URL gerekir — gerçek yayın genelde prod.',
     prod: 'Bu ortamda OAuth + Pin (studio.egitim.today image URL). Board OAuth sırasında seçilir/oluşturulur.',
   },
+  TELEGRAM: {
+    kind: 'local_ok',
+    badge: 'Bot token: evet',
+    local: 'OAuth yok. TELEGRAM_BOT_TOKEN + TELEGRAM_CHANNEL_ID; bot kanalda yönetici olur.',
+    prod: 'Aynı env. Öğrenci botu ve rıza LearnCon’da kalır.',
+  },
 }
 
 export function isLocalOauthHost(callbackUrl?: string | null): boolean {
