@@ -1,11 +1,12 @@
 # egitim.today — Growth & Content Roadmap (Tracking)
 
-Canonical tracker for **two repos**. Do not implement LearnCon product code inside Content Studio.
+Canonical tracker for **three repos**. Do not implement LearnCon product code inside Content Studio.
 
 | Repo | Role |
 |------|------|
-| `metinbagdat/learncon` | Product: auth, payment, onboarding, referral, dashboard, SEO site |
-| `metinbagdat/content-studio` | Ops tool: blog → atomize → approve → publish to social (this repo) |
+| `metinbagdat/learncon` | Product: auth, payment, onboarding, referral, dashboard, `/analiz` |
+| `metinbagdat/content-studio` | Ops: blog → atomize → approve → publish to social (this repo) |
+| `metinbagdat/wp-seo-hub` | SEO hub / long-form CTA (`blog.egitim.today`) |
 
 Issue bodies: `.github/issue-bodies/`. GitHub Issues API may be restricted; open issues from those files manually when needed.
 
@@ -61,6 +62,24 @@ Implement in `metinbagdat/learncon`. Listed here so the growth doc has a single 
 | LC-G7 | Broadcast panel (admin/teacher) | learncon | 6–7 | Telegram/WA/email blast |
 | LC-G8 | Motivation / school score engine | learncon | 8 | Target progress widgets |
 | LC-G9 | Admin payment ops panel | learncon | 9–10 | Orders ops + taxonomy |
+
+---
+
+## B2. Öğrenci hunisi (S1–S18) — 2026-10-29
+
+Plan: [learncon#2185](https://github.com/metinbagdat/learncon/issues/2185) · epic [learncon#2163](https://github.com/metinbagdat/learncon/issues/2163).
+
+Ürün UI (`/analiz`, register, dashboard, paywall) **learncon**. Bu repo: soru/graph/şablon. WP: S1/S2 CTA kopyası, viral rehber.
+
+| ID | Title | Status | Sprint | GitHub |
+|----|-------|--------|--------|--------|
+| CS-STU-01 | Diagnostic soru bankası | todo | 1 | [#152](https://github.com/metinbagdat/content-studio/issues/152) |
+| CS-STU-02 | Knowledge graph önkoşul | todo | 1 | [#153](https://github.com/metinbagdat/content-studio/issues/153) |
+| CS-STU-03 | AI insight (“vay be”) | todo | 6 | [#154](https://github.com/metinbagdat/content-studio/issues/154) |
+| CS-STU-04 | Görev/plan şablonları | todo | 6 | [#155](https://github.com/metinbagdat/content-studio/issues/155) |
+| CS-STU-05 | E-posta E1–E8 HTML | todo | 6 | [#156](https://github.com/metinbagdat/content-studio/issues/156) |
+
+Sprint 1 CS-STU-01/02 learncon STU-01/02 ile paralel ([#2186](https://github.com/metinbagdat/learncon/issues/2186) [#2187](https://github.com/metinbagdat/learncon/issues/2187)). wp-seo-hub: [#88](https://github.com/metinbagdat/wp-seo-hub/issues/88) [#89](https://github.com/metinbagdat/wp-seo-hub/issues/89) [#90](https://github.com/metinbagdat/wp-seo-hub/issues/90).
 
 ---
 
