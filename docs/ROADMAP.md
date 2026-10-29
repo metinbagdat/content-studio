@@ -83,6 +83,22 @@ Sprint 1 CS-STU-01/02 learncon STU-01/02 ile paralel ([#2186](https://github.com
 
 ---
 
+## B3. Veli hunisi (V1–V14) — 2026-10-29
+
+Plan: [learncon#2192](https://github.com/metinbagdat/learncon/issues/2192). Veli ödeyen taraf; kritik kanıt **rapor örneği (V3)**. `/veli` UI learncon [#2203](https://github.com/metinbagdat/learncon/issues/2203). Haftalık job mevcut cron wave (3. `vercel.json` cron yok).
+
+| ID | Title | Status | Sprint | GitHub |
+|----|-------|--------|--------|--------|
+| CS-PAR-01 | Örnek veli raporu içeriği | todo | 1 | [#157](https://github.com/metinbagdat/content-studio/issues/157) |
+| CS-PAR-02 | V1 + V-E1–E8 şablonları | todo | 1 | [#158](https://github.com/metinbagdat/content-studio/issues/158) |
+| CS-PAR-03 | Çocukla konuşma önerisi LLM | todo | 6 | [#159](https://github.com/metinbagdat/content-studio/issues/159) |
+| CS-PAR-04 | Veli rehberi içerikleri | todo | 6 | [#160](https://github.com/metinbagdat/content-studio/issues/160) |
+| CS-PAR-05 | Haftalık rapor PDF | todo | 6 | [#161](https://github.com/metinbagdat/content-studio/issues/161) |
+
+wp-seo-hub: [#91](https://github.com/metinbagdat/wp-seo-hub/issues/91) carousel · [#92](https://github.com/metinbagdat/wp-seo-hub/issues/92) YouTube.
+
+---
+
 ## C. Boundary rules (safety)
 
 1. **No LearnCon deploy** of Content Studio on Vercel Hobby (quota).

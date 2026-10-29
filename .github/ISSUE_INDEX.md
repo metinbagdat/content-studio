@@ -24,6 +24,11 @@ Open GitHub issues from bodies below when the Issues API is available. Until the
 | — | CS-STU-03 | AI insight (“vay be”) → [#154](https://github.com/metinbagdat/content-studio/issues/154) |
 | — | CS-STU-04 | Görev/plan şablonları → [#155](https://github.com/metinbagdat/content-studio/issues/155) |
 | — | CS-STU-05 | E-posta E1–E8 → [#156](https://github.com/metinbagdat/content-studio/issues/156) |
+| — | CS-PAR-01 | Örnek veli raporu → [#157](https://github.com/metinbagdat/content-studio/issues/157) |
+| — | CS-PAR-02 | Veli V1 + V-E şablonları → [#158](https://github.com/metinbagdat/content-studio/issues/158) |
+| — | CS-PAR-03 | Konuşma önerisi LLM → [#159](https://github.com/metinbagdat/content-studio/issues/159) |
+| — | CS-PAR-04 | Veli rehberi içerikleri → [#160](https://github.com/metinbagdat/content-studio/issues/160) |
+| — | CS-PAR-05 | Haftalık veli PDF → [#161](https://github.com/metinbagdat/content-studio/issues/161) |
 | [13-sm-marketing-automation-epic.md](./issue-bodies/13-sm-marketing-automation-epic.md) | CS-SM-EPIC | SM marketing automation → [#31](https://github.com/metinbagdat/content-studio/issues/31) |
 | [14-meta-app-review-sandbox.md](./issue-bodies/14-meta-app-review-sandbox.md) | CS-SM-00 | Meta App Review / sandbox → [#32](https://github.com/metinbagdat/content-studio/issues/32) |
 | [15-audience-segmentation.md](./issue-bodies/15-audience-segmentation.md) | CS-SM-01 | Audience segments → [#33](https://github.com/metinbagdat/content-studio/issues/33) |
