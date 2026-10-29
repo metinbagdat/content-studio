@@ -99,6 +99,22 @@ wp-seo-hub: [#91](https://github.com/metinbagdat/wp-seo-hub/issues/91) carousel 
 
 ---
 
+## B4. Öğretmen hunisi (W1–W15) — 2026-10-29
+
+Plan: [learncon#2206](https://github.com/metinbagdat/learncon/issues/2206). Öğretmen ödeyen değil; meslektaş dili + ücretsiz. Kritik **W9 kazanım analizi**. UI learncon [#2217](https://github.com/metinbagdat/learncon/issues/2217).
+
+| ID | Title | Status | Sprint | GitHub |
+|----|-------|--------|--------|--------|
+| CS-TCH-01 | Excel şablonu + rehber PDF | todo | 1 | [#162](https://github.com/metinbagdat/content-studio/issues/162) |
+| CS-TCH-02 | Örnek sınıf analizi | todo | 1 | [#163](https://github.com/metinbagdat/content-studio/issues/163) |
+| CS-TCH-03 | W1 + T-E1–E8 şablonları | todo | 6 | [#164](https://github.com/metinbagdat/content-studio/issues/164) |
+| CS-TCH-04 | Veli toplantısı öneri LLM | todo | 6 | [#165](https://github.com/metinbagdat/content-studio/issues/165) |
+| CS-TCH-05 | Öğretmen rehber içerikleri | todo | 6 | [#166](https://github.com/metinbagdat/content-studio/issues/166) |
+
+wp-seo-hub: [#93](https://github.com/metinbagdat/wp-seo-hub/issues/93) LinkedIn · [#94](https://github.com/metinbagdat/wp-seo-hub/issues/94) YouTube.
+
+---
+
 ## C. Boundary rules (safety)
 
 1. **No LearnCon deploy** of Content Studio on Vercel Hobby (quota).

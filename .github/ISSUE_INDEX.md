@@ -29,6 +29,11 @@ Open GitHub issues from bodies below when the Issues API is available. Until the
 | — | CS-PAR-03 | Konuşma önerisi LLM → [#159](https://github.com/metinbagdat/content-studio/issues/159) |
 | — | CS-PAR-04 | Veli rehberi içerikleri → [#160](https://github.com/metinbagdat/content-studio/issues/160) |
 | — | CS-PAR-05 | Haftalık veli PDF → [#161](https://github.com/metinbagdat/content-studio/issues/161) |
+| — | CS-TCH-01 | Excel şablonu + rehber → [#162](https://github.com/metinbagdat/content-studio/issues/162) |
+| — | CS-TCH-02 | Örnek sınıf analizi → [#163](https://github.com/metinbagdat/content-studio/issues/163) |
+| — | CS-TCH-03 | Öğretmen içerik şablonları → [#164](https://github.com/metinbagdat/content-studio/issues/164) |
+| — | CS-TCH-04 | Veli toplantısı öneri LLM → [#165](https://github.com/metinbagdat/content-studio/issues/165) |
+| — | CS-TCH-05 | Öğretmen rehber içerikleri → [#166](https://github.com/metinbagdat/content-studio/issues/166) |
 | [13-sm-marketing-automation-epic.md](./issue-bodies/13-sm-marketing-automation-epic.md) | CS-SM-EPIC | SM marketing automation → [#31](https://github.com/metinbagdat/content-studio/issues/31) |
 | [14-meta-app-review-sandbox.md](./issue-bodies/14-meta-app-review-sandbox.md) | CS-SM-00 | Meta App Review / sandbox → [#32](https://github.com/metinbagdat/content-studio/issues/32) |
 | [15-audience-segmentation.md](./issue-bodies/15-audience-segmentation.md) | CS-SM-01 | Audience segments → [#33](https://github.com/metinbagdat/content-studio/issues/33) |
