@@ -10,6 +10,12 @@ re-discover from scratch, add an entry here before you stop.
 
 ---
 
+## 2026-10-29 — Kurumsal hunisi CS-INST-01…04
+
+LearnCon plan [#2220](https://github.com/metinbagdat/learncon/issues/2220). Studio [#167](https://github.com/metinbagdat/content-studio/issues/167)–[#170](https://github.com/metinbagdat/content-studio/issues/170). Sprint 1 = pilot rehber + örnek kurum raporu. `/kurumsal` UI Studio’da değil. Roadmap § B5.
+
+---
+
 ## 2026-10-29 — Öğretmen hunisi CS-TCH-01…05
 
 LearnCon plan [#2206](https://github.com/metinbagdat/learncon/issues/2206). Studio [#162](https://github.com/metinbagdat/content-studio/issues/162)–[#166](https://github.com/metinbagdat/content-studio/issues/166). Sprint 1 = Excel şablon + örnek analiz. `/ogretmen` UI Studio’da değil. Roadmap § B4.

@@ -115,6 +115,21 @@ wp-seo-hub: [#93](https://github.com/metinbagdat/wp-seo-hub/issues/93) LinkedIn 
 
 ---
 
+## B5. Kurumsal hunisi (K1–K14) — 2026-10-29
+
+Plan: [learncon#2220](https://github.com/metinbagdat/learncon/issues/2220). B2B: **pilot ile kanıt, sonra sözleşme**. Ödeyen kurum. Kritik **K8 canlı pilot dashboard**. UI learncon [#2227](https://github.com/metinbagdat/learncon/issues/2227). Canlı magnet `/kurumlar` ([#2168](https://github.com/metinbagdat/learncon/issues/2168) CLOSED) → tek landing + alias.
+
+| ID | Title | Status | Sprint | GitHub |
+|----|-------|--------|--------|--------|
+| CS-INST-01 | Pilot rehberi PDF | todo | 1 | [#167](https://github.com/metinbagdat/content-studio/issues/167) |
+| CS-INST-02 | Örnek kurum raporu | todo | 1 | [#168](https://github.com/metinbagdat/content-studio/issues/168) |
+| CS-INST-03 | K1 + K-E1–E8 şablonları | todo | 4 | [#169](https://github.com/metinbagdat/content-studio/issues/169) |
+| CS-INST-04 | Veli toplantısı kurumsal şablonu | todo | 5 | [#170](https://github.com/metinbagdat/content-studio/issues/170) |
+
+wp-seo-hub: [#95](https://github.com/metinbagdat/wp-seo-hub/issues/95) LinkedIn/outbound.
+
+---
+
 ## C. Boundary rules (safety)
 
 1. **No LearnCon deploy** of Content Studio on Vercel Hobby (quota).
