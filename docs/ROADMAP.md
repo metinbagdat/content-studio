@@ -130,6 +130,18 @@ wp-seo-hub: [#95](https://github.com/metinbagdat/wp-seo-hub/issues/95) LinkedIn/
 
 ---
 
+## B6. Growth OS birleşik omurga — 2026-10-29
+
+Plan: [learncon#2228](https://github.com/metinbagdat/learncon/issues/2228). Dört huni silo değil. Epic [learncon#1564](https://github.com/metinbagdat/learncon/issues/1564) kapanmaz. `/admin/growth` UI learncon [#2237](https://github.com/metinbagdat/learncon/issues/2237). wp-seo-hub yok.
+
+| ID | Title | Status | Sprint | GitHub |
+|----|-------|--------|--------|--------|
+| CS-OS-01 | Metrik sözlüğü | todo | 1 | [#171](https://github.com/metinbagdat/content-studio/issues/171) |
+| CS-OS-02 | Loop içerik stratejisi | todo | 5 | [#172](https://github.com/metinbagdat/content-studio/issues/172) |
+| CS-OS-03 | Cross-role mesaj şablonları | todo | 5 | [#173](https://github.com/metinbagdat/content-studio/issues/173) |
+
+---
+
 ## C. Boundary rules (safety)
 
 1. **No LearnCon deploy** of Content Studio on Vercel Hobby (quota).

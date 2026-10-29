@@ -38,6 +38,9 @@ Open GitHub issues from bodies below when the Issues API is available. Until the
 | — | CS-INST-02 | Örnek kurum raporu → [#168](https://github.com/metinbagdat/content-studio/issues/168) |
 | — | CS-INST-03 | Kurumsal içerik şablonları → [#169](https://github.com/metinbagdat/content-studio/issues/169) |
 | — | CS-INST-04 | Veli toplantısı kurumsal şablonu → [#170](https://github.com/metinbagdat/content-studio/issues/170) |
+| — | CS-OS-01 | Growth OS metrik sözlüğü → [#171](https://github.com/metinbagdat/content-studio/issues/171) |
+| — | CS-OS-02 | Loop içerik stratejisi → [#172](https://github.com/metinbagdat/content-studio/issues/172) |
+| — | CS-OS-03 | Cross-role içerik şablonları → [#173](https://github.com/metinbagdat/content-studio/issues/173) |
 | [13-sm-marketing-automation-epic.md](./issue-bodies/13-sm-marketing-automation-epic.md) | CS-SM-EPIC | SM marketing automation → [#31](https://github.com/metinbagdat/content-studio/issues/31) |
 | [14-meta-app-review-sandbox.md](./issue-bodies/14-meta-app-review-sandbox.md) | CS-SM-00 | Meta App Review / sandbox → [#32](https://github.com/metinbagdat/content-studio/issues/32) |
 | [15-audience-segmentation.md](./issue-bodies/15-audience-segmentation.md) | CS-SM-01 | Audience segments → [#33](https://github.com/metinbagdat/content-studio/issues/33) |

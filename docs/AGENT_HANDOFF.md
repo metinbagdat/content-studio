@@ -10,6 +10,12 @@ re-discover from scratch, add an entry here before you stop.
 
 ---
 
+## 2026-10-29 — Growth OS birleşik omurga CS-OS-01…03
+
+LearnCon plan [#2228](https://github.com/metinbagdat/learncon/issues/2228). Studio [#171](https://github.com/metinbagdat/content-studio/issues/171)–[#173](https://github.com/metinbagdat/content-studio/issues/173). Sprint 1 = metrik sözlüğü. `/admin/growth` Studio’da değil. wp-seo-hub yok. Roadmap § B6.
+
+---
+
 ## 2026-10-29 — Kurumsal hunisi CS-INST-01…04
 
 LearnCon plan [#2220](https://github.com/metinbagdat/learncon/issues/2220). Studio [#167](https://github.com/metinbagdat/content-studio/issues/167)–[#170](https://github.com/metinbagdat/content-studio/issues/170). Sprint 1 = pilot rehber + örnek kurum raporu. `/kurumsal` UI Studio’da değil. Roadmap § B5.
