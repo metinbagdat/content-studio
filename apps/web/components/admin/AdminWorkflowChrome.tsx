@@ -28,6 +28,7 @@ const NAV: Array<{
   { href: '/admin/calendar', label: 'Takvim', step: 'calendar' },
   { href: '/admin/discovery', label: 'Discovery', step: 'discovery' },
   { href: '/admin/analytics', label: 'Performans' },
+  { href: '/admin/diagnostic', label: 'Diagnostic' },
   {
     href: '/admin/email',
     label: 'E-posta',

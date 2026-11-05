@@ -73,7 +73,7 @@ Plan: [learncon#2185](https://github.com/metinbagdat/learncon/issues/2185) · ep
 
 | ID | Title | Status | Sprint | GitHub |
 |----|-------|--------|--------|--------|
-| CS-STU-01 | Diagnostic soru bankası | todo | 1 | [#152](https://github.com/metinbagdat/content-studio/issues/152) |
+| CS-STU-01 | Diagnostic soru bankası | in_progress | 1 | [#152](https://github.com/metinbagdat/content-studio/issues/152) |
 | CS-STU-02 | Knowledge graph önkoşul | todo | 1 | [#153](https://github.com/metinbagdat/content-studio/issues/153) |
 | CS-STU-03 | AI insight (“vay be”) | todo | 6 | [#154](https://github.com/metinbagdat/content-studio/issues/154) |
 | CS-STU-04 | Görev/plan şablonları | todo | 6 | [#155](https://github.com/metinbagdat/content-studio/issues/155) |

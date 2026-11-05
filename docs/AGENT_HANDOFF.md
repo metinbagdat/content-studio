@@ -10,6 +10,18 @@ re-discover from scratch, add an entry here before you stop.
 
 ---
 
+## 2026-11-05 — Telegram enum prod + CS-STU-01 bank start
+
+Prod `SocialPlatform` lacked `TELEGRAM` → connect-telegram 22P02. Applied
+`20261019120000_add_telegram_platform` via pooler `:5432` (direct `:5432` and
+pooler `:5434` unreachable from this box). Re-try **Kanalı bağla** on
+studio.egitim.today. Branch `feat/cs-stu-01-diagnostic-bank`: ContentSource
+`diagnostic-question` + seed 8 + `/admin/diagnostic` + LearnCon export
+`?format=learncon` (LEARNCON-STU-02). OKUL codes `OKUL.MAT.7.*` studio
+placeholders until LearnCon nodes exist.
+
+---
+
 ## 2026-10-29 — Growth OS birleşik omurga CS-OS-01…03
 
 LearnCon plan [#2228](https://github.com/metinbagdat/learncon/issues/2228). Studio [#171](https://github.com/metinbagdat/content-studio/issues/171)–[#173](https://github.com/metinbagdat/content-studio/issues/173). Sprint 1 = metrik sözlüğü. `/admin/growth` Studio’da değil. wp-seo-hub yok. Roadmap § B6.
