@@ -10,6 +10,48 @@ re-discover from scratch, add an entry here before you stop.
 
 ---
 
+## 2026-11-05 — Telegram enum prod + CS-STU-01 bank start
+
+Prod `SocialPlatform` lacked `TELEGRAM` → connect-telegram 22P02. Applied
+`20261019120000_add_telegram_platform` via pooler `:5432` (direct `:5432` and
+pooler `:5434` unreachable from this box). Re-try **Kanalı bağla** on
+studio.egitim.today. Branch `feat/cs-stu-01-diagnostic-bank`: ContentSource
+`diagnostic-question` + seed 8 + `/admin/diagnostic` + LearnCon export
+`?format=learncon` (LEARNCON-STU-02). OKUL codes `OKUL.MAT.7.*` studio
+placeholders until LearnCon nodes exist.
+
+---
+
+## 2026-10-29 — Growth OS birleşik omurga CS-OS-01…03
+
+LearnCon plan [#2228](https://github.com/metinbagdat/learncon/issues/2228). Studio [#171](https://github.com/metinbagdat/content-studio/issues/171)–[#173](https://github.com/metinbagdat/content-studio/issues/173). Sprint 1 = metrik sözlüğü. `/admin/growth` Studio’da değil. wp-seo-hub yok. Roadmap § B6.
+
+---
+
+## 2026-10-29 — Kurumsal hunisi CS-INST-01…04
+
+LearnCon plan [#2220](https://github.com/metinbagdat/learncon/issues/2220). Studio [#167](https://github.com/metinbagdat/content-studio/issues/167)–[#170](https://github.com/metinbagdat/content-studio/issues/170). Sprint 1 = pilot rehber + örnek kurum raporu. `/kurumsal` UI Studio’da değil. Roadmap § B5.
+
+---
+
+## 2026-10-29 — Öğretmen hunisi CS-TCH-01…05
+
+LearnCon plan [#2206](https://github.com/metinbagdat/learncon/issues/2206). Studio [#162](https://github.com/metinbagdat/content-studio/issues/162)–[#166](https://github.com/metinbagdat/content-studio/issues/166). Sprint 1 = Excel şablon + örnek analiz. `/ogretmen` UI Studio’da değil. Roadmap § B4.
+
+---
+
+## 2026-10-29 — Veli hunisi CS-PAR-01…05
+
+LearnCon plan [#2192](https://github.com/metinbagdat/learncon/issues/2192). Studio [#157](https://github.com/metinbagdat/content-studio/issues/157)–[#161](https://github.com/metinbagdat/content-studio/issues/161). Sprint 1 = örnek rapor + V1/e-posta şablonları. `/veli` UI Studio’da değil. Roadmap § B3.
+
+---
+
+## 2026-10-29 — Öğrenci hunisi CS-STU-01…05
+
+LearnCon plan [#2185](https://github.com/metinbagdat/learncon/issues/2185) / epic [#2163](https://github.com/metinbagdat/learncon/issues/2163). Studio issues: [#152](https://github.com/metinbagdat/content-studio/issues/152)–[#156](https://github.com/metinbagdat/content-studio/issues/156). Sprint 1 = CS-STU-01/02 (soru bankası + önkoşul graph). Ürün `/analiz` UI Studio’da değil. Roadmap § B2.
+
+---
+
 ## 2026-10-09 — Keyword research row, no new table
 
 `lib/seo/keywordRecord.ts` maps a keyword onto `ContentSource` (`category=seo-keyword`).

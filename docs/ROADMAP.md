@@ -1,11 +1,12 @@
 # egitim.today — Growth & Content Roadmap (Tracking)
 
-Canonical tracker for **two repos**. Do not implement LearnCon product code inside Content Studio.
+Canonical tracker for **three repos**. Do not implement LearnCon product code inside Content Studio.
 
 | Repo | Role |
 |------|------|
-| `metinbagdat/learncon` | Product: auth, payment, onboarding, referral, dashboard, SEO site |
-| `metinbagdat/content-studio` | Ops tool: blog → atomize → approve → publish to social (this repo) |
+| `metinbagdat/learncon` | Product: auth, payment, onboarding, referral, dashboard, `/analiz` |
+| `metinbagdat/content-studio` | Ops: blog → atomize → approve → publish to social (this repo) |
+| `metinbagdat/wp-seo-hub` | SEO hub / long-form CTA (`blog.egitim.today`) |
 
 Issue bodies: `.github/issue-bodies/`. GitHub Issues API may be restricted; open issues from those files manually when needed.
 
@@ -61,6 +62,83 @@ Implement in `metinbagdat/learncon`. Listed here so the growth doc has a single 
 | LC-G7 | Broadcast panel (admin/teacher) | learncon | 6–7 | Telegram/WA/email blast |
 | LC-G8 | Motivation / school score engine | learncon | 8 | Target progress widgets |
 | LC-G9 | Admin payment ops panel | learncon | 9–10 | Orders ops + taxonomy |
+
+---
+
+## B2. Öğrenci hunisi (S1–S18) — 2026-10-29
+
+Plan: [learncon#2185](https://github.com/metinbagdat/learncon/issues/2185) · epic [learncon#2163](https://github.com/metinbagdat/learncon/issues/2163).
+
+Ürün UI (`/analiz`, register, dashboard, paywall) **learncon**. Bu repo: soru/graph/şablon. WP: S1/S2 CTA kopyası, viral rehber.
+
+| ID | Title | Status | Sprint | GitHub |
+|----|-------|--------|--------|--------|
+| CS-STU-01 | Diagnostic soru bankası | in_progress | 1 | [#152](https://github.com/metinbagdat/content-studio/issues/152) |
+| CS-STU-02 | Knowledge graph önkoşul | todo | 1 | [#153](https://github.com/metinbagdat/content-studio/issues/153) |
+| CS-STU-03 | AI insight (“vay be”) | todo | 6 | [#154](https://github.com/metinbagdat/content-studio/issues/154) |
+| CS-STU-04 | Görev/plan şablonları | todo | 6 | [#155](https://github.com/metinbagdat/content-studio/issues/155) |
+| CS-STU-05 | E-posta E1–E8 HTML | todo | 6 | [#156](https://github.com/metinbagdat/content-studio/issues/156) |
+
+Sprint 1 CS-STU-01/02 learncon STU-01/02 ile paralel ([#2186](https://github.com/metinbagdat/learncon/issues/2186) [#2187](https://github.com/metinbagdat/learncon/issues/2187)). wp-seo-hub: [#88](https://github.com/metinbagdat/wp-seo-hub/issues/88) [#89](https://github.com/metinbagdat/wp-seo-hub/issues/89) [#90](https://github.com/metinbagdat/wp-seo-hub/issues/90).
+
+---
+
+## B3. Veli hunisi (V1–V14) — 2026-10-29
+
+Plan: [learncon#2192](https://github.com/metinbagdat/learncon/issues/2192). Veli ödeyen taraf; kritik kanıt **rapor örneği (V3)**. `/veli` UI learncon [#2203](https://github.com/metinbagdat/learncon/issues/2203). Haftalık job mevcut cron wave (3. `vercel.json` cron yok).
+
+| ID | Title | Status | Sprint | GitHub |
+|----|-------|--------|--------|--------|
+| CS-PAR-01 | Örnek veli raporu içeriği | todo | 1 | [#157](https://github.com/metinbagdat/content-studio/issues/157) |
+| CS-PAR-02 | V1 + V-E1–E8 şablonları | todo | 1 | [#158](https://github.com/metinbagdat/content-studio/issues/158) |
+| CS-PAR-03 | Çocukla konuşma önerisi LLM | todo | 6 | [#159](https://github.com/metinbagdat/content-studio/issues/159) |
+| CS-PAR-04 | Veli rehberi içerikleri | todo | 6 | [#160](https://github.com/metinbagdat/content-studio/issues/160) |
+| CS-PAR-05 | Haftalık rapor PDF | todo | 6 | [#161](https://github.com/metinbagdat/content-studio/issues/161) |
+
+wp-seo-hub: [#91](https://github.com/metinbagdat/wp-seo-hub/issues/91) carousel · [#92](https://github.com/metinbagdat/wp-seo-hub/issues/92) YouTube.
+
+---
+
+## B4. Öğretmen hunisi (W1–W15) — 2026-10-29
+
+Plan: [learncon#2206](https://github.com/metinbagdat/learncon/issues/2206). Öğretmen ödeyen değil; meslektaş dili + ücretsiz. Kritik **W9 kazanım analizi**. UI learncon [#2217](https://github.com/metinbagdat/learncon/issues/2217).
+
+| ID | Title | Status | Sprint | GitHub |
+|----|-------|--------|--------|--------|
+| CS-TCH-01 | Excel şablonu + rehber PDF | todo | 1 | [#162](https://github.com/metinbagdat/content-studio/issues/162) |
+| CS-TCH-02 | Örnek sınıf analizi | todo | 1 | [#163](https://github.com/metinbagdat/content-studio/issues/163) |
+| CS-TCH-03 | W1 + T-E1–E8 şablonları | todo | 6 | [#164](https://github.com/metinbagdat/content-studio/issues/164) |
+| CS-TCH-04 | Veli toplantısı öneri LLM | todo | 6 | [#165](https://github.com/metinbagdat/content-studio/issues/165) |
+| CS-TCH-05 | Öğretmen rehber içerikleri | todo | 6 | [#166](https://github.com/metinbagdat/content-studio/issues/166) |
+
+wp-seo-hub: [#93](https://github.com/metinbagdat/wp-seo-hub/issues/93) LinkedIn · [#94](https://github.com/metinbagdat/wp-seo-hub/issues/94) YouTube.
+
+---
+
+## B5. Kurumsal hunisi (K1–K14) — 2026-10-29
+
+Plan: [learncon#2220](https://github.com/metinbagdat/learncon/issues/2220). B2B: **pilot ile kanıt, sonra sözleşme**. Ödeyen kurum. Kritik **K8 canlı pilot dashboard**. UI learncon [#2227](https://github.com/metinbagdat/learncon/issues/2227). Canlı magnet `/kurumlar` ([#2168](https://github.com/metinbagdat/learncon/issues/2168) CLOSED) → tek landing + alias.
+
+| ID | Title | Status | Sprint | GitHub |
+|----|-------|--------|--------|--------|
+| CS-INST-01 | Pilot rehberi PDF | todo | 1 | [#167](https://github.com/metinbagdat/content-studio/issues/167) |
+| CS-INST-02 | Örnek kurum raporu | todo | 1 | [#168](https://github.com/metinbagdat/content-studio/issues/168) |
+| CS-INST-03 | K1 + K-E1–E8 şablonları | todo | 4 | [#169](https://github.com/metinbagdat/content-studio/issues/169) |
+| CS-INST-04 | Veli toplantısı kurumsal şablonu | todo | 5 | [#170](https://github.com/metinbagdat/content-studio/issues/170) |
+
+wp-seo-hub: [#95](https://github.com/metinbagdat/wp-seo-hub/issues/95) LinkedIn/outbound.
+
+---
+
+## B6. Growth OS birleşik omurga — 2026-10-29
+
+Plan: [learncon#2228](https://github.com/metinbagdat/learncon/issues/2228). Dört huni silo değil. Epic [learncon#1564](https://github.com/metinbagdat/learncon/issues/1564) kapanmaz. `/admin/growth` UI learncon [#2237](https://github.com/metinbagdat/learncon/issues/2237). wp-seo-hub yok.
+
+| ID | Title | Status | Sprint | GitHub |
+|----|-------|--------|--------|--------|
+| CS-OS-01 | Metrik sözlüğü | todo | 1 | [#171](https://github.com/metinbagdat/content-studio/issues/171) |
+| CS-OS-02 | Loop içerik stratejisi | todo | 5 | [#172](https://github.com/metinbagdat/content-studio/issues/172) |
+| CS-OS-03 | Cross-role mesaj şablonları | todo | 5 | [#173](https://github.com/metinbagdat/content-studio/issues/173) |
 
 ---
 
