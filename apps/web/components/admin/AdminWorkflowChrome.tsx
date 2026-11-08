@@ -30,6 +30,7 @@ const NAV: Array<{
   { href: '/admin/analytics', label: 'Performans' },
   { href: '/admin/diagnostic', label: 'Diagnostic' },
   { href: '/admin/prereq', label: 'Önkoşul' },
+  { href: '/admin/parent-report', label: 'Veli raporu' },
   {
     href: '/admin/email',
     label: 'E-posta',
