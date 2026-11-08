@@ -89,8 +89,8 @@ Plan: [learncon#2192](https://github.com/metinbagdat/learncon/issues/2192). Veli
 
 | ID | Title | Status | Sprint | GitHub |
 |----|-------|--------|--------|--------|
-| CS-PAR-01 | Örnek veli raporu içeriği | in_progress | 1 | [#157](https://github.com/metinbagdat/content-studio/issues/157) |
-| CS-PAR-02 | V1 + V-E1–E8 şablonları | todo | 1 | [#158](https://github.com/metinbagdat/content-studio/issues/158) |
+| CS-PAR-01 | Örnek veli raporu içeriği | done | 1 | [#157](https://github.com/metinbagdat/content-studio/issues/157) |
+| CS-PAR-02 | V1 + V-E1–E8 şablonları | done | 1 | [#158](https://github.com/metinbagdat/content-studio/issues/158) |
 | CS-PAR-03 | Çocukla konuşma önerisi LLM | todo | 6 | [#159](https://github.com/metinbagdat/content-studio/issues/159) |
 | CS-PAR-04 | Veli rehberi içerikleri | todo | 6 | [#160](https://github.com/metinbagdat/content-studio/issues/160) |
 | CS-PAR-05 | Haftalık rapor PDF | todo | 6 | [#161](https://github.com/metinbagdat/content-studio/issues/161) |
@@ -105,8 +105,8 @@ Plan: [learncon#2206](https://github.com/metinbagdat/learncon/issues/2206). Öğ
 
 | ID | Title | Status | Sprint | GitHub |
 |----|-------|--------|--------|--------|
-| CS-TCH-01 | Excel şablonu + rehber PDF | todo | 1 | [#162](https://github.com/metinbagdat/content-studio/issues/162) |
-| CS-TCH-02 | Örnek sınıf analizi | todo | 1 | [#163](https://github.com/metinbagdat/content-studio/issues/163) |
+| CS-TCH-01 | Excel şablonu + rehber PDF | done | 1 | [#162](https://github.com/metinbagdat/content-studio/issues/162) |
+| CS-TCH-02 | Örnek sınıf analizi | done | 1 | [#163](https://github.com/metinbagdat/content-studio/issues/163) |
 | CS-TCH-03 | W1 + T-E1–E8 şablonları | todo | 6 | [#164](https://github.com/metinbagdat/content-studio/issues/164) |
 | CS-TCH-04 | Veli toplantısı öneri LLM | todo | 6 | [#165](https://github.com/metinbagdat/content-studio/issues/165) |
 | CS-TCH-05 | Öğretmen rehber içerikleri | todo | 6 | [#166](https://github.com/metinbagdat/content-studio/issues/166) |
@@ -121,8 +121,8 @@ Plan: [learncon#2220](https://github.com/metinbagdat/learncon/issues/2220). B2B:
 
 | ID | Title | Status | Sprint | GitHub |
 |----|-------|--------|--------|--------|
-| CS-INST-01 | Pilot rehberi PDF | todo | 1 | [#167](https://github.com/metinbagdat/content-studio/issues/167) |
-| CS-INST-02 | Örnek kurum raporu | todo | 1 | [#168](https://github.com/metinbagdat/content-studio/issues/168) |
+| CS-INST-01 | Pilot rehberi PDF | done | 1 | [#167](https://github.com/metinbagdat/content-studio/issues/167) |
+| CS-INST-02 | Örnek kurum raporu | done | 1 | [#168](https://github.com/metinbagdat/content-studio/issues/168) |
 | CS-INST-03 | K1 + K-E1–E8 şablonları | todo | 4 | [#169](https://github.com/metinbagdat/content-studio/issues/169) |
 | CS-INST-04 | Veli toplantısı kurumsal şablonu | todo | 5 | [#170](https://github.com/metinbagdat/content-studio/issues/170) |
 
@@ -136,7 +136,7 @@ Plan: [learncon#2228](https://github.com/metinbagdat/learncon/issues/2228). Dör
 
 | ID | Title | Status | Sprint | GitHub |
 |----|-------|--------|--------|--------|
-| CS-OS-01 | Metrik sözlüğü | todo | 1 | [#171](https://github.com/metinbagdat/content-studio/issues/171) |
+| CS-OS-01 | Metrik sözlüğü | in_progress | 1 | [#171](https://github.com/metinbagdat/content-studio/issues/171) |
 | CS-OS-02 | Loop içerik stratejisi | todo | 5 | [#172](https://github.com/metinbagdat/content-studio/issues/172) |
 | CS-OS-03 | Cross-role mesaj şablonları | todo | 5 | [#173](https://github.com/metinbagdat/content-studio/issues/173) |
 

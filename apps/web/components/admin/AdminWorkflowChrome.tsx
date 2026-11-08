@@ -28,15 +28,27 @@ const NAV: Array<{
   { href: '/admin/calendar', label: 'Takvim', step: 'calendar' },
   { href: '/admin/discovery', label: 'Discovery', step: 'discovery' },
   { href: '/admin/analytics', label: 'Performans' },
-  { href: '/admin/diagnostic', label: 'Diagnostic' },
-  { href: '/admin/prereq', label: 'Önkoşul' },
-  { href: '/admin/parent-report', label: 'Veli raporu' },
+  { href: '/admin/seeds', label: 'Seed’ler' },
   {
     href: '/admin/email',
     label: 'E-posta',
     disabled: true,
     disabledReason: 'GSC impressions + Hostinger Reach token sonrası (CS-EM)',
   },
+]
+
+/** Child routes of the Seed’ler hub — keep that nav tab active. */
+const SEED_HUB_PATHS = [
+  '/admin/seeds',
+  '/admin/diagnostic',
+  '/admin/prereq',
+  '/admin/parent-report',
+  '/admin/parent-templates',
+  '/admin/teacher-roster',
+  '/admin/teacher-class-report',
+  '/admin/institution-pilot',
+  '/admin/institution-report',
+  '/admin/growth-metrics',
 ]
 
 function adminHeaders(key: string): HeadersInit {
@@ -112,7 +124,10 @@ export function AdminWorkflowChrome({ children }: { children: React.ReactNode })
     <>
       <nav className="admin-subnav" aria-label="Admin">
         {NAV.map((item) => {
-          const active = pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href))
+          const active =
+            item.href === '/admin/seeds'
+              ? SEED_HUB_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))
+              : pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href))
           const step = item.step ? stepMap.get(item.step as WorkflowSnapshot['steps'][0]['id']) : undefined
           const badge =
             step?.count && (item.step === 'review' ? step.count > 0 : step.count > 0)
