@@ -10,6 +10,16 @@ re-discover from scratch, add an entry here before you stop.
 
 ---
 
+## 2026-11-08 — batch seeds hub + PAR/TCH/INST/OS-01 (uncommitted)
+
+Branch `feat/cs-par-02-parent-templates`:
+- Nav: **Seed’ler** → `/admin/seeds`
+- PAR-02, TCH-01/02, INST-01/02, CS-OS-01 metrik sözlüğü
+- Sprint-1 Studio içerik paketleri tamamlandı (OS-02/03 sprint 5)
+- Toplu commit/PR bekleniyor.
+
+---
+
 ## 2026-11-08 — CS-PAR-01 örnek veli raporu
 
 Branch `feat/cs-par-01-parent-report-sample`: Ali 11. sınıf +3 net / %38, chart
