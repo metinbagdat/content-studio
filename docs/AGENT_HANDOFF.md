@@ -10,6 +10,15 @@ re-discover from scratch, add an entry here before you stop.
 
 ---
 
+## 2026-11-08 — CS-PAR-01 örnek veli raporu
+
+Branch `feat/cs-par-01-parent-report-sample`: Ali 11. sınıf +3 net / %38, chart
+JSON, konuşma önerisi, Noto Sans HTML PDF şablonu, `/admin/parent-report`,
+export `LEARNCON-PAR-V3`. LearnCon `/veli/rapor-ornegi` tüketir. CS-STU-02
+#175 merged (`done`).
+
+---
+
 ## 2026-11-06 — CS-STU-02 önkoşul grafiği
 
 Branch `feat/cs-stu-02-prereq-graph`: ContentSource `prereq-graph`, TYT Mat

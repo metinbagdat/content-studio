@@ -74,7 +74,7 @@ Plan: [learncon#2185](https://github.com/metinbagdat/learncon/issues/2185) · ep
 | ID | Title | Status | Sprint | GitHub |
 |----|-------|--------|--------|--------|
 | CS-STU-01 | Diagnostic soru bankası | done | 1 | [#152](https://github.com/metinbagdat/content-studio/issues/152) |
-| CS-STU-02 | Knowledge graph önkoşul | in_progress | 1 | [#153](https://github.com/metinbagdat/content-studio/issues/153) |
+| CS-STU-02 | Knowledge graph önkoşul | done | 1 | [#153](https://github.com/metinbagdat/content-studio/issues/153) |
 | CS-STU-03 | AI insight (“vay be”) | todo | 6 | [#154](https://github.com/metinbagdat/content-studio/issues/154) |
 | CS-STU-04 | Görev/plan şablonları | todo | 6 | [#155](https://github.com/metinbagdat/content-studio/issues/155) |
 | CS-STU-05 | E-posta E1–E8 HTML | todo | 6 | [#156](https://github.com/metinbagdat/content-studio/issues/156) |
@@ -89,7 +89,7 @@ Plan: [learncon#2192](https://github.com/metinbagdat/learncon/issues/2192). Veli
 
 | ID | Title | Status | Sprint | GitHub |
 |----|-------|--------|--------|--------|
-| CS-PAR-01 | Örnek veli raporu içeriği | todo | 1 | [#157](https://github.com/metinbagdat/content-studio/issues/157) |
+| CS-PAR-01 | Örnek veli raporu içeriği | in_progress | 1 | [#157](https://github.com/metinbagdat/content-studio/issues/157) |
 | CS-PAR-02 | V1 + V-E1–E8 şablonları | todo | 1 | [#158](https://github.com/metinbagdat/content-studio/issues/158) |
 | CS-PAR-03 | Çocukla konuşma önerisi LLM | todo | 6 | [#159](https://github.com/metinbagdat/content-studio/issues/159) |
 | CS-PAR-04 | Veli rehberi içerikleri | todo | 6 | [#160](https://github.com/metinbagdat/content-studio/issues/160) |
