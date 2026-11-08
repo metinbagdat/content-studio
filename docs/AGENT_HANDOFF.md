@@ -10,6 +10,15 @@ re-discover from scratch, add an entry here before you stop.
 
 ---
 
+## 2026-11-06 — CS-STU-02 önkoşul grafiği
+
+Branch `feat/cs-stu-02-prereq-graph`: ContentSource `prereq-graph`, TYT Mat
+18 konu + AYT `12.1.2.1.`→`12.1.1.1.`→`tyt_mat_uslu_koklu`, admin tree
+`/admin/prereq`, export `LEARNCON-STU-prereq` (`/api/prereq?format=learncon`).
+Traversal LearnCon #1753’te kalır. CS-STU-01 #174 merged (`done`).
+
+---
+
 ## 2026-11-05 — Telegram enum prod + CS-STU-01 bank start
 
 Prod `SocialPlatform` lacked `TELEGRAM` → connect-telegram 22P02. Applied
