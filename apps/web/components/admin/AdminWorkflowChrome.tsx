@@ -29,6 +29,7 @@ const NAV: Array<{
   { href: '/admin/discovery', label: 'Discovery', step: 'discovery' },
   { href: '/admin/analytics', label: 'Performans' },
   { href: '/admin/diagnostic', label: 'Diagnostic' },
+  { href: '/admin/prereq', label: 'Önkoşul' },
   {
     href: '/admin/email',
     label: 'E-posta',
