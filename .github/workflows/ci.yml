@@ -24,8 +24,13 @@ jobs:
           node-version: 22
           cache: npm
 
+      # ffmpeg-static postinstall pulls GitHub release binaries (often 504 on Actions).
+      # Lint/typecheck/test do not need the binary; prisma generate is the only required script.
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
+
+      - name: Prisma generate
+        run: npx prisma generate
 
       - name: Lint
         run: npm run lint
