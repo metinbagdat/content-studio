@@ -170,7 +170,7 @@ export function fillCrossRoleTemplate(
   template: CrossRoleTemplate,
   vars: Record<string, string>,
 ): { subject?: string; bodyTr: string; bodyEn: string } {
-  const withCta = { ...vars, cta: vars.cta ?? template.ctaHref }
+  const withCta: Record<string, string> = { ...vars, cta: vars.cta ?? template.ctaHref }
   const merge = (text: string) =>
     text.replace(/\{\{(\w+)\}\}/g, (_, key: string) => withCta[key] ?? `{{${key}}}`)
   return {
