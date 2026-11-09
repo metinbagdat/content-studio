@@ -62,6 +62,18 @@ const SEED_LINKS: Array<{
     blurb: 'CS-OS-01 — WLAS / Family WAU / Active Class / K-factor + 4 rol + 4 döngü',
     id: 'CS-OS-01',
   },
+  {
+    href: '/admin/growth-loops',
+    title: 'Döngü içerik stratejisi',
+    blurb: 'CS-OS-02 — viral / öğretmen çarpanı / öğretmen→kurum / veli→veli + zayıf halka',
+    id: 'CS-OS-02',
+  },
+  {
+    href: '/admin/growth-cross-role',
+    title: 'Çapraz rol şablonları',
+    blurb: 'CS-OS-03 — davet / paylaşım / referans / kurum→veli · TR+EN',
+    id: 'CS-OS-03',
+  },
 ]
 
 export default function SeedsHubPage() {

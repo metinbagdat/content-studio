@@ -136,9 +136,9 @@ Plan: [learncon#2228](https://github.com/metinbagdat/learncon/issues/2228). Dör
 
 | ID | Title | Status | Sprint | GitHub |
 |----|-------|--------|--------|--------|
-| CS-OS-01 | Metrik sözlüğü | in_progress | 1 | [#171](https://github.com/metinbagdat/content-studio/issues/171) |
-| CS-OS-02 | Loop içerik stratejisi | todo | 5 | [#172](https://github.com/metinbagdat/content-studio/issues/172) |
-| CS-OS-03 | Cross-role mesaj şablonları | todo | 5 | [#173](https://github.com/metinbagdat/content-studio/issues/173) |
+| CS-OS-01 | Metrik sözlüğü | done | 1 | [#171](https://github.com/metinbagdat/content-studio/issues/171) |
+| CS-OS-02 | Loop içerik stratejisi | in_progress | 5 | [#172](https://github.com/metinbagdat/content-studio/issues/172) |
+| CS-OS-03 | Cross-role mesaj şablonları | in_progress | 5 | [#173](https://github.com/metinbagdat/content-studio/issues/173) |
 
 ---
 

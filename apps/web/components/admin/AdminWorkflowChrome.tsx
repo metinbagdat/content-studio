@@ -49,7 +49,10 @@ const SEED_HUB_PATHS = [
   '/admin/institution-pilot',
   '/admin/institution-report',
   '/admin/growth-metrics',
+  '/admin/growth-loops',
+  '/admin/growth-cross-role',
 ]
+
 
 function adminHeaders(key: string): HeadersInit {
   return { 'x-admin-key': key }

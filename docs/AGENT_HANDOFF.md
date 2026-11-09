@@ -10,13 +10,19 @@ re-discover from scratch, add an entry here before you stop.
 
 ---
 
-## 2026-11-08 — batch seeds hub + PAR/TCH/INST/OS-01 (uncommitted)
+## 2026-11-08 — CS-OS-02/03 loop + cross-role (uncommitted)
 
-Branch `feat/cs-par-02-parent-templates`:
-- Nav: **Seed’ler** → `/admin/seeds`
-- PAR-02, TCH-01/02, INST-01/02, CS-OS-01 metrik sözlüğü
-- Sprint-1 Studio içerik paketleri tamamlandı (OS-02/03 sprint 5)
-- Toplu commit/PR bekleniyor.
+Branch `feat/cs-os-02-03-loop-content`:
+- `lib/growth/loopContentStrategy.ts` + `/admin/growth-loops` + `/api/growth-loops`
+- `lib/growth/crossRoleTemplates.ts` + `/admin/growth-cross-role` + `/api/growth-cross-role`
+- Seeds hub + SEED_HUB_PATHS güncellendi. Commit/PR bekleniyor.
+- Sprint 5 sıradaki: CS-INST-04 (#170). CS-PAR-03 sprint 6.
+
+---
+
+## 2026-11-08 — batch seeds hub + PAR/TCH/INST/OS-01 (merged)
+
+Nav **Seed’ler** → `/admin/seeds`; PAR-02…OS-01 sprint-1 paketleri main’de.
 
 ---
 
