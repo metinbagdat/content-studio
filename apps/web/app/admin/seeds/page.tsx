@@ -57,6 +57,12 @@ const SEED_LINKS: Array<{
     id: 'CS-INST-02',
   },
   {
+    href: '/admin/institution-parent-meeting',
+    title: 'Veli toplantısı — kurumsal şablon',
+    blurb: 'CS-INST-04 — logo/çerçeve · kurum özeti · öğrenci başına sayfa',
+    id: 'CS-INST-04',
+  },
+  {
     href: '/admin/growth-metrics',
     title: 'Growth OS metrik sözlüğü',
     blurb: 'CS-OS-01 — WLAS / Family WAU / Active Class / K-factor + 4 rol + 4 döngü',
