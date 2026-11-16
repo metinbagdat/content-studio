@@ -48,10 +48,12 @@ const SEED_HUB_PATHS = [
   '/admin/teacher-class-report',
   '/admin/institution-pilot',
   '/admin/institution-report',
+  '/admin/institution-parent-meeting',
   '/admin/growth-metrics',
   '/admin/growth-loops',
   '/admin/growth-cross-role',
 ]
+
 
 
 function adminHeaders(key: string): HeadersInit {

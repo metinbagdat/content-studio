@@ -124,7 +124,7 @@ Plan: [learncon#2220](https://github.com/metinbagdat/learncon/issues/2220). B2B:
 | CS-INST-01 | Pilot rehberi PDF | done | 1 | [#167](https://github.com/metinbagdat/content-studio/issues/167) |
 | CS-INST-02 | Örnek kurum raporu | done | 1 | [#168](https://github.com/metinbagdat/content-studio/issues/168) |
 | CS-INST-03 | K1 + K-E1–E8 şablonları | todo | 4 | [#169](https://github.com/metinbagdat/content-studio/issues/169) |
-| CS-INST-04 | Veli toplantısı kurumsal şablonu | todo | 5 | [#170](https://github.com/metinbagdat/content-studio/issues/170) |
+| CS-INST-04 | Veli toplantısı kurumsal şablonu | in_progress | 5 | [#170](https://github.com/metinbagdat/content-studio/issues/170) |
 
 wp-seo-hub: [#95](https://github.com/metinbagdat/wp-seo-hub/issues/95) LinkedIn/outbound.
 
@@ -137,8 +137,8 @@ Plan: [learncon#2228](https://github.com/metinbagdat/learncon/issues/2228). Dör
 | ID | Title | Status | Sprint | GitHub |
 |----|-------|--------|--------|--------|
 | CS-OS-01 | Metrik sözlüğü | done | 1 | [#171](https://github.com/metinbagdat/content-studio/issues/171) |
-| CS-OS-02 | Loop içerik stratejisi | in_progress | 5 | [#172](https://github.com/metinbagdat/content-studio/issues/172) |
-| CS-OS-03 | Cross-role mesaj şablonları | in_progress | 5 | [#173](https://github.com/metinbagdat/content-studio/issues/173) |
+| CS-OS-02 | Loop içerik stratejisi | done | 5 | [#172](https://github.com/metinbagdat/content-studio/issues/172) |
+| CS-OS-03 | Cross-role mesaj şablonları | done | 5 | [#173](https://github.com/metinbagdat/content-studio/issues/173) |
 
 ---
 

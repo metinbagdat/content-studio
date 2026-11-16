@@ -10,13 +10,18 @@ re-discover from scratch, add an entry here before you stop.
 
 ---
 
-## 2026-11-08 — CS-OS-02/03 loop + cross-role (uncommitted)
+## 2026-11-15 — CS-INST-04 veli toplantısı kurumsal (uncommitted)
 
-Branch `feat/cs-os-02-03-loop-content`:
-- `lib/growth/loopContentStrategy.ts` + `/admin/growth-loops` + `/api/growth-loops`
-- `lib/growth/crossRoleTemplates.ts` + `/admin/growth-cross-role` + `/api/growth-cross-role`
-- Seeds hub + SEED_HUB_PATHS güncellendi. Commit/PR bekleniyor.
-- Sprint 5 sıradaki: CS-INST-04 (#170). CS-PAR-03 sprint 6.
+Branch `feat/cs-inst-04-institution-pack`:
+- `lib/institution/parentMeetingTemplate.ts` + `/admin/institution-parent-meeting`
+- Logo/çerçeve · kurum özeti · öğrenci başına sayfa · `LEARNCON-INST-04` (≠ TCH-W2)
+- Commit/PR bekleniyor. CS-PAR-03 sprint 6.
+
+---
+
+## 2026-11-08 — CS-OS-02/03 loop + cross-role (merged #178)
+
+Seeds hub’a OS-02/03 eklendi; CI typecheck fix sonrası merge.
 
 ---
 
