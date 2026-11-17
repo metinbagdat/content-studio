@@ -153,8 +153,21 @@ async function designToPng(design: PostImageDesign, spec: ImageSpec): Promise<Bu
   return Buffer.from(await res.arrayBuffer())
 }
 
-/** Generate branded PNG card for SOCIAL_CAPTION (reuses existing IMAGE media). */
-export async function generatePostImage(derivedContentId: string) {
+const IMAGEABLE_TYPES = new Set(['SOCIAL_CAPTION', 'TWITTER_THREAD', 'INFOGRAPHIC_TEXT'])
+
+/** Stable hash of caption text — regenerate card when content changes. */
+export function postImageContentHash(text: string): string {
+  let h = 2166136261
+  const s = text.replace(/\s+/g, ' ').trim()
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  return (h >>> 0).toString(16)
+}
+
+/** Generate branded PNG from this post's own content (each caption part gets its own design). */
+export async function generatePostImage(derivedContentId: string, opts: { force?: boolean } = {}) {
   const derived = await prisma.derivedContent.findUnique({
     where: { id: derivedContentId },
     include: {
@@ -167,52 +180,14 @@ export async function generatePostImage(derivedContentId: string) {
     },
   })
   if (!derived) throw new Error('Derived content not found')
-  if (derived.contentType !== 'SOCIAL_CAPTION') {
-    throw new Error('Sadece SOCIAL_CAPTION için görsel üretilebilir')
+  if (!IMAGEABLE_TYPES.has(derived.contentType)) {
+    throw new Error('Bu içerik türü için görsel üretilemez')
   }
 
   const meta =
     derived.metadata && typeof derived.metadata === 'object'
-      ? (derived.metadata as Record<string, unknown>)
+      ? { ...(derived.metadata as Record<string, unknown>) }
       : {}
-
-  const partIndex = typeof meta.partIndex === 'number' ? meta.partIndex : 1
-  if (partIndex > 1 && typeof meta.seriesId === 'string') {
-    const lead = await prisma.derivedContent.findFirst({
-      where: {
-        sourceId: derived.sourceId,
-        contentType: 'SOCIAL_CAPTION',
-        metadata: { path: ['seriesId'], equals: meta.seriesId },
-        AND: { metadata: { path: ['partIndex'], equals: 1 } },
-      },
-      include: {
-        mediaFiles: {
-          where: { mediaType: 'IMAGE', processingStatus: 'COMPLETED' },
-          take: 1,
-        },
-      },
-    })
-    const leadUrl =
-      lead?.mediaFiles[0]?.fileUrl ||
-      (lead?.metadata && typeof lead.metadata === 'object'
-        ? (lead.metadata as Record<string, unknown>).imageUrl
-        : undefined)
-    if (typeof leadUrl === 'string' && leadUrl) {
-      if (lead?.mediaFiles[0]) {
-        return { media: lead.mediaFiles[0], reused: true, publicUrl: leadUrl }
-      }
-      await prisma.derivedContent.update({
-        where: { id: derivedContentId },
-        data: {
-          metadata: {
-            ...meta,
-            imageUrl: leadUrl,
-          } as Prisma.InputJsonValue,
-        },
-      })
-      return { media: null, reused: true, publicUrl: leadUrl }
-    }
-  }
 
   const articleTitle =
     typeof meta.articleTitle === 'string' && meta.articleTitle.trim()
@@ -224,8 +199,12 @@ export async function generatePostImage(derivedContentId: string) {
       ? derived.content.trim()
       : articleTitle
 
+  const contentHash = postImageContentHash(captionText)
+  const existingHash = typeof meta.imageContentHash === 'string' ? meta.imageContentHash : ''
+  const contentChanged = Boolean(existingHash) && existingHash !== contentHash
+
   const existing = derived.mediaFiles[0]
-  if (existing) {
+  if (existing && !opts.force && !contentChanged) {
     return {
       media: existing,
       reused: true,
@@ -261,16 +240,13 @@ export async function generatePostImage(derivedContentId: string) {
       },
     })
 
-    const meta =
-      derived.metadata && typeof derived.metadata === 'object'
-        ? { ...(derived.metadata as Record<string, unknown>) }
-        : {}
     meta.imageUrl = publicUrl
     meta.generatedMediaId = media.id
     meta.imageDesign = design
     meta.imageSpecKey = specKey
     meta.imageWidth = spec.width
     meta.imageHeight = spec.height
+    meta.imageContentHash = contentHash
 
     await prisma.derivedContent.update({
       where: { id: derivedContentId },

@@ -369,8 +369,9 @@ export async function createSocialDraftsForDerived(
     })
   }
   const mediaUrls =
-    derived.contentType === 'SOCIAL_CAPTION' && !opts.skipImages
-      ? await ensureGeneratedPostImage(derivedId)
+    (derived.contentType === 'SOCIAL_CAPTION' || derived.contentType === 'TWITTER_THREAD') &&
+    !opts.skipImages
+      ? await ensureGeneratedPostMedia(derivedId)
       : []
 
   const body =
@@ -503,9 +504,15 @@ export async function setDerivedStatus(
 
     if (socialTypes.includes(derived.contentType as (typeof socialTypes)[number])) {
       await createSocialDraftsForDerived(derived.id, derived.content)
-      if (process.env.SOCIAL_AUTO_PUBLISH === 'true' && derived.contentType === 'SOCIAL_CAPTION') {
+      if (
+        process.env.SOCIAL_AUTO_PUBLISH === 'true' &&
+        (derived.contentType === 'SOCIAL_CAPTION' || derived.contentType === 'TWITTER_THREAD')
+      ) {
         await publishCaptionWithImages(derived.id)
-      } else if (derived.contentType === 'SOCIAL_CAPTION') {
+      } else if (
+        derived.contentType === 'SOCIAL_CAPTION' ||
+        derived.contentType === 'TWITTER_THREAD'
+      ) {
         const { afterCaptionApproved } = await import('./social/autopilot')
         await afterCaptionApproved(derived.id)
       }

@@ -30,16 +30,13 @@ export async function preparePostForPublish(postId: string): Promise<string[]> {
     return mediaUrls
   }
 
-  let mediaUrls =
-    post.mediaUrls.filter((u) => u.startsWith('http')).length > 0
-      ? post.mediaUrls
-      : await ensureGeneratedPostMedia(post.derivedContentId)
-
+  // Always (re)ensure content-matched image/clip before publish — stale mediaUrls miss redesigns.
+  let mediaUrls = await ensureGeneratedPostMedia(post.derivedContentId)
   if (!mediaUrls.length) {
-    mediaUrls = await ensureGeneratedPostMedia(post.derivedContentId)
+    mediaUrls = post.mediaUrls.filter((u) => u.startsWith('http'))
   }
 
-  if (post.platform === 'LINKEDIN') {
+  if (post.platform === 'LINKEDIN' || post.platform === 'FACEBOOK' || post.platform === 'INSTAGRAM') {
     const local = await readPostImageBuffer(post.derivedContentId)
     if (!local) {
       mediaUrls = await ensureGeneratedPostMedia(post.derivedContentId)

@@ -86,7 +86,7 @@ export async function afterCaptionApproved(derivedContentId: string): Promise<vo
       try {
         await preparePostForPublish(post.id)
         await publishPost(post.id, {
-          requireImage: post.platform === 'LINKEDIN',
+          requireImage: ['LINKEDIN', 'FACEBOOK', 'INSTAGRAM', 'PINTEREST'].includes(post.platform),
           requireVideo: post.platform === 'YOUTUBE',
         })
       } catch (err) {
