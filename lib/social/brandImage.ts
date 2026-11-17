@@ -47,7 +47,7 @@ export async function resolvePostMediaUrls(derivedContentId: string): Promise<st
     console.warn('[resolvePostMediaUrls] blog og-image 404, falling back', blogOgImage)
   }
 
-  if (derived.contentType === 'SOCIAL_CAPTION') {
+  if (derived.contentType === 'SOCIAL_CAPTION' || derived.contentType === 'TWITTER_THREAD') {
     try {
       const { publicUrl } = await generatePostImage(derivedContentId)
       return [publicUrl]

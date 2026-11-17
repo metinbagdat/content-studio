@@ -37,14 +37,16 @@ export async function ensureGeneratedPostMedia(derivedContentId: string): Promis
   return urls
 }
 
-/** Auto-generate branded PNG for caption or infographic if no custom image set. */
+const IMAGEABLE = new Set(['SOCIAL_CAPTION', 'TWITTER_THREAD', 'INFOGRAPHIC_TEXT'])
+
+/** Auto-generate branded PNG matched to this post's content (regenerates when caption changes). */
 export async function ensureGeneratedPostImage(derivedContentId: string): Promise<string[]> {
   const derived = await prisma.derivedContent.findUnique({
     where: { id: derivedContentId },
     include: { source: true },
   })
   if (!derived) return []
-  if (derived.contentType !== 'SOCIAL_CAPTION' && derived.contentType !== 'INFOGRAPHIC_TEXT') {
+  if (!IMAGEABLE.has(derived.contentType)) {
     return []
   }
 
@@ -53,20 +55,31 @@ export async function ensureGeneratedPostImage(derivedContentId: string): Promis
       ? (derived.metadata as Record<string, unknown>)
       : {}
 
+  const captionText =
+    typeof derived.content === 'string' && derived.content.trim()
+      ? derived.content.trim()
+      : derived.title
+  const { postImageContentHash } = await import('../media/generatePostImage')
+  const contentHash = postImageContentHash(captionText)
+  const storedHash = typeof meta.imageContentHash === 'string' ? meta.imageContentHash : ''
+  const contentChanged = Boolean(storedHash) && storedHash !== contentHash
+
   const existingUrl = typeof meta.imageUrl === 'string' ? meta.imageUrl.trim() : ''
   // Self-referential /api/media/.../image URLs are ephemeral on Vercel (/tmp) — never treat as durable.
   const isEphemeralSelfFetch =
     existingUrl.includes('/api/media/') && existingUrl.endsWith('/image')
-  if (
+  const isManualCustom =
     existingUrl &&
     !isEphemeralSelfFetch &&
     isCustomUrl(existingUrl) &&
-    !existingUrl.includes('opengraph-image')
-  ) {
+    !existingUrl.includes('opengraph-image') &&
+    meta.autoGenerateImage === false
+
+  if (isManualCustom && !contentChanged) {
     return [existingUrl]
   }
 
-  // Branded card renders per-platform — skip blog og-image probe (often 404, noisy logs)
+  // Branded card from this caption's own text — skip blog og-image probe (often 404)
   try {
     if (derived.contentType === 'INFOGRAPHIC_TEXT') {
       const { generateInfographicImage } = await import('../media/generateInfographicImage')
@@ -76,7 +89,7 @@ export async function ensureGeneratedPostImage(derivedContentId: string): Promis
         return [url]
       }
     } else {
-      const result = await generatePostImage(derivedContentId)
+      const result = await generatePostImage(derivedContentId, { force: contentChanged })
       const url = result?.publicUrl
       if (typeof url === 'string' && url.startsWith('http')) {
         return [url]
@@ -102,8 +115,8 @@ export async function syncCaptionToSocial(
   opts: { publish?: boolean } = {},
 ) {
   const caption = await prisma.derivedContent.findUnique({ where: { id: derivedContentId } })
-  if (!caption || caption.contentType !== 'SOCIAL_CAPTION') {
-    throw new Error('SOCIAL_CAPTION bulunamadı')
+  if (!caption || (caption.contentType !== 'SOCIAL_CAPTION' && caption.contentType !== 'TWITTER_THREAD')) {
+    throw new Error('SOCIAL_CAPTION / TWITTER_THREAD bulunamadı')
   }
 
   if (opts.publish) {
@@ -221,13 +234,16 @@ export async function updatePublishedSocialPosts(derivedContentId: string, postC
 /** Generate images for all approved captions and attach to every post row. */
 export async function syncPostImagesFromCaptions() {
   const captions = await prisma.derivedContent.findMany({
-    where: { contentType: 'SOCIAL_CAPTION', status: { in: ['APPROVED', 'PUBLISHED'] } },
+    where: {
+      contentType: { in: ['SOCIAL_CAPTION', 'TWITTER_THREAD'] },
+      status: { in: ['APPROVED', 'PUBLISHED'] },
+    },
   })
   let postsUpdated = 0
   const images: Array<{ derivedContentId: string; mediaUrls: string[] }> = []
 
   for (const caption of captions) {
-    const mediaUrls = await ensureGeneratedPostImage(caption.id)
+    const mediaUrls = await ensureGeneratedPostMedia(caption.id)
     images.push({ derivedContentId: caption.id, mediaUrls })
     const result = await prisma.socialMediaPost.updateMany({
       where: { derivedContentId: caption.id },
