@@ -10,12 +10,21 @@ re-discover from scratch, add an entry here before you stop.
 
 ---
 
-## 2026-11-15 — CS-INST-04 veli toplantısı kurumsal (uncommitted)
+## 2026-11-17 — local migrate baseline + RLS Docker-safe
 
-Branch `feat/cs-inst-04-institution-pack`:
-- `lib/institution/parentMeetingTemplate.ts` + `/admin/institution-parent-meeting`
-- Logo/çerçeve · kurum özeti · öğrenci başına sayfa · `LEARNCON-INST-04` (≠ TCH-W2)
-- Commit/PR bekleniyor. CS-PAR-03 sprint 6.
+- `main` @ `#180` (content-matched images + RLS migration).
+- Local Docker (`localhost:5434`): baseline 4 older migrations as applied, then
+  deploy `20261117120000_enable_rls_server_only`.
+- REVOKE `anon`/`authenticated` must be role-gated — plain REVOKE fails on
+  local Postgres (no Supabase roles). Migration SQL updated accordingly.
+- Supabase prod RLS already on; no re-run needed there.
+- `npx prisma migrate deploy` now clean locally after `npm run db:up`.
+
+---
+
+## 2026-11-15 — CS-INST-04 veli toplantısı kurumsal (merged #179)
+
+`/admin/institution-parent-meeting` + `LEARNCON-INST-04` on main.
 
 ---
 
