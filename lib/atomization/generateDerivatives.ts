@@ -45,8 +45,12 @@ async function generateSocialPostsBatch(
     })),
   }
 
+  const linkRule =
+    platform === 'TWITTER'
+      ? ' Do not include any URL. The article link is posted as a reply.'
+      : ` End with product CTA to https://egitim.today.${articleUrl ? ` Also mention the article URL: ${articleUrl}` : ''}`
   const batch = await llmJsonBatch<{ posts: Array<{ text: string }> }>(
-    `You write Turkish ${platform} posts for egitim.today. Max ${maxChars} chars each. Tone: ${tone}. End with product CTA to https://egitim.today.${articleUrl ? ` Also mention the article URL: ${articleUrl}` : ''}`,
+    `You write Turkish ${platform} posts for egitim.today. Max ${maxChars} chars each. Tone: ${tone}.${linkRule}`,
     `Article: ${title}\nConcepts: ${concepts.join(', ')}\nExcerpt:\n${articleExcerpt(article, 2000)}\n\nOutput JSON: {"posts":[{"text":"..."}]} with exactly ${count} posts.`,
     fallback,
   )
@@ -117,7 +121,7 @@ async function generateTwitterThreads(
           i === 0
             ? `${title} 🧵`
             : i === tweetCount - 1
-              ? withShareCta('', articleUrl, 'TWITTER')
+              ? 'Devamı egitim.today'
               : `${sections[i % sections.length]?.heading || plan.keyConcepts[i % plan.keyConcepts.length] || title}`,
           'TWITTER',
         ),
@@ -125,13 +129,14 @@ async function generateTwitterThreads(
     }
 
     const batch = await llmJsonBatch<{ tweets: Array<{ text: string }> }>(
-      'Write Turkish Twitter/X threads for egitim.today. Each tweet max 280 chars.',
-      `Thread ${t + 1} about: ${title}\nArguments: ${plan.mainArguments.join('; ')}\nExcerpt:\n${articleExcerpt(article, 1500)}\nJSON {"tweets":[{"text":"..."}]} exactly ${tweetCount} tweets. First=hook, last=CTA.`,
+      'Write Turkish Twitter/X threads for egitim.today. Each tweet max 280 chars. Do not include any URL.',
+      `Thread ${t + 1} about: ${title}\nArguments: ${plan.mainArguments.join('; ')}\nExcerpt:\n${articleExcerpt(article, 1500)}\nJSON {"tweets":[{"text":"..."}]} exactly ${tweetCount} tweets. First=hook, last=text CTA naming egitim.today without a link.`,
       fallback,
     )
 
     const tweets = (batch.tweets || fallback.tweets).slice(0, tweetCount)
-    const content = tweets.map((tw, i) => `${i + 1}/${tweets.length} ${tw.text}`).join('\n\n')
+    const threadBody = tweets.map((tw, i) => `${i + 1}/${tweets.length} ${tw.text}`).join('\n\n')
+    const content = articleUrl ? `${threadBody}\n\nYazı: ${articleUrl}` : threadBody
     const seriesId = crypto.randomUUID()
 
     drafts.push({

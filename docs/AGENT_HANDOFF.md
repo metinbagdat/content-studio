@@ -10,6 +10,14 @@ re-discover from scratch, add an entry here before you stop.
 
 ---
 
+## 2026-11-18 — X link reply
+
+- Branch `feat/x-link-reply` (uncommitted): X ana post ve thread tweetlerinde URL yok.
+- Yazı linki zincirin son yanıtında (`Yazı: <url>`). Kayıtlı taslaklar yayın anında ayrılır.
+- `lib/social/twitterFormat.test.ts` 4 test.
+
+---
+
 ## 2026-11-17 — local migrate baseline + RLS Docker-safe
 
 - `main` @ `#180` (content-matched images + RLS migration).

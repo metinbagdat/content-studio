@@ -101,9 +101,9 @@ async function resolveEntries(options: DiscoveryOptions): Promise<{ entries: Sit
     try {
       const entries = await fetchWpPostSitemap()
       if (entries.length > 0) return { source: 'wordpress', entries }
-      console.warn('[discovery] WP post sitemap empty')
+      console.warn('[discovery] WP sitemap: no post URLs')
     } catch (err) {
-      console.warn('[discovery] WP sitemap failed', err)
+      console.warn('[discovery] WP sitemap unavailable', err)
     }
     return { source: 'wordpress', entries: [] }
   }

@@ -16,7 +16,9 @@ assert.match(cta, /Yazı: https:\/\/blog\.egitim\.today\//)
 assert.doesNotMatch(cta, /www\.egitim\.today\/blog/)
 
 const twitter = withShareCta('x'.repeat(400), wp, 'TWITTER')
-assert.ok(twitter.length <= 280)
-assert.ok(twitter.includes(wp), twitter)
+const [twitterBody, twitterLink] = twitter.split('\nYazı: ')
+assert.ok(twitterBody.length <= 280)
+assert.equal(twitterLink, wp)
+assert.doesNotMatch(twitterBody, /https?:\/\//)
 
 console.log('canonicalUrl ok')

@@ -33,16 +33,25 @@ export function shareCtaBlock(articleUrl?: string): string {
   return `${brand}\nYazı: ${articleUrl}`
 }
 
-/** Append product CTA + canonical article line, keeping the URL inside the platform limit. */
+/**
+ * Append the product CTA and the canonical article line.
+ * X keeps the hook inside 280 and stores the article URL on the next line.
+ * Publish moves that line into the first reply so the main post has no link.
+ */
 export function withShareCta(
   text: string,
   articleUrl: string | undefined,
   platform: SocialPlatform,
 ): string {
-  const suffix = shareCtaBlock(articleUrl)
-  const max = PLATFORM_FORMATS[platform].maxChars
-  const room = Math.max(0, max - suffix.length)
   const body = (text ?? '').trim()
+  const max = PLATFORM_FORMATS[platform].maxChars
+  if (platform === 'TWITTER') {
+    const head = body.length <= max ? body : `${body.slice(0, Math.max(0, max - 1)).trim()}…`
+    if (!articleUrl) return head
+    return `${head}\nYazı: ${articleUrl}`
+  }
+  const suffix = shareCtaBlock(articleUrl)
+  const room = Math.max(0, max - suffix.length)
   const head = body.length <= room ? body : `${body.slice(0, Math.max(0, room - 1)).trim()}…`
   const out = `${head}${suffix}`
   return out.length <= max ? out : out.slice(0, max)
