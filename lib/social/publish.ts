@@ -318,18 +318,21 @@ export async function publishPost(postId: string, options: PublishOptions = {}):
   }
 }
 
-async function publishTwitter(text: string, accessToken: string): Promise<string> {
-  if (!accessToken || accessToken === 'dry-run' || !process.env.X_CLIENT_ID) {
-    return `mock_x_${Date.now()}`
-  }
+async function postTweet(
+  text: string,
+  accessToken: string,
+  replyToId?: string,
+): Promise<string> {
   const { parseXApiError } = await import('./xApi')
+  const payload: { text: string; reply?: { in_reply_to_tweet_id: string } } = { text }
+  if (replyToId) payload.reply = { in_reply_to_tweet_id: replyToId }
   const res = await fetch('https://api.twitter.com/2/tweets', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ text: text.slice(0, 280) }),
+    body: JSON.stringify(payload),
   })
   if (!res.ok) {
     const body = await res.text()
@@ -337,6 +340,32 @@ async function publishTwitter(text: string, accessToken: string): Promise<string
   }
   const data = (await res.json()) as { data?: { id?: string } }
   return data.data?.id || `x_${Date.now()}`
+}
+
+async function publishTwitter(text: string, accessToken: string): Promise<string> {
+  const { splitTwitterThread } = await import('./twitterFormat')
+  const { tweets, replyText } = splitTwitterThread(text)
+  if (!accessToken || accessToken === 'dry-run' || !process.env.X_CLIENT_ID) {
+    return `mock_x_${Date.now()}`
+  }
+  const chain = tweets.length ? tweets : ['egitim.today']
+  const rootId = await postTweet(chain[0], accessToken)
+  let previousId = rootId
+  for (const tweet of chain.slice(1)) {
+    try {
+      previousId = await postTweet(tweet, accessToken, previousId)
+    } catch (err) {
+      console.warn('[publishTwitter] thread reply failed', err instanceof Error ? err.message : err)
+      break
+    }
+  }
+  if (!replyText) return rootId
+  try {
+    await postTweet(replyText, accessToken, previousId)
+  } catch (err) {
+    console.warn('[publishTwitter] article reply failed', err instanceof Error ? err.message : err)
+  }
+  return rootId
 }
 
 type LinkedInPublishOutcome = {
