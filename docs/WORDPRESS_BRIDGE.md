@@ -122,3 +122,15 @@ Use: Rank Math + GSC now; DataForSEO later if we need keyword metrics. Soro only
 6. **LearnCon `/blog`:** long-form on WP only; Haberler stays on LearnCon (CS-WP-05 / learncon#1328).
 7. **Then — LearnCon LC-G6** pillar pages (not this repo).
 8. **Webhook / SM SEO** — keep shipping; Reach after search signal, same gate as GSC OAuth.
+
+
+## LearnCon Growth webhook
+
+After a successful WordPress publish ingest, Content Studio POSTs
+`https://www.egitim.today/api/growth/content-published` (override with
+`GROWTH_CONTENT_WEBHOOK_URL`) if `GROWTH_CONTENT_WEBHOOK_SECRET` is set.
+
+Header: `x-growth-webhook-secret` (LearnCon also accepts Bearer / `x-api-key`).
+Body: `{ "cs_source_id", "published_url", "platform" }`. The call is
+non-blocking and time-limited; a LearnCon failure does not fail WP ingest.
+`published_url` is normalized to `https://blog.egitim.today/yazilar/{slug}`.

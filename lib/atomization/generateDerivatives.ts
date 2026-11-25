@@ -16,6 +16,14 @@ import { appendSegmentHashtags } from '../audience/segments'
 import { resolveAudienceSegment } from '../audience/resolveAudienceSegment'
 import { withShareCta, shareCtaBlock } from '../content/canonicalUrl'
 import { stampDraftQuality } from '../quality/qualityStamp'
+import {
+  TRANSFORM_SYSTEM_PROMPT,
+  TWITTER_THREAD_MAX_TWEETS,
+  TWITTER_THREAD_MIN_TWEETS,
+  buildTransformMessages,
+  formatTwitterThreadContent,
+  twitterThreadCtaUrl,
+} from '../ai/transformPrompt'
 
 const HASHTAGS = '#egitim #egitimtoday #ogrenme'
 
@@ -114,12 +122,17 @@ async function generateTwitterThreads(
   const drafts: DerivativeDraft[] = []
 
   for (let t = 0; t < count; t++) {
-    const tweetCount = 5 + (t % 3)
+    const tweetCount = Math.min(
+      TWITTER_THREAD_MAX_TWEETS,
+      Math.max(TWITTER_THREAD_MIN_TWEETS, 5),
+    )
+    const slugFromUrl = String(articleUrl || '').split('/yazilar/')[1]?.split(/[/?#]/)[0] || ''
+    const ctaUrl = twitterThreadCtaUrl(slugFromUrl) || articleUrl
     const fallback = {
       tweets: Array.from({ length: tweetCount }, (_, i) => ({
         text: formatForPlatform(
           i === 0
-            ? `${title} 🧵`
+            ? title.slice(0, 270)
             : i === tweetCount - 1
               ? 'Devamı egitim.today'
               : `${sections[i % sections.length]?.heading || plan.keyConcepts[i % plan.keyConcepts.length] || title}`,
@@ -128,15 +141,21 @@ async function generateTwitterThreads(
       })),
     }
 
+    const prompt = buildTransformMessages('TWITTER_THREAD', title, articleExcerpt(article, 1500), {
+      slug: slugFromUrl,
+      tweetCount,
+    })
     const batch = await llmJsonBatch<{ tweets: Array<{ text: string }> }>(
-      'Write Turkish Twitter/X threads for egitim.today. Each tweet max 280 chars. Do not include any URL.',
-      `Thread ${t + 1} about: ${title}\nArguments: ${plan.mainArguments.join('; ')}\nExcerpt:\n${articleExcerpt(article, 1500)}\nJSON {"tweets":[{"text":"..."}]} exactly ${tweetCount} tweets. First=hook, last=text CTA naming egitim.today without a link.`,
+      prompt.system || TRANSFORM_SYSTEM_PROMPT,
+      `${prompt.user}\nJSON {"tweets":[{"text":"..."}]} exactly ${tweetCount} tweets.`,
       fallback,
     )
 
-    const tweets = (batch.tweets || fallback.tweets).slice(0, tweetCount)
-    const threadBody = tweets.map((tw, i) => `${i + 1}/${tweets.length} ${tw.text}`).join('\n\n')
-    const content = articleUrl ? `${threadBody}\n\nYazı: ${articleUrl}` : threadBody
+    const tweets = (batch.tweets || fallback.tweets)
+      .map((tw) => String(tw.text || '').trim())
+      .filter(Boolean)
+      .slice(0, tweetCount)
+    const content = formatTwitterThreadContent(tweets, ctaUrl)
     const seriesId = crypto.randomUUID()
 
     drafts.push({
