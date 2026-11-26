@@ -1,0 +1,10 @@
+# Keep local-only artifacts out of 'vercel deploy' uploads (Vercel builds from source)
+node_modules
+.next
+.git
+.vercel
+coverage
+*.log
+.env
+.env.*
+!.env.example
