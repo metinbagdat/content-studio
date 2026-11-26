@@ -5,7 +5,11 @@
   "installCommand": "npm install",
   "regions": ["fra1"],
   "git": {
-    "deploymentEnabled": false
+    "deploymentEnabled": {
+      "main": true,
+      "*": false,
+      "**": false
+    }
   },
   "crons": []
 }
