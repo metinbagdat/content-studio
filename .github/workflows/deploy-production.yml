@@ -1,12 +1,8 @@
 name: Deploy Content Studio
 
+# Production deploy: Vercel Git (main only). This workflow is a manual
+# --prebuilt fallback — push trigger is off to avoid double deploys.
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - 'docs/**'
-      - '**/*.md'
-      - '.github/issue-bodies/**'
   workflow_dispatch:
 
 concurrency:
