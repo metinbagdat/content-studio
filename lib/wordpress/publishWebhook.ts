@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { scheduleLearnconGrowthNotify } from '@/lib/growth/notifyPublished'
 import {
   ingestWordpressPublished,
   type WordpressPublishedPayload,
@@ -46,6 +47,17 @@ export async function handleWordpressPublishWebhook(body: WordpressPublishedPayl
       '[wp-webhook] AI content published without CS Samurai validation, flagged:',
       result.sourceId,
     )
+  }
+
+
+  if (result.ok) {
+    const link = String(body.link || body.url || '').trim()
+    scheduleLearnconGrowthNotify({
+      csSourceId: result.sourceId || null,
+      publishedUrl: link,
+      link,
+      platform: String(body.post_type || 'wordpress'),
+    })
   }
 
   return { ...result, needsReview }

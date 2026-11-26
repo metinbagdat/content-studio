@@ -4,7 +4,7 @@ import { resolveLlm } from './llmClient'
 import { captionMetadataWithImage } from '../social/brandImage'
 import { fallbackPodcastScript, parsePodcastScript } from '../media/podcastSchema'
 import { guardDraftOutput } from '../quality/draftOutputGuard'
-import { buildTransformMessages, sanitizeArticle, type TransformKind, type TransformOptions } from './transformPrompt'
+import { buildTransformMessages, formatTwitterThreadContent, sanitizeArticle, twitterThreadCtaUrl, type TransformKind, type TransformOptions } from './transformPrompt'
 
 export type { TransformKind, TransformOptions }
 
@@ -88,6 +88,19 @@ function mockTransform(kind: TransformKind, title: string, content: string) {
           2,
         ),
         metadata: { genre: 'pop', mock: true },
+      }
+    case 'TWITTER_THREAD':
+      return {
+        title: `X thread: ${title}`,
+        content: formatTwitterThreadContent(
+          [
+            title.slice(0, 270),
+            snippet.slice(0, 280) || 'Kısa, ölçülebilir tekrar.',
+            'Detay için egitim.today',
+          ],
+          twitterThreadCtaUrl(title) || undefined,
+        ),
+        metadata: { platform: 'TWITTER', mock: true },
       }
   }
 }
