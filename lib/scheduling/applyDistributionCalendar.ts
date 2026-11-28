@@ -271,6 +271,31 @@ export async function previewDistributionSchedule(
   }
 }
 
+/** Latest completed pipeline with calendar + schedulable slots not yet applied (workflow auto-step). */
+export async function findLatestSchedulablePipelineId(): Promise<string | null> {
+  const pipelines = await prisma.contentPipeline.findMany({
+    where: { status: 'COMPLETED' },
+    orderBy: { completedAt: 'desc' },
+    take: 15,
+    select: { id: true, config: true },
+  })
+
+  for (const p of pipelines) {
+    const cfg =
+      p.config && typeof p.config === 'object' ? (p.config as Record<string, unknown>) : null
+    if (!cfg?.distributionCalendar) continue
+    if (typeof cfg.distributionAppliedAt === 'string') continue
+
+    try {
+      const preview = await previewDistributionSchedule(p.id, { approvedOnly: true })
+      if (preview.readyCount > 0) return p.id
+    } catch {
+      /* skip broken pipeline config */
+    }
+  }
+  return null
+}
+
 export async function applyDistributionSchedule(
   pipelineId: string,
   options: { approvedOnly?: boolean; reschedule?: boolean } = {},
