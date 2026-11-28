@@ -4,6 +4,10 @@ import { bulkPublishDraftPosts, syncSocialDraftsFromApprovedCaptions, backfillFa
 import { syncPostImagesFromCaptions, syncPostClipsFromCaptions } from '../social/publishCaption'
 import { syncAllAccountStats, syncAllPublishedPostAnalytics } from '../social/platformStats'
 import { runWorkerTick } from '../worker/runWorkerTick'
+import {
+  applyDistributionSchedule,
+  findLatestSchedulablePipelineId,
+} from '../scheduling/applyDistributionCalendar'
 import { getWorkflowSnapshot, type WorkflowSnapshot } from './status'
 
 /** Platforms with working OAuth publish in prod (Instagram needs public image URL). */
@@ -74,6 +78,29 @@ export async function runWorkflowContinueStep(): Promise<ContinueStepResult> {
       manual: 'Medya ekranında ses üret veya toplu onayda otomatik medya açık olsun',
       href: '/admin/media',
       snapshot: before,
+    }
+  }
+
+  if (
+    counts.socialDrafts > 0 &&
+    counts.scheduledPosts === 0 &&
+    counts.linkedAccounts > 0 &&
+    counts.reviewClean === 0
+  ) {
+    const pipelineId = await findLatestSchedulablePipelineId()
+    if (pipelineId) {
+      const result = await applyDistributionSchedule(pipelineId, { approvedOnly: true })
+      if (result.scheduled > 0) {
+        const snapshot = await getWorkflowSnapshot()
+        return {
+          action: 'apply-calendar',
+          summary: `14 günlük takvim uygulandı · ${result.scheduled} post zamanlandı`,
+          manual: result.skipped > 0 ? `${result.skipped} slot atlandı — Takvim önizleme` : undefined,
+          href: '/admin/calendar',
+          snapshot,
+          details: { pipelineId, result },
+        }
+      }
     }
   }
 

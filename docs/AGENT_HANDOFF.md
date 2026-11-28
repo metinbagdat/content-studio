@@ -10,9 +10,16 @@ re-discover from scratch, add an entry here before you stop.
 
 ---
 
+## 2026-11-28 — CS-07 workflow takvim otomatik
+
+- GitHub **#4 / CS-07** zaten kapalı: `/admin/calendar` + `POST /api/scheduling`.
+- `runWorkflowContinueStep`: onay sonrası ilk uygun pipeline için `applyDistributionSchedule` (`distributionAppliedAt` yok, `readyCount>0`); bulk yayınlamadan önce.
+
+---
+
 ## 2026-11-18 — X link reply
 
-- Branch `feat/x-link-reply` (uncommitted): X ana post ve thread tweetlerinde URL yok.
+- `main` @ #182: X ana post ve thread tweetlerinde URL yok.
 - Yazı linki zincirin son yanıtında (`Yazı: <url>`). Kayıtlı taslaklar yayın anında ayrılır.
 - `lib/social/twitterFormat.test.ts` 4 test.
 
